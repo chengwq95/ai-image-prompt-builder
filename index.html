@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图片提示词实验室</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1026'/%3E%3Cg stroke='%239AA3C7' stroke-width='4' stroke-linecap='round' fill='none'%3E%3Cpath d='M10 20v-6a4 4 0 0 1 4-4h6'/%3E%3Cpath d='M44 10h6a4 4 0 0 1 4 4v6'/%3E%3Cpath d='M54 44v6a4 4 0 0 1-4 4h-6'/%3E%3Cpath d='M20 54h-6a4 4 0 0 1-4-4v-6'/%3E%3C/g%3E%3Ccircle cx='26' cy='26' r='6' fill='%23F5B85C'/%3E%3Ccircle cx='38' cy='26' r='6' fill='%235CD6E8'/%3E%3Ccircle cx='26' cy='38' r='6' fill='%237BE0A0'/%3E%3Ccircle cx='38' cy='38' r='6' fill='%23C08CFF'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;800&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B1026;
+  --bg-soft:#111838;
+  --panel:#151D42;
+  --panel-2:#1B2452;
+  --line:#2A3568;
+  --text:#E9ECF8;
+  --text-dim:#9AA3C7;
+  --c-time:#F5B85C;
+  --c-subject:#5CD6E8;
+  --c-scene:#7BE0A0;
+  --c-style:#C08CFF;
+  --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  html{scroll-behavior:auto}
+}
+body{
+  background:
+    radial-gradient(1100px 500px at 80% -10%, rgba(92,214,232,.08), transparent 60%),
+    radial-gradient(900px 500px at 5% 20%, rgba(192,140,255,.07), transparent 60%),
+    var(--bg);
+  color:var(--text);
+  font-family:'Noto Sans SC',-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+  line-height:1.65;
+  padding-bottom:190px;
+}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+
+/* ---------- Hero ---------- */
+header{padding:56px 0 30px;text-align:center}
+.eyebrow{
+  display:inline-block;font-size:12px;letter-spacing:.35em;color:var(--text-dim);
+  border:1px solid var(--line);border-radius:99px;padding:5px 16px 5px 19px;margin-bottom:18px;
+}
+h1{
+  font-family:'Noto Serif SC',serif;font-weight:800;font-size:clamp(30px,5vw,46px);
+  letter-spacing:.04em;margin-bottom:14px;
+}
+h1 .glow{
+  background:linear-gradient(100deg,var(--c-time),var(--c-subject) 40%,var(--c-scene) 70%,var(--c-style));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.sub{color:var(--text-dim);max-width:560px;margin:0 auto;font-size:15px}
+
+/* formula */
+.formula{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin:26px 0 6px}
+.f-block{
+  padding:9px 20px;border-radius:10px;font-weight:700;font-size:16px;cursor:pointer;
+  border:1px solid transparent;transition:transform .15s ease, box-shadow .15s ease;
+  background:var(--panel);
+}
+.f-block:hover{transform:translateY(-2px)}
+.f-block:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.f-plus{color:var(--text-dim);font-size:18px;font-weight:400}
+.f-time{color:var(--c-time);border-color:rgba(245,184,92,.4)}
+.f-subject{color:var(--c-subject);border-color:rgba(92,214,232,.4)}
+.f-scene{color:var(--c-scene);border-color:rgba(123,224,160,.4)}
+.f-style{color:var(--c-style);border-color:rgba(192,140,255,.4)}
+.formula-note{font-size:13px;color:var(--text-dim)}
+.formula-note b{color:var(--text)}
+
+/* ---------- intro cards ---------- */
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:34px 0 8px}
+@media(max-width:820px){.cards{grid-template-columns:repeat(2,1fr)}}
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px 16px 14px;cursor:pointer;text-align:left;color:var(--text);
+  transition:border-color .15s, transform .15s;font-family:inherit;
+}
+.card:hover{transform:translateY(-2px)}
+.card:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.card h3{font-size:16px;margin-bottom:5px;display:flex;align-items:center;gap:8px}
+.card .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.card p{font-size:12.5px;color:var(--text-dim);line-height:1.55}
+.card[data-cat="time"]:hover{border-color:var(--c-time)}
+.card[data-cat="subject"]:hover{border-color:var(--c-subject)}
+.card[data-cat="scene"]:hover{border-color:var(--c-scene)}
+.card[data-cat="style"]:hover{border-color:var(--c-style)}
+
+/* ---------- presets ---------- */
+.presets{margin:30px 0 20px}
+.sec-label{font-size:12px;letter-spacing:.25em;color:var(--text-dim);margin-bottom:10px}
+.preset-row{display:flex;gap:10px;flex-wrap:wrap}
+.preset,.ghost-btn{
+  font-family:inherit;font-size:14px;color:var(--text);background:var(--panel);
+  border:1px solid var(--line);border-radius:10px;padding:9px 16px;cursor:pointer;
+  transition:border-color .15s, background .15s;
+}
+.preset:hover,.ghost-btn:hover{border-color:var(--text-dim);background:var(--panel-2)}
+.preset:focus-visible,.ghost-btn:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.preset span{color:var(--text-dim);font-size:12px;margin-left:6px}
+.preset.active{border-color:var(--text-dim);background:var(--panel-2)}
+.dice{border-style:dashed}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:820px){.steps{grid-template-columns:1fr}}
+.step{
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:10px 14px;font-size:13px;color:var(--text-dim);line-height:1.6;
+}
+.step b{color:var(--text);margin-right:6px}
+.preset-note{
+  margin-top:12px;padding:11px 15px;font-size:13.5px;line-height:1.7;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;
+}
+.preset-note b{color:var(--text)}
+.preset-note{color:var(--text-dim)}
+
+/* ---------- builder ---------- */
+.builder{
+  background:var(--bg-soft);border:1px solid var(--line);border-radius:18px;
+  margin-top:10px;overflow:hidden;
+}
+.tabs{display:flex;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{
+  flex:1;min-width:110px;font-family:inherit;font-size:15px;font-weight:700;padding:14px 8px;
+  background:transparent;border:none;color:var(--text-dim);cursor:pointer;
+  border-bottom:3px solid transparent;transition:color .15s;
+}
+.tab:focus-visible{outline:2px solid var(--text);outline-offset:-3px}
+.tab .cnt{
+  display:inline-block;min-width:20px;font-size:11px;font-weight:700;border-radius:99px;
+  padding:1px 6px;margin-left:6px;background:var(--panel-2);color:var(--text-dim);
+}
+.tab.active{color:var(--text)}
+.tab.active[data-cat="time"]{border-bottom-color:var(--c-time)}
+.tab.active[data-cat="subject"]{border-bottom-color:var(--c-subject)}
+.tab.active[data-cat="scene"]{border-bottom-color:var(--c-scene)}
+.tab.active[data-cat="style"]{border-bottom-color:var(--c-style)}
+
+.pane{display:none;padding:22px 22px 10px}
+.pane.active{display:block}
+.pane-tip{
+  font-size:13px;color:var(--text-dim);margin-bottom:18px;padding:10px 14px;
+  background:var(--panel);border-left:3px solid var(--line);border-radius:0 8px 8px 0;
+}
+.pane-tip b{color:var(--text)}
+
+.subgroup-title{
+  font-size:13px;font-weight:700;letter-spacing:.15em;color:var(--text-dim);
+  margin:20px 0 4px;padding-top:14px;border-top:1px dashed var(--line);
+}
+.subgroup-title:first-of-type{margin-top:0;border-top:none;padding-top:0}
+
+.dim{display:flex;gap:14px;margin-bottom:16px;align-items:flex-start}
+.dim-label{
+  flex:none;width:92px;font-size:13px;font-weight:500;color:var(--text-dim);
+  padding-top:6px;text-align:right;
+}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{
+  font-family:inherit;font-size:13.5px;color:var(--text);cursor:pointer;
+  background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:5px 14px;
+  transition:border-color .12s, background .12s, color .12s;
+}
+.chip:hover{border-color:var(--text-dim)}
+.chip:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.chip.on{font-weight:700;color:#0B1026}
+.chip.on[data-cat="time"]{background:var(--c-time);border-color:var(--c-time)}
+.chip.on[data-cat="subject"]{background:var(--c-subject);border-color:var(--c-subject)}
+.chip.on[data-cat="scene"]{background:var(--c-scene);border-color:var(--c-scene)}
+.chip.on[data-cat="style"]{background:var(--c-style);border-color:var(--c-style)}
+
+.custom-row{display:flex;gap:8px;margin:6px 0 16px;padding-left:106px}
+@media(max-width:640px){
+  .dim{flex-direction:column;gap:6px}
+  .dim-label{width:auto;text-align:left;padding-top:0}
+  .custom-row{padding-left:0}
+}
+.custom-row input{
+  font-family:inherit;font-size:13.5px;color:var(--text);background:var(--panel);
+  border:1px solid var(--line);border-radius:8px;padding:7px 12px;flex:1;max-width:280px;
+}
+.custom-row input:focus{outline:2px solid var(--text-dim);outline-offset:1px}
+.custom-row button{
+  font-family:inherit;font-size:13px;color:var(--text);background:var(--panel-2);
+  border:1px solid var(--line);border-radius:8px;padding:7px 14px;cursor:pointer;
+}
+.custom-row button:hover{border-color:var(--text-dim)}
+.custom-row button:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+
+/* ---------- viewfinder (signature) ---------- */
+.viewfinder{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;
+  background:rgba(9,13,32,.92);backdrop-filter:blur(10px);
+  border-top:1px solid var(--line);
+}
+.vf-inner{max-width:1060px;margin:0 auto;padding:14px 20px 16px;position:relative}
+.vf-frame{
+  position:relative;border-radius:10px;padding:12px 16px;min-height:58px;
+  background:var(--bg-soft);
+}
+.vf-frame::before,.vf-frame::after,
+.vf-corner-b::before,.vf-corner-b::after{
+  content:"";position:absolute;width:16px;height:16px;border-color:var(--text-dim);border-style:solid;
+}
+.vf-frame::before{top:0;left:0;border-width:2px 0 0 2px;border-radius:6px 0 0 0}
+.vf-frame::after{top:0;right:0;border-width:2px 2px 0 0;border-radius:0 6px 0 0}
+.vf-corner-b::before{bottom:0;left:0;border-width:0 0 2px 2px;border-radius:0 0 0 6px}
+.vf-corner-b::after{bottom:0;right:0;border-width:0 2px 2px 0;border-radius:0 0 6px 0}
+.vf-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.vf-title{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.3em;color:var(--text-dim)}
+.rec{width:8px;height:8px;border-radius:50%;background:#666;flex:none;transition:background .2s}
+.rec.live{background:#FF5A5A;animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.meter{display:flex;gap:12px}
+.m-dot{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-dim)}
+.m-dot i{width:8px;height:8px;border-radius:50%;background:var(--panel-2);border:1px solid var(--line);flex:none}
+.m-dot.ok{color:var(--text)}
+.m-dot.ok[data-cat="time"] i{background:var(--c-time);border-color:var(--c-time)}
+.m-dot.ok[data-cat="subject"] i{background:var(--c-subject);border-color:var(--c-subject)}
+.m-dot.ok[data-cat="scene"] i{background:var(--c-scene);border-color:var(--c-scene)}
+.m-dot.ok[data-cat="style"] i{background:var(--c-style);border-color:var(--c-style)}
+@media(max-width:640px){.m-dot span{display:none}.meter{gap:8px}}
+
+.vf-prompt{
+  font-family:'JetBrains Mono','Noto Sans SC',monospace;font-size:14px;line-height:1.9;
+  min-height:28px;word-break:break-all;
+}
+.vf-empty{color:var(--text-dim);font-family:'Noto Sans SC',sans-serif;font-size:13.5px}
+.seg{padding:1px 2px;border-radius:4px}
+.seg-time{color:var(--c-time)}
+.seg-subject{color:var(--c-subject)}
+.seg-scene{color:var(--c-scene)}
+.seg-style{color:var(--c-style)}
+.seg-comma{color:var(--text-dim)}
+
+.vf-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+.vf-btn{
+  font-family:inherit;font-size:13px;font-weight:700;border-radius:8px;padding:8px 18px;
+  cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--text);
+  transition:background .15s,border-color .15s;
+}
+.vf-btn:hover{border-color:var(--text-dim)}
+.vf-btn:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.vf-btn.primary{background:var(--text);color:#0B1026;border-color:var(--text)}
+.vf-btn.primary:hover{background:#fff}
+
+.toast{
+  position:fixed;left:50%;bottom:200px;transform:translateX(-50%) translateY(8px);
+  background:var(--text);color:#0B1026;font-size:13px;font-weight:700;
+  padding:8px 20px;border-radius:99px;opacity:0;pointer-events:none;
+  transition:opacity .25s, transform .25s;z-index:60;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ---------- checklist ---------- */
+.diagnose{margin:34px 0 10px}
+.dg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:820px){.dg-grid{grid-template-columns:1fr}}
+.dg{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:15px 16px;font-size:13px;
+}
+.dg b{display:block;font-size:14px;margin-bottom:4px}
+.dg p{color:var(--text-dim);line-height:1.6}
+.dg em{font-style:normal;color:var(--text)}
+
+footer{text-align:center;color:var(--text-dim);font-size:12px;margin-top:44px;letter-spacing:.1em}
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <div class="eyebrow">PROMPT LAB</div>
+  <h1>图片<span class="glow">提示词</span>实验室</h1>
+  <p class="sub">一段好的提示词,就是把脑海里的画面拆成四块再拼回去。点击下面的关键词,底部取景器会实时拼出完整提示词。</p>
+  <div class="formula" role="group" aria-label="提示词公式">
+    <button class="f-block f-time" data-jump="time">时间</button><span class="f-plus">+</span>
+    <button class="f-block f-subject" data-jump="subject">主体</button><span class="f-plus">+</span>
+    <button class="f-block f-scene" data-jump="scene">场景</button><span class="f-plus">+</span>
+    <button class="f-block f-style" data-jump="style">风格</button>
+  </div>
+  <p class="formula-note">前三块决定<b>画什么</b>,第四块决定<b>画成什么样</b></p>
+</header>
+
+<main class="wrap">
+
+  <div class="cards">
+    <button class="card" data-cat="time" data-jump="time">
+      <h3><span class="dot" style="background:var(--c-time)"></span>时间</h3>
+      <p>画面发生在什么时候:年代、季节、一天中的时刻。它默默决定了光线和氛围的基调。</p>
+    </button>
+    <button class="card" data-cat="subject" data-jump="subject">
+      <h3><span class="dot" style="background:var(--c-subject)"></span>主体</h3>
+      <p>画面的主角:人物、生物或物品。细节越具体,AI 出图越不"随机脸"。</p>
+    </button>
+    <button class="card" data-cat="scene" data-jump="scene">
+      <h3><span class="dot" style="background:var(--c-scene)"></span>场景</h3>
+      <p>主角所处的环境:自然、建筑、天气。给主体一个能讲故事的舞台。</p>
+    </button>
+    <button class="card" data-cat="style" data-jump="style">
+      <h3><span class="dot" style="background:var(--c-style)"></span>风格</h3>
+      <p>怎么"拍":画风、氛围、色调、光源、景别、构图、镜头参数。专业感全在这里。</p>
+    </button>
+  </div>
+
+  <div class="presets">
+    <div class="sec-label">新手三步走</div>
+    <div class="steps">
+      <div class="step"><b>①</b> 点一个下面的示例,看看四块是怎么搭的</div>
+      <div class="step"><b>②</b> 只换掉一两个词,比如把「深夜」换成「清晨」</div>
+      <div class="step"><b>③</b> 复制提示词去出图,不对再回来补词</div>
+    </div>
+    <div class="sec-label" style="margin-top:22px">示例预设 · 挑一个和你想画的最像的</div>
+    <div class="preset-row">
+      <button class="preset" data-preset="0">🕵️ 雨夜侦探 <span>人物</span></button>
+      <button class="preset" data-preset="1">🐆 雪山猎手 <span>生物</span></button>
+      <button class="preset" data-preset="2">📷 旧物时光 <span>物品</span></button>
+      <button class="preset" data-preset="3">🏮 唐朝仕女 <span>古风</span></button>
+      <button class="preset" data-preset="4">⚔️ 竹林武士 <span>电影感</span></button>
+      <button class="preset" data-preset="5">🐕 打盹柴犬 <span>萌宠</span></button>
+      <button class="preset" data-preset="6">🐉 东方神话 <span>幻想</span></button>
+      <button class="preset" data-preset="7">🚀 未来都市 <span>科幻</span></button>
+      <button class="preset" data-preset="8">🛹 复古少年 <span>年代感</span></button>
+      <button class="ghost-btn dice" id="randomBtn">🎲 随机灵感</button>
+    </div>
+    <div class="preset-note" id="presetNote" hidden></div>
+  </div>
+
+  <section class="builder" id="builder">
+    <div class="tabs" role="tablist">
+      <button class="tab active" role="tab" data-cat="time" aria-selected="true">时间<span class="cnt" data-cnt="time">0</span></button>
+      <button class="tab" role="tab" data-cat="subject" aria-selected="false">主体<span class="cnt" data-cnt="subject">0</span></button>
+      <button class="tab" role="tab" data-cat="scene" aria-selected="false">场景<span class="cnt" data-cnt="scene">0</span></button>
+      <button class="tab" role="tab" data-cat="style" aria-selected="false">风格<span class="cnt" data-cnt="style">0</span></button>
+    </div>
+    <div class="pane active" data-pane="time"></div>
+    <div class="pane" data-pane="subject"></div>
+    <div class="pane" data-pane="scene"></div>
+    <div class="pane" data-pane="style"></div>
+  </section>
+
+  <section class="diagnose">
+    <div class="sec-label">出图不对?对照排查</div>
+    <div class="dg-grid">
+      <div class="dg"><b>图太平淡</b><p>多半是<em>光源</em>和<em>氛围</em>没写。试试加"逆光""霓虹灯光""悬疑感"。</p></div>
+      <div class="dg"><b>人物长得随机</b><p><em>脸部细节</em>缺失。发型、眼镜、雀斑、疤痕,越具体越稳定。</p></div>
+      <div class="dg"><b>像手机随手拍</b><p>缺<em>镜头语言</em>。给它景别、焦段、景深:"特写、85mm、浅景深"。</p></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="wrap">时间 + 主体 + 场景 + 风格 · 缺哪块,回来补哪块</footer>
+
+<!-- viewfinder -->
+<div class="viewfinder">
+  <div class="vf-inner">
+    <div class="vf-frame">
+      <span class="vf-corner-b"></span>
+      <div class="vf-head">
+        <div class="vf-title"><span class="rec" id="rec"></span>取景器 · VIEWFINDER</div>
+        <div class="meter">
+          <div class="m-dot" data-cat="time"><i></i><span>时间</span></div>
+          <div class="m-dot" data-cat="subject"><i></i><span>主体</span></div>
+          <div class="m-dot" data-cat="scene"><i></i><span>场景</span></div>
+          <div class="m-dot" data-cat="style"><i></i><span>风格</span></div>
+        </div>
+      </div>
+      <div class="vf-prompt" id="promptOut"><span class="vf-empty">还没选词。点击上方任意关键词,或试试一个示例预设。</span></div>
+    </div>
+    <div class="vf-actions">
+      <button class="vf-btn" id="clearBtn">清空</button>
+      <button class="vf-btn primary" id="copyBtn">复制提示词</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">已复制到剪贴板</div>
+
+<script>
+/* ================= 数据 ================= */
+const CATS = ["time","subject","scene","style"];
+const CAT_NAME = {time:"时间", subject:"主体", scene:"场景", style:"风格"};
+
+const DATA = {
+  time: {
+    tip: "<b>时间</b>不只是背景信息:深夜自带霓虹和阴影,清晨自带薄雾和柔光。选一个时刻,等于免费选了一套光线。",
+    groups: [
+      { title:null, dims:[
+        { label:"年代", chips:["现代","近代","古代","唐朝","八十年代","未来世界"] },
+        { label:"季节", chips:["春","夏","秋","冬"] },
+        { label:"时刻", chips:["凌晨","清晨","早上","中午","下午","黄昏","晚上","深夜"] }
+      ]}
+    ]
+  },
+  subject: {
+    tip: "<b>主体</b>是画面的主角,分人物、生物、物品三类。经验法则:主体写得越具体,AI 就越少替你随机发挥。",
+    groups: [
+      { title:"人物", dims:[
+        { label:"基本信息", chips:["30岁亚洲女性","老渔夫","日本武士","宇航员","街头少年","女侦探","古装少女"] },
+        { label:"脸部", chips:["短发","长卷发","圆框眼镜","络腮胡","雀斑","皱纹","疤痕"] },
+        { label:"身体", chips:["高挑","健壮","机械义肢","满臂纹身"] },
+        { label:"服装", chips:["深绿色风衣","汉服","宇航服","破旧皮夹克","银色饰品"] },
+        { label:"表情气质", chips:["疲惫","微笑","冷峻","忧郁","自信"] },
+        { label:"姿势动作", chips:["奔跑","回眸","静坐","低头看手机","撑伞站立"] }
+      ]},
+      { title:"生物", dims:[
+        { label:"物种", chips:["雪豹","柴犬","乌鸦","锦鲤","东方龙"] },
+        { label:"特征", chips:["成年","幼崽","毛发浓密","灰白斑纹","巨大翅膀","鹿角"] },
+        { label:"姿势动作", chips:["低身潜行","展翅飞翔","蜷缩睡觉","跃出水面"] }
+      ]},
+      { title:"物品", dims:[
+        { label:"类型", chips:["拍立得相机","机械键盘","老式电话","武士刀","咖啡杯"] },
+        { label:"属性", chips:["红色","复古","金属质感","木质","半透明"] },
+        { label:"表面细节", chips:["轻微磨损","水渍","落满灰尘","反光"] }
+      ]}
+    ]
+  },
+  scene: {
+    tip: "<b>场景</b>是主体的舞台。同一个人站在废弃工厂和温馨咖啡馆,是两个完全不同的故事。天气是氛围放大器。",
+    groups: [
+      { title:null, dims:[
+        { label:"自然", chips:["雪山脚下","雨林深处","海边悬崖","沙漠","竹林","星空之下"] },
+        { label:"建筑", chips:["霓虹街头","废弃工厂","古老寺庙","未来都市","温馨咖啡馆","中式庭院"] },
+        { label:"天气", chips:["晴天","阴天","雨中","大雪","沙尘暴","浓雾"] }
+      ]}
+    ]
+  },
+  style: {
+    tip: "<b>风格</b>决定画成什么样,是提示词里最见功力的一块。光源 + 景别 + 焦段三件套,能瞬间把「随手拍」变「电影感」。",
+    groups: [
+      { title:null, dims:[
+        { label:"画面风格", chips:["写实","纪录片风格","三维动画","二维动画","水彩","胶片感","赛博朋克"] },
+        { label:"氛围", chips:["温馨","悬疑","宁静","孤独","史诗感"] },
+        { label:"色调", chips:["冷色调","暖色调","黑金色调","莫兰迪色","高饱和"] },
+        { label:"光源", chips:["自然光","霓虹灯光","烛光","逆光","侧光","柔光","硬光"] },
+        { label:"景别", chips:["大远景","远景","全景","中景","近景","特写","超大特写"] },
+        { label:"拍摄角度", chips:["仰视","俯视","平视","航拍"] },
+        { label:"构图", chips:["主体居中","主体靠左","主体靠右","三分法构图"] },
+        { label:"摄影机", chips:["85mm镜头","35mm广角","200mm长焦","浅景深","背景虚化","拍立得质感","ARRI ALEXA"] }
+      ]}
+    ]
+  }
+};
+
+const PRESETS = [
+  { // 0 雨夜侦探
+    time:["现代","秋","深夜"],
+    subject:["30岁亚洲女性","短发","圆框眼镜","雀斑","高挑","深绿色风衣","疲惫","撑伞站立"],
+    scene:["霓虹街头","雨中"],
+    style:["写实","赛博朋克","悬疑","冷色调","霓虹灯光","中景","平视","三分法构图","85mm镜头","浅景深","背景虚化"],
+    note:"<b>人物模板。</b>脸部细节(雀斑、眼镜)+ 服装 + 情绪,三样凑齐,人物就不会「随机脸」。85mm 镜头 + 浅景深是拍人像的黄金搭配,悬疑氛围靠雨夜和霓虹一起撑。"
+  },
+  { // 1 雪山猎手
+    time:["现代","冬","清晨"],
+    subject:["雪豹","成年","毛发浓密","灰白斑纹","低身潜行"],
+    scene:["雪山脚下","大雪"],
+    style:["写实","纪录片风格","宁静","冷色调","自然光","逆光","远景","平视","主体靠左","200mm长焦","背景虚化"],
+    note:"<b>生物模板。</b>「纪录片风格 + 200mm 长焦 + 远景」组合,出图像真实野外抓拍。逆光会给动物勾出一圈发光轮廓,清晨的光最柔和。"
+  },
+  { // 2 旧物时光
+    time:["现代","下午"],
+    subject:["拍立得相机","红色","复古","金属质感","轻微磨损","落满灰尘"],
+    scene:["温馨咖啡馆","晴天"],
+    style:["写实","温馨","暖色调","自然光","侧光","柔光","特写","平视","主体居中","浅景深"],
+    note:"<b>物品模板。</b>磨损、灰尘这类表面细节是关键,它们让物品有「被用过的故事感」。特写 + 侧光能突出材质和纹理。"
+  },
+  { // 3 唐朝仕女
+    time:["唐朝","春","清晨"],
+    subject:["古装少女","长卷发","汉服","银色饰品","微笑","静坐"],
+    scene:["中式庭院","晴天"],
+    style:["水彩","宁静","暖色调","自然光","柔光","全景","平视","主体居中"],
+    note:"<b>古风模板。</b>年代词很强大:写「唐朝」,AI 会自动带出对应的服饰、发型和建筑气质。水彩画风和古风题材是天生一对。"
+  },
+  { // 4 竹林武士
+    time:["古代","秋","黄昏"],
+    subject:["日本武士","络腮胡","疤痕","健壮","冷峻","武士刀"],
+    scene:["竹林","浓雾"],
+    style:["写实","胶片感","悬疑","冷色调","侧光","硬光","中景","平视","三分法构图","85mm镜头","浅景深"],
+    note:"<b>电影感模板。</b>「黄昏 + 浓雾 + 侧光」三件套 = 现成的电影氛围。硬光在脸上切出明暗,三分法构图比居中更有张力。"
+  },
+  { // 5 打盹柴犬
+    time:["现代","夏","下午"],
+    subject:["柴犬","幼崽","毛发浓密","蜷缩睡觉"],
+    scene:["温馨咖啡馆","晴天"],
+    style:["写实","温馨","高饱和","暖色调","自然光","柔光","近景","俯视","主体居中","浅景深"],
+    note:"<b>萌宠公式。</b>「幼崽 + 俯视 + 近景 + 暖色」天然可爱:俯视角度让动物显小显萌,高饱和色彩加强治愈感。"
+  },
+  { // 6 东方神话
+    time:["古代","深夜"],
+    subject:["东方龙","鹿角","跃出水面"],
+    scene:["星空之下","浓雾"],
+    style:["二维动画","史诗感","冷色调","逆光","大远景","仰视","主体居中","35mm广角"],
+    note:"<b>幻想题材模板。</b>「大远景 + 仰视」让主体显得无比宏大,是画神话生物的标准视角。史诗感 + 逆光,轮廓一亮,气势就有了。"
+  },
+  { // 7 未来都市
+    time:["未来世界","深夜"],
+    subject:["宇航员","宇航服","机械义肢","忧郁","回眸"],
+    scene:["未来都市","浓雾"],
+    style:["三维动画","史诗感","孤独","黑金色调","霓虹灯光","大远景","仰视","主体居中","35mm广角","ARRI ALEXA"],
+    note:"<b>科幻模板。</b>「三维动画 + 黑金色调」是科幻大片质感的来源。大远景 + 广角负责交代世界观,小小的人影反衬巨大的城市。"
+  },
+  { // 8 复古少年
+    time:["八十年代","夏","黄昏"],
+    subject:["街头少年","短发","破旧皮夹克","自信","奔跑"],
+    scene:["霓虹街头","晴天"],
+    style:["写实","胶片感","高饱和","暖色调","自然光","逆光","全景","平视","主体靠右","35mm广角"],
+    note:"<b>年代感模板。</b>「八十年代 + 胶片感」双保险锁定复古味。「奔跑」这类动作词让画面不呆板,主体靠右给运动方向留出空间。"
+  }
+];
+
+/* ================= 状态 ================= */
+// 每个类别是一个有序数组,元素为词字符串(内置或自定义)
+const state = { time:[], subject:[], scene:[], style:[] };
+
+/* ================= 渲染面板 ================= */
+const chipIndex = {}; // word -> [button elements]
+
+CATS.forEach(cat => {
+  const pane = document.querySelector(`.pane[data-pane="${cat}"]`);
+  const d = DATA[cat];
+  let html = `<div class="pane-tip">${d.tip}</div>`;
+  d.groups.forEach(g => {
+    if (g.title) html += `<div class="subgroup-title">${g.title}</div>`;
+    g.dims.forEach(dim => {
+      html += `<div class="dim"><div class="dim-label">${dim.label}</div><div class="chips">`;
+      dim.chips.forEach(w => {
+        html += `<button class="chip" data-cat="${cat}" data-word="${w}" aria-pressed="false">${w}</button>`;
+      });
+      html += `</div></div>`;
+    });
+  });
+  html += `<div class="custom-row">
+    <input type="text" maxlength="20" placeholder="自己写一个${CAT_NAME[cat]}关键词…" data-input="${cat}" aria-label="自定义${CAT_NAME[cat]}关键词">
+    <button data-add="${cat}">添加</button>
+  </div>`;
+  pane.innerHTML = html;
+});
+
+document.querySelectorAll(".chip").forEach(btn => {
+  const w = btn.dataset.word;
+  (chipIndex[w] = chipIndex[w] || []).push(btn);
+});
+
+/* ================= 交互 ================= */
+function toggleWord(cat, word) {
+  const arr = state[cat];
+  const i = arr.indexOf(word);
+  if (i >= 0) arr.splice(i, 1);
+  else arr.push(word);
+  render();
+}
+
+document.getElementById("builder").addEventListener("click", e => {
+  const chip = e.target.closest(".chip");
+  if (chip) { toggleWord(chip.dataset.cat, chip.dataset.word); return; }
+  const add = e.target.closest("[data-add]");
+  if (add) addCustom(add.dataset.add);
+});
+
+document.querySelectorAll("[data-input]").forEach(inp => {
+  inp.addEventListener("keydown", e => {
+    if (e.key === "Enter") addCustom(inp.dataset.input);
+  });
+});
+
+function addCustom(cat) {
+  const inp = document.querySelector(`[data-input="${cat}"]`);
+  const w = inp.value.trim();
+  if (!w) return;
+  if (!state[cat].includes(w)) state[cat].push(w);
+  inp.value = "";
+  render();
+}
+
+/* tabs */
+const tabs = document.querySelectorAll(".tab");
+function switchTab(cat) {
+  tabs.forEach(t => {
+    const on = t.dataset.cat === cat;
+    t.classList.toggle("active", on);
+    t.setAttribute("aria-selected", on);
+  });
+  document.querySelectorAll(".pane").forEach(p =>
+    p.classList.toggle("active", p.dataset.pane === cat));
+}
+tabs.forEach(t => t.addEventListener("click", () => switchTab(t.dataset.cat)));
+
+/* 公式块 & 卡片跳转 */
+document.querySelectorAll("[data-jump]").forEach(el => {
+  el.addEventListener("click", () => {
+    switchTab(el.dataset.jump);
+    document.getElementById("builder").scrollIntoView({behavior:"smooth", block:"start"});
+  });
+});
+
+/* presets */
+document.querySelectorAll(".preset").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const p = PRESETS[+btn.dataset.preset];
+    CATS.forEach(c => state[c] = [...p[c]]);
+    render();
+    document.querySelectorAll(".preset").forEach(b => b.classList.toggle("active", b === btn));
+    const note = document.getElementById("presetNote");
+    note.innerHTML = p.note;
+    note.hidden = false;
+    switchTab("subject");
+  });
+});
+
+function clearPresetNote(){
+  document.querySelectorAll(".preset").forEach(b => b.classList.remove("active"));
+  const note = document.getElementById("presetNote");
+  note.hidden = true;
+}
+
+/* 随机灵感:每个类别抽 1-2 个词 */
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+document.getElementById("randomBtn").addEventListener("click", () => {
+  clearPresetNote();
+  CATS.forEach(c => state[c] = []);
+  // time: 抽一个时刻
+  state.time.push(pick(DATA.time.groups[0].dims[2].chips));
+  // subject: 随机选一个子类,抽前两维各一个词
+  const g = pick(DATA.subject.groups);
+  state.subject.push(pick(g.dims[0].chips));
+  state.subject.push(pick(g.dims[1].chips));
+  // scene: 自然或建筑抽一个 + 天气一个
+  const sDims = DATA.scene.groups[0].dims;
+  state.scene.push(pick(pick([sDims[0], sDims[1]]).chips));
+  state.scene.push(pick(sDims[2].chips));
+  // style: 画面风格/色调/光源/景别 各一个
+  const st = DATA.style.groups[0].dims;
+  [0,2,3,4].forEach(i => state.style.push(pick(st[i].chips)));
+  render();
+});
+
+/* clear & copy */
+document.getElementById("clearBtn").addEventListener("click", () => {
+  clearPresetNote();
+  CATS.forEach(c => state[c] = []);
+  render();
+});
+
+document.getElementById("copyBtn").addEventListener("click", async () => {
+  const text = CATS.flatMap(c => state[c]).join(",");
+  if (!text) { showToast("先选几个关键词吧"); return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("已复制到剪贴板");
+  } catch (err) {
+    // fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); showToast("已复制到剪贴板"); }
+    catch(e){ showToast("复制失败,请手动选择文字"); }
+    document.body.removeChild(ta);
+  }
+});
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
+}
+
+/* ================= 渲染输出 ================= */
+function render() {
+  // chips 高亮
+  document.querySelectorAll(".chip").forEach(btn => {
+    const on = state[btn.dataset.cat].includes(btn.dataset.word);
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-pressed", on);
+  });
+  // 计数
+  CATS.forEach(c => {
+    const el = document.querySelector(`[data-cnt="${c}"]`);
+    el.textContent = state[c].length;
+  });
+  // 完整度
+  document.querySelectorAll(".m-dot").forEach(d =>
+    d.classList.toggle("ok", state[d.dataset.cat].length > 0));
+  // REC 灯
+  const total = CATS.reduce((n,c) => n + state[c].length, 0);
+  document.getElementById("rec").classList.toggle("live", total > 0);
+  // 提示词
+  const out = document.getElementById("promptOut");
+  if (total === 0) {
+    out.innerHTML = '<span class="vf-empty">还没选词。点击上方任意关键词,或试试一个示例预设。</span>';
+    return;
+  }
+  const parts = [];
+  CATS.forEach(c => {
+    state[c].forEach(w => parts.push(`<span class="seg seg-${c}">${escapeHtml(w)}</span>`));
+  });
+  out.innerHTML = parts.join('<span class="seg-comma">,</span>');
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+
+render();
+</script>
+</body>
+</html>

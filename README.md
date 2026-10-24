@@ -4,7 +4,7 @@ A single-page tool for writing AI image prompts by clicking instead of typing. P
 
 **Live:** https://chengwq95.github.io/prompt-lab/ (once GitHub Pages is enabled)
 
-Sister tool: [Video Prompt Builder](https://chengwq95.github.io/ai-video-prompt-builder/) — prompts for every step of a short AI video.
+Companion tool: [Video Prompt Builder](https://chengwq95.github.io/ai-video-prompt-builder/) — prompts for every step of a short AI video.
 
 ---
 

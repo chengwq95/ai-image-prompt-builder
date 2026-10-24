@@ -1,57 +1,60 @@
-# 图片提示词实验室 · Prompt Lab
+# Prompt Lab
 
-一个纯前端的互动学习页面,把「怎么写 AI 绘图提示词」拆解成一套可点选、可拼装的公式:
+An interactive page that breaks "how to write an AI image prompt" into a formula you can click together:
 
 ```
-时间 + 主体 + 场景 + 风格 = 一段完整提示词
+Time + Subject + Scene + Style = one complete prompt
 ```
 
-新手不需要死记硬背,点几个关键词,底部取景器会实时拼出完整提示词,一键复制去出图。
+No memorizing needed: click a few keywords and the viewfinder at the bottom builds the full prompt live, ready to copy into your image tool.
 
-**在线预览:** 开启 GitHub Pages 后填在这里,例如
-`https://chengwq95.github.io/prompt-lab/`
+**Live:** https://chengwq95.github.io/prompt-lab/ (once GitHub Pages is enabled on `main` / root)
+
+Sister tool: [Video Prompt Builder](https://chengwq95.github.io/ai-video-prompt-builder/) — prompts for every step of a short AI video.
 
 ---
 
-## 这是什么
+## What it covers
 
-图片提示词最容易漏写的,往往不是"不知道怎么写",而是"不知道还有哪些维度可以写"。这个页面把常见的提示词维度整理成四大类:
+The hardest part of a prompt is often not *how* to write it, but knowing *which dimensions* you could write about. The page groups them into four blocks:
 
-| 板块 | 内容 |
+| Block | What's inside |
 |---|---|
-| **时间** | 年代 / 季节 / 时刻 |
-| **主体** | 人物(脸部、身体、服装、表情)、生物、物品 |
-| **场景** | 自然、建筑、天气 |
-| **风格** | 画面风格、氛围、色调、光源、景别、拍摄角度、构图、摄影机参数 |
+| **Time** | Era / season / time of day |
+| **Subject** | People (face, body, outfit, expression, pose), creatures, objects |
+| **Scene** | Nature, places, weather |
+| **Style** | Art style, mood, color, light, shot size, camera angle, composition, lens |
 
-## 功能
+## Features
 
-- **四大板块 + 关键词选择**:点击即可加入提示词,再次点击取消
-- **实时取景器**:底部固定栏实时拼出完整提示词,四类关键词按颜色区分,一眼看出缺了哪块
-- **9 个示例预设**:雨夜侦探、雪山猎手、旧物时光、唐朝仕女、竹林武士、打盹柴犬、东方神话、未来都市、复古少年,每个都配一段"这个例子学什么"的讲解
-- **随机灵感**:一键随机组合,适合练手找感觉
-- **自定义关键词**:每个板块都能输入自己的词
-- **一键复制**:直接复制拼好的提示词去对应的 AI 绘图工具使用
-- **出图排查清单**:图太平淡 / 人物随机脸 / 像随手拍,对照着补对应板块
+- **Four blocks of clickable keywords** — click to add, click again to remove
+- **Live viewfinder** — the prompt builds at the bottom, color-coded by block, so you can see which block is missing
+- **Prompt in English or Chinese** — most image tools work best in English; switch the prompt language independently of the interface
+- **9 templates** — rainy-night detective, snow-mountain hunter, vintage object, Tang dynasty lady, bamboo-forest samurai, napping Shiba, Eastern myth, future city, retro teen — each with a note on what it teaches
+- **Random idea** — a random combination to practice with
+- **Your own keywords** — add custom words to any block
+- **One-click copy**
+- **Troubleshooting checklist** — too flat / random-looking person / looks like a phone snapshot, and which block to add
+- **EN / 中文** interface and **Morning / Night** themes; your choices and selected keywords are remembered in the browser
 
-## 使用方法
+## How to use
 
-无需安装,无需构建,是单文件 HTML,双击 `index.html` 或用浏览器打开即可,手机上也能正常使用。
+No install, no build step. It's a single HTML file: open `index.html` in any browser, on desktop or phone.
 
-## 技术说明
+## Tech
 
-纯原生 HTML / CSS / JavaScript,零依赖、零构建步骤,单文件即完整应用。
+Plain HTML / CSS / JavaScript, zero dependencies, zero build — one file is the whole app.
 
-## 本地开发
+## Local development
 
 ```bash
 git clone https://github.com/chengwq95/prompt-lab.git
 cd prompt-lab
-open index.html   # 或直接用浏览器打开
+open index.html   # or open it in any browser
 ```
 
-## 部署到 GitHub Pages
+## Deploy to GitHub Pages
 
-1. 仓库 Settings → Pages
-2. Source 选择 `main` 分支、`/ (root)` 目录
-3. 保存后等待 1-2 分钟即可通过 `https://<用户名>.github.io/<仓库名>/` 访问
+1. Repository **Settings → Pages**
+2. Source: **Deploy from a branch**, branch `main`, folder `/ (root)`
+3. Save and wait 1–2 minutes, then open `https://<username>.github.io/<repo>/`

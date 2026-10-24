@@ -177,7 +177,7 @@ h1 em{font-style:normal;color:var(--accent)}
 }
 .sub-label::after{content:"";flex:1;height:1px;background:var(--line)}
 .preset-row{display:flex;gap:8px;flex-wrap:wrap}
-.preset,.btn{
+.preset,.btn{text-decoration:none;
   display:inline-flex;align-items:center;gap:7px;cursor:pointer;
   font-size:13.5px;font-weight:500;border-radius:99px;padding:8px 15px;
   border:1px solid var(--line-strong);background:var(--surface);color:var(--text);
@@ -337,6 +337,52 @@ footer a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--li
 .plang{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
 .plang .switch button{padding:3px 10px;font-size:12px}
 
+/* ---------- guided tour ---------- */
+.guide-btn{
+  display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  font-size:12.5px;font-weight:500;color:var(--text);background:var(--surface);
+  border:1px solid var(--line);border-radius:99px;padding:7px 12px;transition:border-color .2s;
+}
+.guide-btn:hover{border-color:var(--text)}
+.guide-btn svg{width:14px;height:14px}
+@media(max-width:720px){.guide-btn .lbl{display:none}.guide-btn{padding:7px 9px}}
+.quick-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.quick-head p{font-size:13px;color:var(--muted);margin-top:2px}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 55%,transparent)}100%{box-shadow:0 0 0 12px transparent}}
+.pulse{animation:pulse 1.8s ease-out infinite}
+.tour{position:fixed;inset:0;z-index:100}
+.tour[hidden]{display:none}
+.tour.no-target{background:rgba(10,10,12,.55)}
+.tour-spot{
+  position:fixed;border-radius:14px;pointer-events:none;
+  box-shadow:0 0 0 2px var(--accent),0 0 0 9999px rgba(10,10,12,.55);
+  transition:left .3s,top .3s,width .3s,height .3s;
+}
+.tour.no-target .tour-spot{display:none}
+.tour-card{
+  position:fixed;width:min(380px,calc(100vw - 32px));z-index:101;
+  background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:16px;
+  box-shadow:0 20px 50px -12px rgba(0,0,0,.45);padding:18px 18px 16px;
+}
+.tour-card.center{left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,calc(100vw - 32px))}
+.tour-card.sheet{left:12px;right:12px;bottom:12px;width:auto;max-height:46vh;overflow:auto}
+.tour-card.sheet.top{top:72px;bottom:auto}
+.tour-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.tour-meta span{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+.tour-x{border:none;background:none;cursor:pointer;font-size:20px;line-height:1;color:var(--muted);padding:2px 6px;border-radius:6px}
+.tour-x:hover{color:var(--text)}
+.tour-card h3{font-family:var(--display);font-weight:600;font-size:21px;letter-spacing:-.01em;line-height:1.25;margin-bottom:6px}
+[lang=zh-CN] .tour-card h3{font-size:19px}
+.tour-card p{font-size:14px;color:var(--muted);line-height:1.6}
+.tour-card p b{color:var(--text);font-weight:600}
+.tour-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:16px}
+.tour-dots{display:flex;gap:5px;flex-wrap:wrap}
+.tour-dots i{width:6px;height:6px;border-radius:50%;background:var(--line-strong)}
+.tour-dots i.on{background:var(--text);width:16px;border-radius:99px}
+.tour-nav{display:flex;gap:6px}
+.tour-nav .btn{padding:7px 14px;font-size:13px}
+.tour-nav .btn:disabled{opacity:.35;cursor:default}
+
 .toast{
   position:fixed;left:50%;bottom:220px;transform:translateX(-50%) translateY(8px);
   background:var(--text);color:var(--on-text);font-size:13px;font-weight:500;
@@ -355,6 +401,7 @@ footer a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--li
       <span data-i18n="brand"></span>
     </a>
     <div class="controls">
+      <button type="button" class="guide-btn" id="guideBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="lbl" data-i18n="guide"></span></button>
       <a class="pill-link" href="https://chengwq95.github.io/ai-video-prompt-builder/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3"/></svg><span class="lbl" data-i18n="videoLink"></span></a>
       <div class="switch" role="group" aria-label="Language">
         <button type="button" data-lang-btn="en" aria-pressed="true">EN</button>
@@ -378,7 +425,7 @@ footer a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--li
   <div class="eyebrow" data-i18n="eyebrow"></div>
   <h1 data-i18n-html="h1"></h1>
   <p class="lede" data-i18n="sub"></p>
-  <div class="formula" role="group" aria-label="Formula">
+  <div class="formula" id="formula" role="group" aria-label="Formula">
     <button type="button" class="f-block" data-cat="time" data-jump="time"><i style="background:var(--c-time)"></i><span data-cat-name="time"></span></button><span class="f-plus">+</span>
     <button type="button" class="f-block" data-cat="subject" data-jump="subject"><i style="background:var(--c-subject)"></i><span data-cat-name="subject"></span></button><span class="f-plus">+</span>
     <button type="button" class="f-block" data-cat="scene" data-jump="scene"><i style="background:var(--c-scene)"></i><span data-cat-name="scene"></span></button><span class="f-plus">+</span>
@@ -397,8 +444,10 @@ footer a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--li
   </div>
 
   <section class="quick">
-    <h2 data-i18n="qsTitle"></h2>
-    <p data-i18n="qsSub"></p>
+    <div class="quick-head">
+      <div><h2 data-i18n="qsTitle"></h2><p data-i18n="qsSub"></p></div>
+      <button type="button" class="btn primary" id="tourBtn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.9l10-6.5a1 1 0 0 0 0-1.7l-10-6.5A1 1 0 0 0 8 5.5z"/></svg><span data-i18n="tourBtn"></span></button>
+    </div>
     <ol class="quick-steps">
       <li><span class="n">1</span><div><strong data-i18n="qs1t"></strong><p data-i18n="qs1"></p></div></li>
       <li><span class="n">2</span><div><strong data-i18n="qs2t"></strong><p data-i18n="qs2"></p></div></li>
@@ -428,7 +477,7 @@ footer a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--li
   </section>
 
   <div class="sub-label" data-i18n="dgLabel"></div>
-  <div class="dg-grid">
+  <div class="dg-grid" id="dgGrid">
     <div class="dg"><b data-i18n="dg1t"></b><p data-i18n-html="dg1"></p></div>
     <div class="dg"><b data-i18n="dg2t"></b><p data-i18n-html="dg2"></p></div>
     <div class="dg"><b data-i18n="dg3t"></b><p data-i18n-html="dg3"></p></div>
@@ -476,6 +525,19 @@ footer a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--li
         <button type="button" class="btn" id="clearBtn" data-i18n="clear"></button>
         <button type="button" class="btn primary" id="copyBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span data-i18n="copy"></span></button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="tour" id="tour" hidden>
+  <div class="tour-spot" id="tourSpot"></div>
+  <div class="tour-card" id="tourCard" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+    <div class="tour-meta"><span id="tourStep"></span><button type="button" class="tour-x" id="tourClose" aria-label="Close">×</button></div>
+    <h3 id="tourTitle"></h3>
+    <p id="tourBody"></p>
+    <div class="tour-foot">
+      <div class="tour-dots" id="tourDots"></div>
+      <div class="tour-nav"><button type="button" class="btn" id="tourBack"></button><button type="button" class="btn primary" id="tourNext"></button></div>
     </div>
   </div>
 </div>
@@ -661,7 +723,19 @@ const I18N = {
     footer:"Time + Subject + Scene + Style · add the block that's missing",
     vfTitle:"Viewfinder", plang:"Prompt in", clear:"Clear", copy:"Copy prompt",
     empty:"Nothing picked yet. Click any keyword above, or try a template.",
-    copied:"Copied to clipboard", pickFirst:"Pick a few keywords first", copyFail:"Copy failed — please select the text manually"
+    copied:"Copied to clipboard", pickFirst:"Pick a few keywords first", copyFail:"Copy failed — please select the text manually",
+    guide:"Guide", tourBtn:"Take the 1-minute tour",
+    tourBack:"Back", tourNext:"Next", tourFinish:"Let's go", tourStepOf:"Step {n} of {total}", close:"Close",
+    tour:[
+      ["Welcome!","This page helps you <b>write AI image prompts by clicking</b> instead of typing. No experience needed — let's take a quick look around."],
+      ["The formula","Every good image prompt has four blocks: <b>Time + Subject + Scene + Style</b>. The first three decide what to draw; Style decides how it looks. Click a block to jump to its keywords."],
+      ["Start from a template","Click any template to fill all four blocks at once. A short note explains what it teaches. Then swap one or two words to make it yours."],
+      ["Pick your keywords","Switch between the four tabs and click keywords to add them; click again to remove. The number on each tab shows how many you picked. You can also add your own words."],
+      ["Watch the prompt build","The viewfinder shows your prompt live, colored by block. An empty dot means that block is missing — that's usually what to add next."],
+      ["Choose the prompt language","Most AI image tools work best in <b>English</b>. Keep it on English even if you read the page in Chinese."],
+      ["Copy and generate","Copy the prompt and paste it into your image tool (Magnific, ChatGPT, Gemini, Grok…). Not happy? Come back and change one thing at a time."],
+      ["Image not right?","Check here: flat images usually need light and mood, random faces need face details, snapshots need camera words. Reopen this tour any time from \"Guide\" at the top."]
+    ]
   },
   zh: {
     title:"图片提示词实验室", brand:"图片提示词实验室",
@@ -692,7 +766,19 @@ const I18N = {
     footer:"时间 + 主体 + 场景 + 风格 · 缺哪块,回来补哪块",
     vfTitle:"取景器", plang:"提示词语言", clear:"清空", copy:"复制提示词",
     empty:"还没选词。点击上方任意关键词,或试试一个示例模板。",
-    copied:"已复制到剪贴板", pickFirst:"先选几个关键词吧", copyFail:"复制失败,请手动选择文字"
+    copied:"已复制到剪贴板", pickFirst:"先选几个关键词吧", copyFail:"复制失败,请手动选择文字",
+    guide:"新手引导", tourBtn:"1 分钟引导",
+    tourBack:"上一步", tourNext:"下一步", tourFinish:"开始吧", tourStepOf:"第 {n} / {total} 步", close:"关闭",
+    tour:[
+      ["欢迎!","这个页面让你<b>用点选的方式写 AI 绘图提示词</b>,不用自己打字。不需要任何经验,我们花一分钟看看怎么用。"],
+      ["提示词公式","好的图片提示词都有四块:<b>时间 + 主体 + 场景 + 风格</b>。前三块决定画什么,风格决定画成什么样。点任意一块可以直接跳到对应的关键词。"],
+      ["从模板开始","点任意一个模板,四块会一次填好,下面还有一段讲解告诉你它学的是什么。然后换掉一两个词,变成你自己的。"],
+      ["挑选关键词","在四个标签之间切换,点关键词加入,再点一次取消。标签上的数字是已选的数量。也可以在下面加入你自己的词。"],
+      ["看提示词实时拼出来","取景器会实时显示提示词,按板块分颜色。哪个圆点是空的,就说明那一块还没写,通常就是下一步要补的。"],
+      ["选提示词语言","大多数 AI 绘图工具用<b>英文</b>效果更好。就算你用中文看页面,提示词也建议保持英文。"],
+      ["复制去出图","复制提示词,粘贴到出图工具(Magnific、ChatGPT、Gemini、Grok…)。不满意就回来,一次只改一处。"],
+      ["出图不对?","对照这里排查:图太平淡多半缺光源和氛围,人物随机缺脸部细节,像随手拍缺镜头语言。随时可以点顶部的「新手引导」再看一遍。"]
+    ]
   }
 };
 
@@ -935,6 +1021,7 @@ function applyLang() {
   renderPanes();
   renderPresets();
   render();
+  if (tourIdx >= 0) showTourStep();
 }
 document.querySelectorAll("[data-lang-btn]").forEach(b => b.addEventListener("click", () => {
   if (lang === b.dataset.langBtn) return;
@@ -970,6 +1057,127 @@ document.querySelectorAll("[data-theme-btn]").forEach(b => b.addEventListener("c
 }));
 darkQuery.addEventListener("change", syncThemeButtons);
 syncThemeButtons();
+/* ================= 新手引导 ================= */
+const TOUR_TARGETS = [null, "#formula", "#presetRow", "#builder", ".vf-frame", ".plang", "#copyBtn", "#dgGrid"];
+const tourEl = document.getElementById("tour");
+const tourSpot = document.getElementById("tourSpot");
+const tourCard = document.getElementById("tourCard");
+const viewfinder = document.querySelector(".viewfinder");
+let tourIdx = -1;
+let tourOpener = null;
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+function tourTarget() {
+  const sel = TOUR_TARGETS[tourIdx];
+  return sel ? document.querySelector(sel) : null;
+}
+function startTour() {
+  tourOpener = document.activeElement;
+  tourIdx = 0;
+  tourEl.hidden = false;
+  try { localStorage.setItem("promptlab.toured", "1"); } catch(e) {}
+  document.getElementById("tourBtn").classList.remove("pulse");
+  showTourStep();
+}
+function endTour() {
+  tourEl.hidden = true;
+  tourIdx = -1;
+  if (tourOpener && tourOpener.focus) tourOpener.focus();
+}
+function showTourStep() {
+  const steps = t("tour");
+  const [title, body] = steps[tourIdx];
+  document.getElementById("tourStep").textContent = t("tourStepOf").replace("{n}", tourIdx + 1).replace("{total}", steps.length);
+  document.getElementById("tourTitle").textContent = title;
+  document.getElementById("tourBody").innerHTML = body;
+  document.getElementById("tourDots").innerHTML = steps.map((_, i) => `<i class="${i === tourIdx ? "on" : ""}"></i>`).join("");
+  const back = document.getElementById("tourBack"), next = document.getElementById("tourNext");
+  back.textContent = t("tourBack");
+  back.disabled = tourIdx === 0;
+  next.textContent = tourIdx === steps.length - 1 ? t("tourFinish") : t("tourNext");
+  document.getElementById("tourClose").setAttribute("aria-label", t("close"));
+  const el = tourTarget();
+  tourEl.classList.toggle("no-target", !el);
+  if (el && !viewfinder.contains(el)) {
+    // 底部取景器会挡住页面下方,滚动时把目标留在它上面
+    el.style.scrollMarginTop = "84px";
+    el.style.scrollMarginBottom = (viewfinder.offsetHeight + 16) + "px";
+    el.scrollIntoView({behavior: reduceMotion.matches ? "auto" : "smooth", block: window.innerWidth < 640 ? "start" : "center"});
+  }
+  positionTour();
+  setTimeout(positionTour, 350);
+  setTimeout(positionTour, 700);
+  next.focus();
+}
+function positionTour() {
+  if (tourIdx < 0) return;
+  const el = tourTarget();
+  if (!el) {
+    tourCard.className = "tour-card center";
+    tourCard.style.left = tourCard.style.top = "";
+    return;
+  }
+  const inVf = viewfinder.contains(el);
+  const pad = 8, topLimit = 64;
+  const bottomLimit = inVf ? window.innerHeight - 4 : viewfinder.getBoundingClientRect().top - 4;
+  const r = el.getBoundingClientRect();
+  const top = Math.max(r.top - pad, topLimit);
+  const bottom = Math.min(r.bottom + pad, bottomLimit);
+  Object.assign(tourSpot.style, {
+    left: (r.left - pad) + "px", top: top + "px",
+    width: (r.width + pad * 2) + "px", height: Math.max(0, bottom - top) + "px"
+  });
+  if (window.innerWidth < 640) {
+    tourCard.className = "tour-card sheet" + (inVf ? " top" : "");
+    tourCard.style.left = tourCard.style.top = "";
+    return;
+  }
+  tourCard.className = "tour-card";
+  const ch = tourCard.offsetHeight, cw = tourCard.offsetWidth;
+  let y;
+  if (bottomLimit - bottom > ch + 24) y = bottom + 14;
+  else if (top - topLimit > ch + 24) y = top - ch - 14;
+  else y = topLimit + 12;
+  const x = Math.min(Math.max(16, r.left), window.innerWidth - cw - 16);
+  tourCard.style.left = x + "px";
+  tourCard.style.top = y + "px";
+}
+function tourGo(delta) {
+  const n = tourIdx + delta;
+  if (n < 0) return;
+  if (n >= t("tour").length) { endTour(); return; }
+  tourIdx = n;
+  showTourStep();
+}
+document.getElementById("tourNext").addEventListener("click", () => tourGo(1));
+document.getElementById("tourBack").addEventListener("click", () => tourGo(-1));
+document.getElementById("tourClose").addEventListener("click", endTour);
+document.getElementById("tourBtn").addEventListener("click", startTour);
+document.getElementById("guideBtn").addEventListener("click", startTour);
+tourEl.addEventListener("click", e => { if (e.target === tourEl) endTour(); });
+document.addEventListener("keydown", e => {
+  if (tourIdx < 0) return;
+  if (e.key === "Escape") endTour();
+  else if (e.key === "ArrowRight") tourGo(1);
+  else if (e.key === "ArrowLeft") tourGo(-1);
+  else if (e.key === "Tab") {
+    // 把焦点留在引导卡片里
+    const f = [...tourCard.querySelectorAll("button:not(:disabled)")];
+    const i = f.indexOf(document.activeElement);
+    if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
+    else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
+  }
+});
+let tourRaf = 0;
+function onViewportChange() {
+  if (tourIdx < 0) return;
+  cancelAnimationFrame(tourRaf);
+  tourRaf = requestAnimationFrame(positionTour);
+}
+window.addEventListener("scroll", onViewportChange, {passive:true});
+window.addEventListener("resize", onViewportChange);
+try { if (!localStorage.getItem("promptlab.toured")) document.getElementById("tourBtn").classList.add("pulse"); } catch(e) {}
+
 syncPlang();
 applyLang();
 </script>

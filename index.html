@@ -1,139 +1,224 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>图片提示词实验室</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1026'/%3E%3Cg stroke='%239AA3C7' stroke-width='4' stroke-linecap='round' fill='none'%3E%3Cpath d='M10 20v-6a4 4 0 0 1 4-4h6'/%3E%3Cpath d='M44 10h6a4 4 0 0 1 4 4v6'/%3E%3Cpath d='M54 44v6a4 4 0 0 1-4 4h-6'/%3E%3Cpath d='M20 54h-6a4 4 0 0 1-4-4v-6'/%3E%3C/g%3E%3Ccircle cx='26' cy='26' r='6' fill='%23F5B85C'/%3E%3Ccircle cx='38' cy='26' r='6' fill='%235CD6E8'/%3E%3Ccircle cx='26' cy='38' r='6' fill='%237BE0A0'/%3E%3Ccircle cx='38' cy='38' r='6' fill='%23C08CFF'/%3E%3C/svg%3E">
+<title>Prompt Lab</title>
+<meta name="description" content="Build AI image prompts from four blocks: time, subject, scene and style.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2316181D'/%3E%3Ccircle cx='24' cy='24' r='7' fill='%23F0B45E'/%3E%3Ccircle cx='40' cy='24' r='7' fill='%236CD0E0'/%3E%3Ccircle cx='24' cy='40' r='7' fill='%237FD6A0'/%3E%3Ccircle cx='40' cy='40' r='7' fill='%23D52B1E'/%3E%3C/svg%3E">
+<script>
+/* 尽早应用主题,避免闪烁(和视频提示词生成器共用设置) */
+try { const th = localStorage.getItem("vpb.theme"); if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; } catch(e) {}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;800&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0B1026;
-  --bg-soft:#111838;
-  --panel:#151D42;
-  --panel-2:#1B2452;
-  --line:#2A3568;
-  --text:#E9ECF8;
-  --text-dim:#9AA3C7;
-  --c-time:#F5B85C;
-  --c-subject:#5CD6E8;
-  --c-scene:#7BE0A0;
-  --c-style:#C08CFF;
+  --bg:#F6F4EF;
+  --surface:#FFFFFF;
+  --surface-2:#FAF9F6;
+  --line:#E7E3DA;
+  --line-strong:#D6D1C6;
+  --text:#1B1A18;
+  --muted:#6E6A62;
+  --faint:#9C978D;
+  --accent:#D52B1E;
+  --accent-ink:#FFFFFF;
+  --on-text:#FFFFFF;
+  --c-time:#A86200;
+  --c-subject:#0B7F93;
+  --c-scene:#2C8550;
+  --c-style:#7A4BD6;
+  --shadow:0 1px 2px rgba(27,26,24,.04),0 8px 24px -12px rgba(27,26,24,.08);
   --radius:14px;
+  --sans:'Inter','Noto Sans SC',-apple-system,'PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+  --display:'Outfit','Noto Sans SC',-apple-system,'PingFang SC',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,'Noto Sans SC',monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D0E11;--surface:#15171B;--surface-2:#1A1D22;--line:#262931;--line-strong:#343844;
+    --text:#ECEAE5;--muted:#9B9890;--faint:#6E6B65;--accent:#F0584C;--on-text:#0D0E11;
+    --c-time:#F0B45E;--c-subject:#6CD0E0;--c-scene:#7FD6A0;--c-style:#B89CFF;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px -16px rgba(0,0,0,.6);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D0E11;--surface:#15171B;--surface-2:#1A1D22;--line:#262931;--line-strong:#343844;
+  --text:#ECEAE5;--muted:#9B9890;--faint:#6E6B65;--accent:#F0584C;--on-text:#0D0E11;
+  --c-time:#F0B45E;--c-subject:#6CD0E0;--c-scene:#7FD6A0;--c-style:#B89CFF;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px -16px rgba(0,0,0,.6);
+  color-scheme:dark;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
   html{scroll-behavior:auto}
 }
 body{
-  background:
-    radial-gradient(1100px 500px at 80% -10%, rgba(92,214,232,.08), transparent 60%),
-    radial-gradient(900px 500px at 5% 20%, rgba(192,140,255,.07), transparent 60%),
-    var(--bg);
-  color:var(--text);
-  font-family:'Noto Sans SC',-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
-  line-height:1.65;
-  padding-bottom:190px;
+  background:var(--bg);color:var(--text);font-family:var(--sans);
+  font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  padding-bottom:230px;transition:background .3s,color .3s;
 }
-.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+@media(max-width:640px){.wrap{padding:0 16px}}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+a{color:inherit}
 
-/* ---------- Hero ---------- */
-header{padding:56px 0 30px;text-align:center}
-.eyebrow{
-  display:inline-block;font-size:12px;letter-spacing:.35em;color:var(--text-dim);
-  border:1px solid var(--line);border-radius:99px;padding:5px 16px 5px 19px;margin-bottom:18px;
+/* ---------- top bar ---------- */
+.topbar{
+  position:sticky;top:0;z-index:40;
+  background:color-mix(in srgb,var(--bg) 82%,transparent);
+  backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);
+  border-bottom:1px solid var(--line);
 }
+.topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:12px;height:60px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0}
+.brand svg{width:28px;height:28px;flex:none}
+.brand .logo-bg{fill:var(--text)}
+.brand span{font-weight:600;font-size:15px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.controls{display:flex;gap:8px;align-items:center;flex:none}
+.pill-link{
+  display:inline-flex;align-items:center;gap:6px;text-decoration:none;
+  font-size:12.5px;font-weight:500;color:var(--text);background:var(--surface);
+  border:1px solid var(--line);border-radius:99px;padding:7px 12px;transition:border-color .2s;
+}
+.pill-link:hover{border-color:var(--text)}
+.pill-link svg{width:14px;height:14px}
+.switch{display:inline-flex;padding:3px;border:1px solid var(--line);border-radius:99px;background:var(--surface)}
+.switch button{
+  display:inline-flex;align-items:center;gap:6px;border:none;background:transparent;cursor:pointer;
+  font-size:12.5px;font-weight:500;color:var(--muted);padding:5px 11px;border-radius:99px;
+  transition:background .2s,color .2s;
+}
+.switch button:hover{color:var(--text)}
+.switch button[aria-pressed="true"]{background:var(--text);color:var(--on-text)}
+.switch svg{width:14px;height:14px;flex:none}
+@media(max-width:720px){.pill-link .lbl{display:none}.pill-link{padding:7px 9px}}
+@media(max-width:560px){
+  .switch .lbl{display:none}
+  .switch button{padding:5px 9px}
+  .brand span{font-size:14px}
+}
+
+/* ---------- hero ---------- */
+.hero{padding-top:64px;padding-bottom:36px}
+@media(max-width:640px){.hero{padding-top:40px}}
+.eyebrow{font-size:12px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:22px;height:1px;background:var(--line-strong)}
 h1{
-  font-family:'Noto Serif SC',serif;font-weight:800;font-size:clamp(30px,5vw,46px);
-  letter-spacing:.04em;margin-bottom:14px;
+  font-family:var(--display);font-weight:600;font-size:clamp(40px,7vw,72px);
+  line-height:1.02;letter-spacing:-.035em;margin-bottom:20px;max-width:15ch;
 }
-h1 .glow{
-  background:linear-gradient(100deg,var(--c-time),var(--c-subject) 40%,var(--c-scene) 70%,var(--c-style));
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-}
-.sub{color:var(--text-dim);max-width:560px;margin:0 auto;font-size:15px}
+[lang=zh-CN] h1{font-weight:700;letter-spacing:0;line-height:1.15;max-width:none}
+h1 em{font-style:normal;color:var(--accent)}
+.lede{color:var(--muted);max-width:620px;font-size:16.5px;line-height:1.65}
 
-/* formula */
-.formula{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin:26px 0 6px}
+.formula{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:30px 0 8px}
 .f-block{
-  padding:9px 20px;border-radius:10px;font-weight:700;font-size:16px;cursor:pointer;
-  border:1px solid transparent;transition:transform .15s ease, box-shadow .15s ease;
-  background:var(--panel);
+  display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+  font-family:var(--display);font-weight:600;font-size:17px;
+  padding:10px 18px;border-radius:12px;background:var(--surface);border:1px solid var(--line);
+  transition:transform .15s,border-color .15s;
 }
+.f-block i{width:9px;height:9px;border-radius:50%}
 .f-block:hover{transform:translateY(-2px)}
-.f-block:focus-visible{outline:2px solid var(--text);outline-offset:2px}
-.f-plus{color:var(--text-dim);font-size:18px;font-weight:400}
-.f-time{color:var(--c-time);border-color:rgba(245,184,92,.4)}
-.f-subject{color:var(--c-subject);border-color:rgba(92,214,232,.4)}
-.f-scene{color:var(--c-scene);border-color:rgba(123,224,160,.4)}
-.f-style{color:var(--c-style);border-color:rgba(192,140,255,.4)}
-.formula-note{font-size:13px;color:var(--text-dim)}
-.formula-note b{color:var(--text)}
+.f-block[data-cat="time"]:hover{border-color:var(--c-time)}
+.f-block[data-cat="subject"]:hover{border-color:var(--c-subject)}
+.f-block[data-cat="scene"]:hover{border-color:var(--c-scene)}
+.f-block[data-cat="style"]:hover{border-color:var(--c-style)}
+.f-plus{color:var(--faint);font-size:18px}
+.formula-note{font-size:13px;color:var(--muted)}
+.formula-note b{color:var(--text);font-weight:600}
 
 /* ---------- intro cards ---------- */
-.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:34px 0 8px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:30px 0 36px}
 @media(max-width:820px){.cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:420px){.cards{grid-template-columns:1fr}}
 .card{
-  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-  padding:16px 16px 14px;cursor:pointer;text-align:left;color:var(--text);
-  transition:border-color .15s, transform .15s;font-family:inherit;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px;cursor:pointer;text-align:left;box-shadow:var(--shadow);
+  transition:border-color .15s,transform .15s;
 }
 .card:hover{transform:translateY(-2px)}
-.card:focus-visible{outline:2px solid var(--text);outline-offset:2px}
-.card h3{font-size:16px;margin-bottom:5px;display:flex;align-items:center;gap:8px}
+.card h3{font-family:var(--display);font-size:17px;font-weight:600;margin-bottom:5px;display:flex;align-items:center;gap:8px}
 .card .dot{width:9px;height:9px;border-radius:50%;flex:none}
-.card p{font-size:12.5px;color:var(--text-dim);line-height:1.55}
+.card p{font-size:12.5px;color:var(--muted);line-height:1.55}
 .card[data-cat="time"]:hover{border-color:var(--c-time)}
 .card[data-cat="subject"]:hover{border-color:var(--c-subject)}
 .card[data-cat="scene"]:hover{border-color:var(--c-scene)}
 .card[data-cat="style"]:hover{border-color:var(--c-style)}
 
-/* ---------- presets ---------- */
-.presets{margin:30px 0 20px}
-.sec-label{font-size:12px;letter-spacing:.25em;color:var(--text-dim);margin-bottom:10px}
-.preset-row{display:flex;gap:10px;flex-wrap:wrap}
-.preset,.ghost-btn{
-  font-family:inherit;font-size:14px;color:var(--text);background:var(--panel);
-  border:1px solid var(--line);border-radius:10px;padding:9px 16px;cursor:pointer;
-  transition:border-color .15s, background .15s;
+/* ---------- quick start + presets ---------- */
+.quick{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:22px 24px;margin-bottom:36px;
 }
-.preset:hover,.ghost-btn:hover{border-color:var(--text-dim);background:var(--panel-2)}
-.preset:focus-visible,.ghost-btn:focus-visible{outline:2px solid var(--text);outline-offset:2px}
-.preset span{color:var(--text-dim);font-size:12px;margin-left:6px}
-.preset.active{border-color:var(--text-dim);background:var(--panel-2)}
-.dice{border-style:dashed}
-.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-@media(max-width:820px){.steps{grid-template-columns:1fr}}
-.step{
-  background:var(--panel);border:1px solid var(--line);border-radius:10px;
-  padding:10px 14px;font-size:13px;color:var(--text-dim);line-height:1.6;
+@media(max-width:640px){.quick{padding:18px 16px}}
+.quick h2,.section-head h2{font-family:var(--display);font-weight:600;font-size:24px;letter-spacing:-.02em;line-height:1.15}
+.quick > p{font-size:13px;color:var(--muted);margin:2px 0 16px}
+.quick-steps{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}
+@media(max-width:820px){.quick-steps{grid-template-columns:1fr}}
+.quick-steps li{display:flex;gap:12px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.quick-steps .n{
+  flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  font-family:var(--mono);font-size:12px;background:var(--accent);color:var(--accent-ink);
 }
-.step b{color:var(--text);margin-right:6px}
+.quick-steps strong{display:block;font-size:14px;font-weight:600;margin-bottom:2px}
+.quick-steps p{font-size:12.5px;color:var(--muted);line-height:1.5}
+.sub-label{
+  font-size:11.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  margin:0 0 12px;display:flex;align-items:center;gap:12px;
+}
+.sub-label::after{content:"";flex:1;height:1px;background:var(--line)}
+.preset-row{display:flex;gap:8px;flex-wrap:wrap}
+.preset,.btn{
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+  font-size:13.5px;font-weight:500;border-radius:99px;padding:8px 15px;
+  border:1px solid var(--line-strong);background:var(--surface);color:var(--text);
+  transition:background .2s,border-color .2s,transform .1s;
+}
+.preset:hover,.btn:hover{border-color:var(--text)}
+.preset:active,.btn:active{transform:translateY(1px)}
+.preset span{color:var(--faint);font-size:12px}
+.preset.active{background:var(--text);color:var(--on-text);border-color:var(--text)}
+.preset.active span{color:inherit;opacity:.7}
+.btn.dice{border-style:dashed}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{opacity:.9}
+.btn svg{width:15px;height:15px}
 .preset-note{
-  margin-top:12px;padding:11px 15px;font-size:13.5px;line-height:1.7;
-  background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  margin-top:14px;padding:12px 16px;font-size:13.5px;line-height:1.7;color:var(--muted);
+  background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;
 }
-.preset-note b{color:var(--text)}
-.preset-note{color:var(--text-dim)}
+.preset-note b{color:var(--text);font-weight:600}
 
 /* ---------- builder ---------- */
+.section-head{display:flex;align-items:baseline;gap:14px;margin:0 0 16px;flex-wrap:wrap;scroll-margin-top:76px}
+.section-head .no{font-family:var(--mono);font-size:12px;color:var(--faint)}
+.section-head p{margin-left:auto;font-size:13px;color:var(--muted)}
+@media(max-width:640px){.section-head p{margin-left:0;flex-basis:100%}}
 .builder{
-  background:var(--bg-soft);border:1px solid var(--line);border-radius:18px;
-  margin-top:10px;overflow:hidden;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);overflow:hidden;margin-bottom:40px;
 }
 .tabs{display:flex;border-bottom:1px solid var(--line);overflow-x:auto}
 .tab{
-  flex:1;min-width:110px;font-family:inherit;font-size:15px;font-weight:700;padding:14px 8px;
-  background:transparent;border:none;color:var(--text-dim);cursor:pointer;
-  border-bottom:3px solid transparent;transition:color .15s;
+  flex:1;min-width:104px;font-size:14.5px;font-weight:600;padding:15px 8px;
+  background:transparent;border:none;color:var(--muted);cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s;
+  display:inline-flex;justify-content:center;align-items:center;gap:8px;
 }
-.tab:focus-visible{outline:2px solid var(--text);outline-offset:-3px}
+.tab:hover{color:var(--text)}
+.tab:focus-visible{outline-offset:-3px}
 .tab .cnt{
-  display:inline-block;min-width:20px;font-size:11px;font-weight:700;border-radius:99px;
-  padding:1px 6px;margin-left:6px;background:var(--panel-2);color:var(--text-dim);
+  min-width:20px;font-family:var(--mono);font-size:11px;font-weight:500;border-radius:99px;
+  padding:1px 6px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);
 }
 .tab.active{color:var(--text)}
 .tab.active[data-cat="time"]{border-bottom-color:var(--c-time)}
@@ -141,202 +226,200 @@ h1 .glow{
 .tab.active[data-cat="scene"]{border-bottom-color:var(--c-scene)}
 .tab.active[data-cat="style"]{border-bottom-color:var(--c-style)}
 
-.pane{display:none;padding:22px 22px 10px}
+.pane{display:none;padding:22px 24px 12px}
 .pane.active{display:block}
+@media(max-width:640px){.pane{padding:18px 16px 8px}}
 .pane-tip{
-  font-size:13px;color:var(--text-dim);margin-bottom:18px;padding:10px 14px;
-  background:var(--panel);border-left:3px solid var(--line);border-radius:0 8px 8px 0;
+  font-size:13px;color:var(--muted);margin-bottom:20px;padding:11px 14px;line-height:1.6;
+  background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
 }
-.pane-tip b{color:var(--text)}
-
+.pane-tip b{color:var(--text);font-weight:600}
 .subgroup-title{
-  font-size:13px;font-weight:700;letter-spacing:.15em;color:var(--text-dim);
-  margin:20px 0 4px;padding-top:14px;border-top:1px dashed var(--line);
+  font-size:11.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  margin:22px 0 12px;padding-top:18px;border-top:1px solid var(--line);
 }
 .subgroup-title:first-of-type{margin-top:0;border-top:none;padding-top:0}
-
-.dim{display:flex;gap:14px;margin-bottom:16px;align-items:flex-start}
-.dim-label{
-  flex:none;width:92px;font-size:13px;font-weight:500;color:var(--text-dim);
-  padding-top:6px;text-align:right;
-}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
+.dim{display:flex;gap:16px;margin-bottom:14px;align-items:flex-start}
+.dim-label{flex:none;width:112px;font-size:12.5px;font-weight:500;color:var(--muted);padding-top:7px;text-align:right}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
 .chip{
-  font-family:inherit;font-size:13.5px;color:var(--text);cursor:pointer;
-  background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:5px 14px;
-  transition:border-color .12s, background .12s, color .12s;
+  font-size:13.5px;color:var(--text);cursor:pointer;
+  background:var(--surface-2);border:1px solid var(--line);border-radius:99px;padding:5px 13px;
+  transition:border-color .12s,background .12s,color .12s;
 }
-.chip:hover{border-color:var(--text-dim)}
-.chip:focus-visible{outline:2px solid var(--text);outline-offset:2px}
-.chip.on{font-weight:700;color:#0B1026}
+.chip:hover{border-color:var(--line-strong)}
+.chip.on{font-weight:600;color:#fff}
 .chip.on[data-cat="time"]{background:var(--c-time);border-color:var(--c-time)}
 .chip.on[data-cat="subject"]{background:var(--c-subject);border-color:var(--c-subject)}
 .chip.on[data-cat="scene"]{background:var(--c-scene);border-color:var(--c-scene)}
 .chip.on[data-cat="style"]{background:var(--c-style);border-color:var(--c-style)}
-
-.custom-row{display:flex;gap:8px;margin:6px 0 16px;padding-left:106px}
+:root[data-theme="dark"] .chip.on{color:#0D0E11}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .chip.on{color:#0D0E11}}
+.custom-row{display:flex;gap:8px;margin:8px 0 16px;padding-left:128px}
 @media(max-width:640px){
   .dim{flex-direction:column;gap:6px}
   .dim-label{width:auto;text-align:left;padding-top:0}
   .custom-row{padding-left:0}
 }
 .custom-row input{
-  font-family:inherit;font-size:13.5px;color:var(--text);background:var(--panel);
-  border:1px solid var(--line);border-radius:8px;padding:7px 12px;flex:1;max-width:280px;
+  font-size:14px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
+  padding:8px 12px;flex:1;max-width:320px;min-width:0;
 }
-.custom-row input:focus{outline:2px solid var(--text-dim);outline-offset:1px}
-.custom-row button{
-  font-family:inherit;font-size:13px;color:var(--text);background:var(--panel-2);
-  border:1px solid var(--line);border-radius:8px;padding:7px 14px;cursor:pointer;
-}
-.custom-row button:hover{border-color:var(--text-dim)}
-.custom-row button:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.custom-row input:focus{outline:none;border-color:var(--text);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.custom-row .btn{padding:7px 14px;font-size:13px}
 
-/* ---------- viewfinder (signature) ---------- */
+/* ---------- checklist ---------- */
+.dg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:820px){.dg-grid{grid-template-columns:1fr}}
+.dg{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;font-size:13px;box-shadow:var(--shadow)}
+.dg b{display:block;font-family:var(--display);font-size:16px;font-weight:600;margin-bottom:4px}
+.dg p{color:var(--muted);line-height:1.6}
+.dg em{font-style:normal;color:var(--text);font-weight:600}
+
+.promo{
+  display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-top:36px;
+  padding:18px 20px;border-radius:var(--radius);border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));
+  background:color-mix(in srgb,var(--accent) 6%,var(--surface));
+}
+.promo b{font-family:var(--display);font-size:17px;font-weight:600;display:block}
+.promo p{font-size:13px;color:var(--muted)}
+
+footer{border-top:1px solid var(--line);margin-top:48px;padding:26px 0 36px;font-size:12.5px;color:var(--muted)}
+footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+footer a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line-strong)}
+
+/* ---------- viewfinder ---------- */
 .viewfinder{
   position:fixed;left:0;right:0;bottom:0;z-index:50;
-  background:rgba(9,13,32,.92);backdrop-filter:blur(10px);
+  background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);
   border-top:1px solid var(--line);
 }
-.vf-inner{max-width:1060px;margin:0 auto;padding:14px 20px 16px;position:relative}
+.vf-inner{max-width:1080px;margin:0 auto;padding:12px 28px 14px}
+@media(max-width:640px){.vf-inner{padding:10px 12px 12px}}
 .vf-frame{
-  position:relative;border-radius:10px;padding:12px 16px;min-height:58px;
-  background:var(--bg-soft);
+  position:relative;border-radius:12px;padding:12px 16px;background:var(--surface);
+  border:1px solid var(--line);box-shadow:var(--shadow);
 }
-.vf-frame::before,.vf-frame::after,
-.vf-corner-b::before,.vf-corner-b::after{
-  content:"";position:absolute;width:16px;height:16px;border-color:var(--text-dim);border-style:solid;
+.vf-frame::before,.vf-frame::after,.vf-corner::before,.vf-corner::after{
+  content:"";position:absolute;width:14px;height:14px;border-color:var(--faint);border-style:solid;
 }
-.vf-frame::before{top:0;left:0;border-width:2px 0 0 2px;border-radius:6px 0 0 0}
-.vf-frame::after{top:0;right:0;border-width:2px 2px 0 0;border-radius:0 6px 0 0}
-.vf-corner-b::before{bottom:0;left:0;border-width:0 0 2px 2px;border-radius:0 0 0 6px}
-.vf-corner-b::after{bottom:0;right:0;border-width:0 2px 2px 0;border-radius:0 0 6px 0}
-.vf-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.vf-title{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.3em;color:var(--text-dim)}
-.rec{width:8px;height:8px;border-radius:50%;background:#666;flex:none;transition:background .2s}
-.rec.live{background:#FF5A5A;animation:blink 1.4s infinite}
+.vf-frame::before{top:-1px;left:-1px;border-width:2px 0 0 2px;border-radius:12px 0 0 0}
+.vf-frame::after{top:-1px;right:-1px;border-width:2px 2px 0 0;border-radius:0 12px 0 0}
+.vf-corner::before{bottom:-1px;left:-1px;border-width:0 0 2px 2px;border-radius:0 0 0 12px}
+.vf-corner::after{bottom:-1px;right:-1px;border-width:0 2px 2px 0;border-radius:0 0 12px 0}
+.vf-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.vf-title{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.rec{width:8px;height:8px;border-radius:50%;background:var(--line-strong);flex:none;transition:background .2s}
+.rec.live{background:var(--accent);animation:blink 1.4s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
 .meter{display:flex;gap:12px}
-.m-dot{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-dim)}
-.m-dot i{width:8px;height:8px;border-radius:50%;background:var(--panel-2);border:1px solid var(--line);flex:none}
+.m-dot{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--faint)}
+.m-dot i{width:8px;height:8px;border-radius:50%;background:transparent;border:1px solid var(--line-strong);flex:none}
 .m-dot.ok{color:var(--text)}
 .m-dot.ok[data-cat="time"] i{background:var(--c-time);border-color:var(--c-time)}
 .m-dot.ok[data-cat="subject"] i{background:var(--c-subject);border-color:var(--c-subject)}
 .m-dot.ok[data-cat="scene"] i{background:var(--c-scene);border-color:var(--c-scene)}
 .m-dot.ok[data-cat="style"] i{background:var(--c-style);border-color:var(--c-style)}
-@media(max-width:640px){.m-dot span{display:none}.meter{gap:8px}}
-
+@media(max-width:640px){.m-dot span{display:none}.meter{gap:7px}}
 .vf-prompt{
-  font-family:'JetBrains Mono','Noto Sans SC',monospace;font-size:14px;line-height:1.9;
-  min-height:28px;word-break:break-all;
+  font-family:var(--mono);font-size:13.5px;line-height:1.75;min-height:26px;max-height:96px;overflow-y:auto;
+  word-break:break-word;
 }
-.vf-empty{color:var(--text-dim);font-family:'Noto Sans SC',sans-serif;font-size:13.5px}
-.seg{padding:1px 2px;border-radius:4px}
+.vf-empty{color:var(--muted);font-family:var(--sans);font-size:13.5px}
 .seg-time{color:var(--c-time)}
 .seg-subject{color:var(--c-subject)}
 .seg-scene{color:var(--c-scene)}
 .seg-style{color:var(--c-style)}
-.seg-comma{color:var(--text-dim)}
-
-.vf-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
-.vf-btn{
-  font-family:inherit;font-size:13px;font-weight:700;border-radius:8px;padding:8px 18px;
-  cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--text);
-  transition:background .15s,border-color .15s;
-}
-.vf-btn:hover{border-color:var(--text-dim)}
-.vf-btn:focus-visible{outline:2px solid var(--text);outline-offset:2px}
-.vf-btn.primary{background:var(--text);color:#0B1026;border-color:var(--text)}
-.vf-btn.primary:hover{background:#fff}
+.seg-comma{color:var(--faint)}
+.vf-actions{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap}
+.vf-actions .right{display:flex;gap:8px}
+.plang{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.plang .switch button{padding:3px 10px;font-size:12px}
 
 .toast{
-  position:fixed;left:50%;bottom:200px;transform:translateX(-50%) translateY(8px);
-  background:var(--text);color:#0B1026;font-size:13px;font-weight:700;
-  padding:8px 20px;border-radius:99px;opacity:0;pointer-events:none;
-  transition:opacity .25s, transform .25s;z-index:60;
+  position:fixed;left:50%;bottom:220px;transform:translateX(-50%) translateY(8px);
+  background:var(--text);color:var(--on-text);font-size:13px;font-weight:500;
+  padding:9px 18px;border-radius:99px;opacity:0;pointer-events:none;box-shadow:var(--shadow);
+  transition:opacity .25s,transform .25s;z-index:60;
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-/* ---------- checklist ---------- */
-.diagnose{margin:34px 0 10px}
-.dg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-@media(max-width:820px){.dg-grid{grid-template-columns:1fr}}
-.dg{
-  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-  padding:15px 16px;font-size:13px;
-}
-.dg b{display:block;font-size:14px;margin-bottom:4px}
-.dg p{color:var(--text-dim);line-height:1.6}
-.dg em{font-style:normal;color:var(--text)}
-
-footer{text-align:center;color:var(--text-dim);font-size:12px;margin-top:44px;letter-spacing:.1em}
 </style>
 </head>
 <body>
 
-<header class="wrap">
-  <div class="eyebrow">PROMPT LAB</div>
-  <h1>图片<span class="glow">提示词</span>实验室</h1>
-  <p class="sub">一段好的提示词,就是把脑海里的画面拆成四块再拼回去。点击下面的关键词,底部取景器会实时拼出完整提示词。</p>
-  <div class="formula" role="group" aria-label="提示词公式">
-    <button class="f-block f-time" data-jump="time">时间</button><span class="f-plus">+</span>
-    <button class="f-block f-subject" data-jump="subject">主体</button><span class="f-plus">+</span>
-    <button class="f-block f-scene" data-jump="scene">场景</button><span class="f-plus">+</span>
-    <button class="f-block f-style" data-jump="style">风格</button>
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="#top" aria-label="Prompt Lab">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect class="logo-bg" width="64" height="64" rx="16"/><circle cx="24" cy="24" r="7" fill="var(--c-time)"/><circle cx="40" cy="24" r="7" fill="var(--c-subject)"/><circle cx="24" cy="40" r="7" fill="var(--c-scene)"/><circle cx="40" cy="40" r="7" fill="var(--accent)"/></svg>
+      <span data-i18n="brand"></span>
+    </a>
+    <div class="controls">
+      <a class="pill-link" href="https://chengwq95.github.io/ai-video-prompt-builder/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3"/></svg><span class="lbl" data-i18n="videoLink"></span></a>
+      <div class="switch" role="group" aria-label="Language">
+        <button type="button" data-lang-btn="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang-btn="zh" aria-pressed="false">中文</button>
+      </div>
+      <div class="switch" role="group" aria-label="Theme">
+        <button type="button" data-theme-btn="light" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <span class="lbl" data-i18n="morning"></span>
+        </button>
+        <button type="button" data-theme-btn="dark" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <span class="lbl" data-i18n="night"></span>
+        </button>
+      </div>
+    </div>
   </div>
-  <p class="formula-note">前三块决定<b>画什么</b>,第四块决定<b>画成什么样</b></p>
 </header>
+
+<section class="wrap hero" id="top">
+  <div class="eyebrow" data-i18n="eyebrow"></div>
+  <h1 data-i18n-html="h1"></h1>
+  <p class="lede" data-i18n="sub"></p>
+  <div class="formula" role="group" aria-label="Formula">
+    <button type="button" class="f-block" data-cat="time" data-jump="time"><i style="background:var(--c-time)"></i><span data-cat-name="time"></span></button><span class="f-plus">+</span>
+    <button type="button" class="f-block" data-cat="subject" data-jump="subject"><i style="background:var(--c-subject)"></i><span data-cat-name="subject"></span></button><span class="f-plus">+</span>
+    <button type="button" class="f-block" data-cat="scene" data-jump="scene"><i style="background:var(--c-scene)"></i><span data-cat-name="scene"></span></button><span class="f-plus">+</span>
+    <button type="button" class="f-block" data-cat="style" data-jump="style"><i style="background:var(--c-style)"></i><span data-cat-name="style"></span></button>
+  </div>
+  <p class="formula-note" data-i18n-html="formulaNote"></p>
+</section>
 
 <main class="wrap">
 
   <div class="cards">
-    <button class="card" data-cat="time" data-jump="time">
-      <h3><span class="dot" style="background:var(--c-time)"></span>时间</h3>
-      <p>画面发生在什么时候:年代、季节、一天中的时刻。它默默决定了光线和氛围的基调。</p>
-    </button>
-    <button class="card" data-cat="subject" data-jump="subject">
-      <h3><span class="dot" style="background:var(--c-subject)"></span>主体</h3>
-      <p>画面的主角:人物、生物或物品。细节越具体,AI 出图越不"随机脸"。</p>
-    </button>
-    <button class="card" data-cat="scene" data-jump="scene">
-      <h3><span class="dot" style="background:var(--c-scene)"></span>场景</h3>
-      <p>主角所处的环境:自然、建筑、天气。给主体一个能讲故事的舞台。</p>
-    </button>
-    <button class="card" data-cat="style" data-jump="style">
-      <h3><span class="dot" style="background:var(--c-style)"></span>风格</h3>
-      <p>怎么"拍":画风、氛围、色调、光源、景别、构图、镜头参数。专业感全在这里。</p>
-    </button>
+    <button type="button" class="card" data-cat="time" data-jump="time"><h3><span class="dot" style="background:var(--c-time)"></span><span data-cat-name="time"></span></h3><p data-i18n="cardTime"></p></button>
+    <button type="button" class="card" data-cat="subject" data-jump="subject"><h3><span class="dot" style="background:var(--c-subject)"></span><span data-cat-name="subject"></span></h3><p data-i18n="cardSubject"></p></button>
+    <button type="button" class="card" data-cat="scene" data-jump="scene"><h3><span class="dot" style="background:var(--c-scene)"></span><span data-cat-name="scene"></span></h3><p data-i18n="cardScene"></p></button>
+    <button type="button" class="card" data-cat="style" data-jump="style"><h3><span class="dot" style="background:var(--c-style)"></span><span data-cat-name="style"></span></h3><p data-i18n="cardStyle"></p></button>
   </div>
 
-  <div class="presets">
-    <div class="sec-label">新手三步走</div>
-    <div class="steps">
-      <div class="step"><b>①</b> 点一个下面的示例,看看四块是怎么搭的</div>
-      <div class="step"><b>②</b> 只换掉一两个词,比如把「深夜」换成「清晨」</div>
-      <div class="step"><b>③</b> 复制提示词去出图,不对再回来补词</div>
-    </div>
-    <div class="sec-label" style="margin-top:22px">示例预设 · 挑一个和你想画的最像的</div>
-    <div class="preset-row">
-      <button class="preset" data-preset="0">🕵️ 雨夜侦探 <span>人物</span></button>
-      <button class="preset" data-preset="1">🐆 雪山猎手 <span>生物</span></button>
-      <button class="preset" data-preset="2">📷 旧物时光 <span>物品</span></button>
-      <button class="preset" data-preset="3">🏮 唐朝仕女 <span>古风</span></button>
-      <button class="preset" data-preset="4">⚔️ 竹林武士 <span>电影感</span></button>
-      <button class="preset" data-preset="5">🐕 打盹柴犬 <span>萌宠</span></button>
-      <button class="preset" data-preset="6">🐉 东方神话 <span>幻想</span></button>
-      <button class="preset" data-preset="7">🚀 未来都市 <span>科幻</span></button>
-      <button class="preset" data-preset="8">🛹 复古少年 <span>年代感</span></button>
-      <button class="ghost-btn dice" id="randomBtn">🎲 随机灵感</button>
-    </div>
+  <section class="quick">
+    <h2 data-i18n="qsTitle"></h2>
+    <p data-i18n="qsSub"></p>
+    <ol class="quick-steps">
+      <li><span class="n">1</span><div><strong data-i18n="qs1t"></strong><p data-i18n="qs1"></p></div></li>
+      <li><span class="n">2</span><div><strong data-i18n="qs2t"></strong><p data-i18n="qs2"></p></div></li>
+      <li><span class="n">3</span><div><strong data-i18n="qs3t"></strong><p data-i18n="qs3"></p></div></li>
+    </ol>
+    <div class="sub-label" data-i18n="presetsLabel"></div>
+    <div class="preset-row" id="presetRow"></div>
     <div class="preset-note" id="presetNote" hidden></div>
-  </div>
+  </section>
 
+  <div class="section-head" id="builderHead">
+    <span class="no">01 — 04</span>
+    <h2 data-i18n="builderTitle"></h2>
+    <p data-i18n="builderSub"></p>
+  </div>
   <section class="builder" id="builder">
     <div class="tabs" role="tablist">
-      <button class="tab active" role="tab" data-cat="time" aria-selected="true">时间<span class="cnt" data-cnt="time">0</span></button>
-      <button class="tab" role="tab" data-cat="subject" aria-selected="false">主体<span class="cnt" data-cnt="subject">0</span></button>
-      <button class="tab" role="tab" data-cat="scene" aria-selected="false">场景<span class="cnt" data-cnt="scene">0</span></button>
-      <button class="tab" role="tab" data-cat="style" aria-selected="false">风格<span class="cnt" data-cnt="style">0</span></button>
+      <button type="button" class="tab active" role="tab" data-cat="time" aria-selected="true"><span data-cat-name="time"></span><span class="cnt" data-cnt="time">0</span></button>
+      <button type="button" class="tab" role="tab" data-cat="subject" aria-selected="false"><span data-cat-name="subject"></span><span class="cnt" data-cnt="subject">0</span></button>
+      <button type="button" class="tab" role="tab" data-cat="scene" aria-selected="false"><span data-cat-name="scene"></span><span class="cnt" data-cnt="scene">0</span></button>
+      <button type="button" class="tab" role="tab" data-cat="style" aria-selected="false"><span data-cat-name="style"></span><span class="cnt" data-cnt="style">0</span></button>
     </div>
     <div class="pane active" data-pane="time"></div>
     <div class="pane" data-pane="subject"></div>
@@ -344,210 +427,335 @@ footer{text-align:center;color:var(--text-dim);font-size:12px;margin-top:44px;le
     <div class="pane" data-pane="style"></div>
   </section>
 
-  <section class="diagnose">
-    <div class="sec-label">出图不对?对照排查</div>
-    <div class="dg-grid">
-      <div class="dg"><b>图太平淡</b><p>多半是<em>光源</em>和<em>氛围</em>没写。试试加"逆光""霓虹灯光""悬疑感"。</p></div>
-      <div class="dg"><b>人物长得随机</b><p><em>脸部细节</em>缺失。发型、眼镜、雀斑、疤痕,越具体越稳定。</p></div>
-      <div class="dg"><b>像手机随手拍</b><p>缺<em>镜头语言</em>。给它景别、焦段、景深:"特写、85mm、浅景深"。</p></div>
-    </div>
-  </section>
+  <div class="sub-label" data-i18n="dgLabel"></div>
+  <div class="dg-grid">
+    <div class="dg"><b data-i18n="dg1t"></b><p data-i18n-html="dg1"></p></div>
+    <div class="dg"><b data-i18n="dg2t"></b><p data-i18n-html="dg2"></p></div>
+    <div class="dg"><b data-i18n="dg3t"></b><p data-i18n-html="dg3"></p></div>
+  </div>
+
+  <div class="promo">
+    <div><b data-i18n="promoT"></b><p data-i18n="promo"></p></div>
+    <a class="btn primary" href="https://chengwq95.github.io/ai-video-prompt-builder/" data-i18n="promoBtn"></a>
+  </div>
 
 </main>
 
-<footer class="wrap">时间 + 主体 + 场景 + 风格 · 缺哪块,回来补哪块</footer>
+<footer>
+  <div class="wrap">
+    <span data-i18n="footer"></span>
+    <a href="https://chengwq95.github.io/ai-video-prompt-builder/" data-i18n="videoLinkLong"></a>
+  </div>
+</footer>
 
 <!-- viewfinder -->
 <div class="viewfinder">
   <div class="vf-inner">
     <div class="vf-frame">
-      <span class="vf-corner-b"></span>
+      <span class="vf-corner"></span>
       <div class="vf-head">
-        <div class="vf-title"><span class="rec" id="rec"></span>取景器 · VIEWFINDER</div>
+        <div class="vf-title"><span class="rec" id="rec"></span><span data-i18n="vfTitle"></span></div>
         <div class="meter">
-          <div class="m-dot" data-cat="time"><i></i><span>时间</span></div>
-          <div class="m-dot" data-cat="subject"><i></i><span>主体</span></div>
-          <div class="m-dot" data-cat="scene"><i></i><span>场景</span></div>
-          <div class="m-dot" data-cat="style"><i></i><span>风格</span></div>
+          <div class="m-dot" data-cat="time"><i></i><span data-cat-name="time"></span></div>
+          <div class="m-dot" data-cat="subject"><i></i><span data-cat-name="subject"></span></div>
+          <div class="m-dot" data-cat="scene"><i></i><span data-cat-name="scene"></span></div>
+          <div class="m-dot" data-cat="style"><i></i><span data-cat-name="style"></span></div>
         </div>
       </div>
-      <div class="vf-prompt" id="promptOut"><span class="vf-empty">还没选词。点击上方任意关键词,或试试一个示例预设。</span></div>
+      <div class="vf-prompt" id="promptOut" aria-live="polite"></div>
     </div>
     <div class="vf-actions">
-      <button class="vf-btn" id="clearBtn">清空</button>
-      <button class="vf-btn primary" id="copyBtn">复制提示词</button>
+      <div class="plang">
+        <span data-i18n="plang"></span>
+        <div class="switch" role="group" aria-label="Prompt language">
+          <button type="button" data-plang-btn="en" aria-pressed="true">English</button>
+          <button type="button" data-plang-btn="zh" aria-pressed="false">中文</button>
+        </div>
+      </div>
+      <div class="right">
+        <button type="button" class="btn" id="clearBtn" data-i18n="clear"></button>
+        <button type="button" class="btn primary" id="copyBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span data-i18n="copy"></span></button>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="toast" id="toast">已复制到剪贴板</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 /* ================= 数据 ================= */
 const CATS = ["time","subject","scene","style"];
-const CAT_NAME = {time:"时间", subject:"主体", scene:"场景", style:"风格"};
 
+// 每个关键词:[中文, English];中文同时作为内部 id
 const DATA = {
   time: {
-    tip: "<b>时间</b>不只是背景信息:深夜自带霓虹和阴影,清晨自带薄雾和柔光。选一个时刻,等于免费选了一套光线。",
+    tip: {
+      zh:"<b>时间</b>不只是背景信息:深夜自带霓虹和阴影,清晨自带薄雾和柔光。选一个时刻,等于免费选了一套光线。",
+      en:"<b>Time</b> is more than background: late night brings neon and shadows, early morning brings mist and soft light. Pick a moment and you get a whole lighting setup for free."
+    },
     groups: [
       { title:null, dims:[
-        { label:"年代", chips:["现代","近代","古代","唐朝","八十年代","未来世界"] },
-        { label:"季节", chips:["春","夏","秋","冬"] },
-        { label:"时刻", chips:["凌晨","清晨","早上","中午","下午","黄昏","晚上","深夜"] }
+        { label:["年代","Era"], chips:[["现代","modern day"],["近代","early 20th century"],["古代","ancient times"],["唐朝","Tang dynasty"],["八十年代","1980s"],["未来世界","the far future"]] },
+        { label:["季节","Season"], chips:[["春","spring"],["夏","summer"],["秋","autumn"],["冬","winter"]] },
+        { label:["时刻","Time of day"], chips:[["凌晨","before dawn"],["清晨","early morning"],["早上","morning"],["中午","noon"],["下午","afternoon"],["黄昏","dusk"],["晚上","evening"],["深夜","late at night"]] }
       ]}
     ]
   },
   subject: {
-    tip: "<b>主体</b>是画面的主角,分人物、生物、物品三类。经验法则:主体写得越具体,AI 就越少替你随机发挥。",
+    tip: {
+      zh:"<b>主体</b>是画面的主角,分人物、生物、物品三类。经验法则:主体写得越具体,AI 就越少替你随机发挥。",
+      en:"The <b>subject</b> is the star of the picture: a person, a creature or an object. Rule of thumb: the more specific the subject, the less the AI improvises."
+    },
     groups: [
-      { title:"人物", dims:[
-        { label:"基本信息", chips:["30岁亚洲女性","老渔夫","日本武士","宇航员","街头少年","女侦探","古装少女"] },
-        { label:"脸部", chips:["短发","长卷发","圆框眼镜","络腮胡","雀斑","皱纹","疤痕"] },
-        { label:"身体", chips:["高挑","健壮","机械义肢","满臂纹身"] },
-        { label:"服装", chips:["深绿色风衣","汉服","宇航服","破旧皮夹克","银色饰品"] },
-        { label:"表情气质", chips:["疲惫","微笑","冷峻","忧郁","自信"] },
-        { label:"姿势动作", chips:["奔跑","回眸","静坐","低头看手机","撑伞站立"] }
+      { title:["人物","People"], dims:[
+        { label:["基本信息","Who"], chips:[["30岁亚洲女性","30-year-old Asian woman"],["老渔夫","old fisherman"],["日本武士","Japanese samurai"],["宇航员","astronaut"],["街头少年","street kid"],["女侦探","female detective"],["古装少女","girl in traditional Chinese costume"]] },
+        { label:["脸部","Face"], chips:[["短发","short hair"],["长卷发","long curly hair"],["圆框眼镜","round glasses"],["络腮胡","full beard"],["雀斑","freckles"],["皱纹","wrinkles"],["疤痕","scar"]] },
+        { label:["身体","Body"], chips:[["高挑","tall and slim"],["健壮","muscular"],["机械义肢","mechanical prosthetic arm"],["满臂纹身","full-sleeve tattoos"]] },
+        { label:["服装","Outfit"], chips:[["深绿色风衣","dark green trench coat"],["汉服","hanfu"],["宇航服","spacesuit"],["破旧皮夹克","worn leather jacket"],["银色饰品","silver jewelry"]] },
+        { label:["表情气质","Expression"], chips:[["疲惫","tired"],["微笑","smiling"],["冷峻","stern"],["忧郁","melancholic"],["自信","confident"]] },
+        { label:["姿势动作","Pose & action"], chips:[["奔跑","running"],["回眸","looking back over the shoulder"],["静坐","sitting still"],["低头看手机","looking down at a phone"],["撑伞站立","standing with an umbrella"]] }
       ]},
-      { title:"生物", dims:[
-        { label:"物种", chips:["雪豹","柴犬","乌鸦","锦鲤","东方龙"] },
-        { label:"特征", chips:["成年","幼崽","毛发浓密","灰白斑纹","巨大翅膀","鹿角"] },
-        { label:"姿势动作", chips:["低身潜行","展翅飞翔","蜷缩睡觉","跃出水面"] }
+      { title:["生物","Creatures"], dims:[
+        { label:["物种","Species"], chips:[["雪豹","snow leopard"],["柴犬","Shiba Inu"],["乌鸦","crow"],["锦鲤","koi fish"],["东方龙","Chinese dragon"]] },
+        { label:["特征","Features"], chips:[["成年","adult"],["幼崽","baby"],["毛发浓密","thick fur"],["灰白斑纹","gray and white spots"],["巨大翅膀","huge wings"],["鹿角","antlers"]] },
+        { label:["姿势动作","Pose & action"], chips:[["低身潜行","crouching and stalking"],["展翅飞翔","flying with wings spread"],["蜷缩睡觉","curled up asleep"],["跃出水面","leaping out of the water"]] }
       ]},
-      { title:"物品", dims:[
-        { label:"类型", chips:["拍立得相机","机械键盘","老式电话","武士刀","咖啡杯"] },
-        { label:"属性", chips:["红色","复古","金属质感","木质","半透明"] },
-        { label:"表面细节", chips:["轻微磨损","水渍","落满灰尘","反光"] }
+      { title:["物品","Objects"], dims:[
+        { label:["类型","Type"], chips:[["拍立得相机","instant camera"],["机械键盘","mechanical keyboard"],["老式电话","vintage telephone"],["武士刀","katana"],["咖啡杯","coffee cup"]] },
+        { label:["属性","Attributes"], chips:[["红色","red"],["复古","retro"],["金属质感","metallic"],["木质","wooden"],["半透明","translucent"]] },
+        { label:["表面细节","Surface"], chips:[["轻微磨损","slightly worn"],["水渍","water stains"],["落满灰尘","covered in dust"],["反光","reflective"]] }
       ]}
     ]
   },
   scene: {
-    tip: "<b>场景</b>是主体的舞台。同一个人站在废弃工厂和温馨咖啡馆,是两个完全不同的故事。天气是氛围放大器。",
+    tip: {
+      zh:"<b>场景</b>是主体的舞台。同一个人站在废弃工厂和温馨咖啡馆,是两个完全不同的故事。天气是氛围放大器。",
+      en:"The <b>scene</b> is the stage. The same person in an abandoned factory or a cozy café tells two completely different stories. Weather amplifies the mood."
+    },
     groups: [
       { title:null, dims:[
-        { label:"自然", chips:["雪山脚下","雨林深处","海边悬崖","沙漠","竹林","星空之下"] },
-        { label:"建筑", chips:["霓虹街头","废弃工厂","古老寺庙","未来都市","温馨咖啡馆","中式庭院"] },
-        { label:"天气", chips:["晴天","阴天","雨中","大雪","沙尘暴","浓雾"] }
+        { label:["自然","Nature"], chips:[["雪山脚下","at the foot of a snowy mountain"],["雨林深处","deep in a rainforest"],["海边悬崖","on a seaside cliff"],["沙漠","desert"],["竹林","bamboo forest"],["星空之下","under a starry sky"]] },
+        { label:["建筑","Places"], chips:[["霓虹街头","neon-lit street"],["废弃工厂","abandoned factory"],["古老寺庙","ancient temple"],["未来都市","futuristic city"],["温馨咖啡馆","cozy café"],["中式庭院","Chinese courtyard"]] },
+        { label:["天气","Weather"], chips:[["晴天","sunny"],["阴天","overcast"],["雨中","in the rain"],["大雪","heavy snow"],["沙尘暴","sandstorm"],["浓雾","thick fog"]] }
       ]}
     ]
   },
   style: {
-    tip: "<b>风格</b>决定画成什么样,是提示词里最见功力的一块。光源 + 景别 + 焦段三件套,能瞬间把「随手拍」变「电影感」。",
+    tip: {
+      zh:"<b>风格</b>决定画成什么样,是提示词里最见功力的一块。光源 + 景别 + 焦段三件套,能瞬间把「随手拍」变「电影感」。",
+      en:"<b>Style</b> decides how it's drawn — the most skillful part of a prompt. Light + shot size + lens is the trio that turns a snapshot into a movie still."
+    },
     groups: [
       { title:null, dims:[
-        { label:"画面风格", chips:["写实","纪录片风格","三维动画","二维动画","水彩","胶片感","赛博朋克"] },
-        { label:"氛围", chips:["温馨","悬疑","宁静","孤独","史诗感"] },
-        { label:"色调", chips:["冷色调","暖色调","黑金色调","莫兰迪色","高饱和"] },
-        { label:"光源", chips:["自然光","霓虹灯光","烛光","逆光","侧光","柔光","硬光"] },
-        { label:"景别", chips:["大远景","远景","全景","中景","近景","特写","超大特写"] },
-        { label:"拍摄角度", chips:["仰视","俯视","平视","航拍"] },
-        { label:"构图", chips:["主体居中","主体靠左","主体靠右","三分法构图"] },
-        { label:"摄影机", chips:["85mm镜头","35mm广角","200mm长焦","浅景深","背景虚化","拍立得质感","ARRI ALEXA"] }
+        { label:["画面风格","Art style"], chips:[["写实","photorealistic"],["纪录片风格","documentary style"],["三维动画","3D animation"],["二维动画","2D animation"],["水彩","watercolor"],["胶片感","film photography"],["赛博朋克","cyberpunk"]] },
+        { label:["氛围","Mood"], chips:[["温馨","cozy"],["悬疑","suspenseful"],["宁静","serene"],["孤独","lonely"],["史诗感","epic"]] },
+        { label:["色调","Color"], chips:[["冷色调","cool tones"],["暖色调","warm tones"],["黑金色调","black and gold palette"],["莫兰迪色","muted Morandi colors"],["高饱和","highly saturated"]] },
+        { label:["光源","Light"], chips:[["自然光","natural light"],["霓虹灯光","neon lighting"],["烛光","candlelight"],["逆光","backlit"],["侧光","side lighting"],["柔光","soft light"],["硬光","hard light"]] },
+        { label:["景别","Shot size"], chips:[["大远景","extreme wide shot"],["远景","wide shot"],["全景","full shot"],["中景","medium shot"],["近景","medium close-up"],["特写","close-up"],["超大特写","extreme close-up"]] },
+        { label:["拍摄角度","Angle"], chips:[["仰视","low angle"],["俯视","high angle"],["平视","eye level"],["航拍","aerial view"]] },
+        { label:["构图","Composition"], chips:[["主体居中","centered subject"],["主体靠左","subject on the left"],["主体靠右","subject on the right"],["三分法构图","rule of thirds"]] },
+        { label:["摄影机","Camera"], chips:[["85mm镜头","85mm lens"],["35mm广角","35mm wide-angle lens"],["200mm长焦","200mm telephoto lens"],["浅景深","shallow depth of field"],["背景虚化","blurred background"],["拍立得质感","instant-film look"],["ARRI ALEXA","shot on ARRI ALEXA"]] }
       ]}
     ]
   }
 };
 
+// 中文 id -> English
+const EN = {};
+CATS.forEach(c => DATA[c].groups.forEach(g => g.dims.forEach(d => d.chips.forEach(([zh, en]) => { EN[zh] = en; }))));
+
 const PRESETS = [
-  { // 0 雨夜侦探
+  { name:["雨夜侦探","Rainy-night detective"], tag:["人物","People"],
     time:["现代","秋","深夜"],
     subject:["30岁亚洲女性","短发","圆框眼镜","雀斑","高挑","深绿色风衣","疲惫","撑伞站立"],
     scene:["霓虹街头","雨中"],
     style:["写实","赛博朋克","悬疑","冷色调","霓虹灯光","中景","平视","三分法构图","85mm镜头","浅景深","背景虚化"],
-    note:"<b>人物模板。</b>脸部细节(雀斑、眼镜)+ 服装 + 情绪,三样凑齐,人物就不会「随机脸」。85mm 镜头 + 浅景深是拍人像的黄金搭配,悬疑氛围靠雨夜和霓虹一起撑。"
-  },
-  { // 1 雪山猎手
+    note:{ zh:"<b>人物模板。</b>脸部细节(雀斑、眼镜)+ 服装 + 情绪,三样凑齐,人物就不会「随机脸」。85mm 镜头 + 浅景深是拍人像的黄金搭配,悬疑氛围靠雨夜和霓虹一起撑。",
+           en:"<b>People template.</b> Face details (freckles, glasses) + outfit + mood — with all three, you won't get a random face. An 85mm lens with shallow depth of field is the classic portrait combo; rain and neon carry the suspense." } },
+  { name:["雪山猎手","Snow-mountain hunter"], tag:["生物","Creature"],
     time:["现代","冬","清晨"],
     subject:["雪豹","成年","毛发浓密","灰白斑纹","低身潜行"],
     scene:["雪山脚下","大雪"],
     style:["写实","纪录片风格","宁静","冷色调","自然光","逆光","远景","平视","主体靠左","200mm长焦","背景虚化"],
-    note:"<b>生物模板。</b>「纪录片风格 + 200mm 长焦 + 远景」组合,出图像真实野外抓拍。逆光会给动物勾出一圈发光轮廓,清晨的光最柔和。"
-  },
-  { // 2 旧物时光
+    note:{ zh:"<b>生物模板。</b>「纪录片风格 + 200mm 长焦 + 远景」组合,出图像真实野外抓拍。逆光会给动物勾出一圈发光轮廓,清晨的光最柔和。",
+           en:"<b>Creature template.</b> Documentary style + 200mm telephoto + wide shot looks like a real wildlife photo. Backlight draws a glowing outline around the animal, and early-morning light is the softest." } },
+  { name:["旧物时光","Vintage object"], tag:["物品","Object"],
     time:["现代","下午"],
     subject:["拍立得相机","红色","复古","金属质感","轻微磨损","落满灰尘"],
     scene:["温馨咖啡馆","晴天"],
     style:["写实","温馨","暖色调","自然光","侧光","柔光","特写","平视","主体居中","浅景深"],
-    note:"<b>物品模板。</b>磨损、灰尘这类表面细节是关键,它们让物品有「被用过的故事感」。特写 + 侧光能突出材质和纹理。"
-  },
-  { // 3 唐朝仕女
+    note:{ zh:"<b>物品模板。</b>磨损、灰尘这类表面细节是关键,它们让物品有「被用过的故事感」。特写 + 侧光能突出材质和纹理。",
+           en:"<b>Object template.</b> Surface details like wear and dust are the key — they give the object a lived-in story. Close-up + side light brings out materials and texture." } },
+  { name:["唐朝仕女","Tang dynasty lady"], tag:["古风","Historical"],
     time:["唐朝","春","清晨"],
     subject:["古装少女","长卷发","汉服","银色饰品","微笑","静坐"],
     scene:["中式庭院","晴天"],
     style:["水彩","宁静","暖色调","自然光","柔光","全景","平视","主体居中"],
-    note:"<b>古风模板。</b>年代词很强大:写「唐朝」,AI 会自动带出对应的服饰、发型和建筑气质。水彩画风和古风题材是天生一对。"
-  },
-  { // 4 竹林武士
+    note:{ zh:"<b>古风模板。</b>年代词很强大:写「唐朝」,AI 会自动带出对应的服饰、发型和建筑气质。水彩画风和古风题材是天生一对。",
+           en:"<b>Historical template.</b> Era words are powerful: write \"Tang dynasty\" and the AI brings matching clothes, hair and architecture. Watercolor and historical scenes are a natural pair." } },
+  { name:["竹林武士","Bamboo-forest samurai"], tag:["电影感","Cinematic"],
     time:["古代","秋","黄昏"],
     subject:["日本武士","络腮胡","疤痕","健壮","冷峻","武士刀"],
     scene:["竹林","浓雾"],
     style:["写实","胶片感","悬疑","冷色调","侧光","硬光","中景","平视","三分法构图","85mm镜头","浅景深"],
-    note:"<b>电影感模板。</b>「黄昏 + 浓雾 + 侧光」三件套 = 现成的电影氛围。硬光在脸上切出明暗,三分法构图比居中更有张力。"
-  },
-  { // 5 打盹柴犬
+    note:{ zh:"<b>电影感模板。</b>「黄昏 + 浓雾 + 侧光」三件套 = 现成的电影氛围。硬光在脸上切出明暗,三分法构图比居中更有张力。",
+           en:"<b>Cinematic template.</b> Dusk + fog + side light = instant movie mood. Hard light carves the face, and the rule of thirds feels more dramatic than centering." } },
+  { name:["打盹柴犬","Napping Shiba"], tag:["萌宠","Cute pet"],
     time:["现代","夏","下午"],
     subject:["柴犬","幼崽","毛发浓密","蜷缩睡觉"],
     scene:["温馨咖啡馆","晴天"],
     style:["写实","温馨","高饱和","暖色调","自然光","柔光","近景","俯视","主体居中","浅景深"],
-    note:"<b>萌宠公式。</b>「幼崽 + 俯视 + 近景 + 暖色」天然可爱:俯视角度让动物显小显萌,高饱和色彩加强治愈感。"
-  },
-  { // 6 东方神话
+    note:{ zh:"<b>萌宠公式。</b>「幼崽 + 俯视 + 近景 + 暖色」天然可爱:俯视角度让动物显小显萌,高饱和色彩加强治愈感。",
+           en:"<b>Cute-pet formula.</b> Baby + high angle + medium close-up + warm colors is naturally adorable: looking down makes the animal look small, and saturated colors feel comforting." } },
+  { name:["东方神话","Eastern myth"], tag:["幻想","Fantasy"],
     time:["古代","深夜"],
     subject:["东方龙","鹿角","跃出水面"],
     scene:["星空之下","浓雾"],
     style:["二维动画","史诗感","冷色调","逆光","大远景","仰视","主体居中","35mm广角"],
-    note:"<b>幻想题材模板。</b>「大远景 + 仰视」让主体显得无比宏大,是画神话生物的标准视角。史诗感 + 逆光,轮廓一亮,气势就有了。"
-  },
-  { // 7 未来都市
+    note:{ zh:"<b>幻想题材模板。</b>「大远景 + 仰视」让主体显得无比宏大,是画神话生物的标准视角。史诗感 + 逆光,轮廓一亮,气势就有了。",
+           en:"<b>Fantasy template.</b> Extreme wide shot + low angle makes the subject feel enormous — the standard view for mythical creatures. Epic mood + backlight lights up the outline." } },
+  { name:["未来都市","Future city"], tag:["科幻","Sci-fi"],
     time:["未来世界","深夜"],
     subject:["宇航员","宇航服","机械义肢","忧郁","回眸"],
     scene:["未来都市","浓雾"],
     style:["三维动画","史诗感","孤独","黑金色调","霓虹灯光","大远景","仰视","主体居中","35mm广角","ARRI ALEXA"],
-    note:"<b>科幻模板。</b>「三维动画 + 黑金色调」是科幻大片质感的来源。大远景 + 广角负责交代世界观,小小的人影反衬巨大的城市。"
-  },
-  { // 8 复古少年
+    note:{ zh:"<b>科幻模板。</b>「三维动画 + 黑金色调」是科幻大片质感的来源。大远景 + 广角负责交代世界观,小小的人影反衬巨大的城市。",
+           en:"<b>Sci-fi template.</b> 3D animation + black-and-gold palette gives the blockbuster feel. Extreme wide + wide-angle lens shows the world: a tiny figure against a huge city." } },
+  { name:["复古少年","Retro teen"], tag:["年代感","Retro"],
     time:["八十年代","夏","黄昏"],
     subject:["街头少年","短发","破旧皮夹克","自信","奔跑"],
     scene:["霓虹街头","晴天"],
     style:["写实","胶片感","高饱和","暖色调","自然光","逆光","全景","平视","主体靠右","35mm广角"],
-    note:"<b>年代感模板。</b>「八十年代 + 胶片感」双保险锁定复古味。「奔跑」这类动作词让画面不呆板,主体靠右给运动方向留出空间。"
-  }
+    note:{ zh:"<b>年代感模板。</b>「八十年代 + 胶片感」双保险锁定复古味。「奔跑」这类动作词让画面不呆板,主体靠右给运动方向留出空间。",
+           en:"<b>Retro template.</b> 1980s + film photography locks in the vintage feel. Action words like \"running\" keep it lively; placing the subject on the right leaves room for movement." } }
 ];
 
-/* ================= 状态 ================= */
-// 每个类别是一个有序数组,元素为词字符串(内置或自定义)
-const state = { time:[], subject:[], scene:[], style:[] };
+/* ================= 界面文字 ================= */
+const I18N = {
+  en: {
+    title:"Prompt Lab", brand:"Prompt Lab",
+    videoLink:"Video builder", videoLinkLong:"Sister tool: Video Prompt Builder ↗",
+    morning:"Morning", night:"Night",
+    cat:{time:"Time", subject:"Subject", scene:"Scene", style:"Style"},
+    eyebrow:"AI image prompts",
+    h1:'Four blocks, <em>one prompt.</em>',
+    sub:"A good prompt is the picture in your head, split into four blocks and put back together. Click keywords below and the viewfinder at the bottom builds the full prompt live.",
+    formulaNote:"The first three decide <b>what to draw</b>; the fourth decides <b>how it looks</b>.",
+    cardTime:"When it happens: era, season, time of day. It quietly sets the light and mood.",
+    cardSubject:"The star: a person, creature or object. The more detail, the less \"random face\".",
+    cardScene:"Where it happens: nature, buildings, weather. A stage that tells a story.",
+    cardStyle:"How it's shot: art style, mood, color, light, shot size, composition, lens.",
+    qsTitle:"New here? Start in 3 steps", qsSub:"No experience needed — every keyword is one click.",
+    qs1t:"Pick an example", qs1:"Click a template below to see how the four blocks fit together.",
+    qs2t:"Swap one or two words", qs2:"For example, change \"late at night\" to \"early morning\" and see what changes.",
+    qs3t:"Copy and generate", qs3:"Copy the prompt into your AI image tool. Not right? Come back and add a block.",
+    presetsLabel:"Templates · pick the one closest to what you want",
+    random:"Random idea",
+    builderTitle:"Pick your keywords", builderSub:"Click to add, click again to remove",
+    customPh:"Add your own {cat} keyword…", add:"Add",
+    dgLabel:"Image not right? Check here",
+    dg1t:"Looks flat", dg1:"Usually <em>light</em> and <em>mood</em> are missing. Try \"backlit\", \"neon lighting\" or \"suspenseful\".",
+    dg2t:"Random-looking person", dg2:"<em>Face details</em> are missing. Hair, glasses, freckles, scars — the more specific, the more stable.",
+    dg3t:"Looks like a phone snapshot", dg3:"Missing <em>camera language</em>. Add shot size, lens and depth of field: \"close-up, 85mm lens, shallow depth of field\".",
+    promoT:"Making a short AI video?", promo:"The Video Prompt Builder writes the prompts for every shot — character, stills and image-to-video.", promoBtn:"Open Video Prompt Builder →",
+    footer:"Time + Subject + Scene + Style · add the block that's missing",
+    vfTitle:"Viewfinder", plang:"Prompt in", clear:"Clear", copy:"Copy prompt",
+    empty:"Nothing picked yet. Click any keyword above, or try a template.",
+    copied:"Copied to clipboard", pickFirst:"Pick a few keywords first", copyFail:"Copy failed — please select the text manually"
+  },
+  zh: {
+    title:"图片提示词实验室", brand:"图片提示词实验室",
+    videoLink:"视频提示词", videoLinkLong:"姊妹工具:AI 视频提示词生成器 ↗",
+    morning:"日间", night:"夜间",
+    cat:{time:"时间", subject:"主体", scene:"场景", style:"风格"},
+    eyebrow:"AI 绘图提示词",
+    h1:'四块拼出<em>一段提示词</em>',
+    sub:"一段好的提示词,就是把脑海里的画面拆成四块再拼回去。点击下面的关键词,底部取景器会实时拼出完整提示词。",
+    formulaNote:"前三块决定<b>画什么</b>,第四块决定<b>画成什么样</b>。",
+    cardTime:"画面发生在什么时候:年代、季节、一天中的时刻。它默默决定了光线和氛围的基调。",
+    cardSubject:"画面的主角:人物、生物或物品。细节越具体,AI 出图越不「随机脸」。",
+    cardScene:"主角所处的环境:自然、建筑、天气。给主体一个能讲故事的舞台。",
+    cardStyle:"怎么「拍」:画风、氛围、色调、光源、景别、构图、镜头参数。专业感全在这里。",
+    qsTitle:"第一次用?三步上手", qsSub:"不需要任何经验,每个关键词点一下就行。",
+    qs1t:"点一个示例", qs1:"点下面任意一个模板,看看四块是怎么搭的。",
+    qs2t:"只换一两个词", qs2:"比如把「深夜」换成「清晨」,看看画面会怎么变。",
+    qs3t:"复制去出图", qs3:"把提示词复制到 AI 绘图工具。不对再回来补一块。",
+    presetsLabel:"示例模板 · 挑一个和你想画的最像的",
+    random:"随机灵感",
+    builderTitle:"挑选关键词", builderSub:"点击加入,再点一次取消",
+    customPh:"自己写一个{cat}关键词…", add:"添加",
+    dgLabel:"出图不对?对照排查",
+    dg1t:"图太平淡", dg1:"多半是<em>光源</em>和<em>氛围</em>没写。试试加「逆光」「霓虹灯光」「悬疑」。",
+    dg2t:"人物长得随机", dg2:"<em>脸部细节</em>缺失。发型、眼镜、雀斑、疤痕,越具体越稳定。",
+    dg3t:"像手机随手拍", dg3:"缺<em>镜头语言</em>。给它景别、焦段、景深:「特写、85mm、浅景深」。",
+    promoT:"想做 AI 短视频?", promo:"「AI 视频提示词生成器」帮你写好每个镜头的提示词:角色、静帧和图生视频。", promoBtn:"打开视频提示词生成器 →",
+    footer:"时间 + 主体 + 场景 + 风格 · 缺哪块,回来补哪块",
+    vfTitle:"取景器", plang:"提示词语言", clear:"清空", copy:"复制提示词",
+    empty:"还没选词。点击上方任意关键词,或试试一个示例模板。",
+    copied:"已复制到剪贴板", pickFirst:"先选几个关键词吧", copyFail:"复制失败,请手动选择文字"
+  }
+};
+
+/* ================= 状态与存储 ================= */
+const LS_STATE = "promptlab.image.v1";
+const LS_LANG = "vpb.lang";       // 和视频提示词生成器共用
+const LS_THEME = "vpb.theme";
+const LS_PLANG = "promptlab.plang";
+
+let lang = "en", plang = "en";
+try { if (localStorage.getItem(LS_LANG) === "zh") lang = "zh"; } catch(e) {}
+try { if (localStorage.getItem(LS_PLANG) === "zh") plang = "zh"; } catch(e) {}
+function t(k) { return I18N[lang][k]; }
+const L = pair => pair[lang === "zh" ? 0 : 1];
+
+// 每个类别是一个有序数组:内置词用中文 id,自定义词以 "c:" 开头
+let state = { time:[], subject:[], scene:[], style:[] };
+try {
+  const raw = JSON.parse(localStorage.getItem(LS_STATE));
+  if (raw) CATS.forEach(c => { if (Array.isArray(raw[c])) state[c] = raw[c]; });
+} catch(e) {}
+function saveState() { try { localStorage.setItem(LS_STATE, JSON.stringify(state)); } catch(e) {} }
+
+function wordText(id, inLang) {
+  if (id.startsWith("c:")) return id.slice(2);
+  return inLang === "zh" ? id : (EN[id] || id);
+}
 
 /* ================= 渲染面板 ================= */
-const chipIndex = {}; // word -> [button elements]
-
-CATS.forEach(cat => {
-  const pane = document.querySelector(`.pane[data-pane="${cat}"]`);
-  const d = DATA[cat];
-  let html = `<div class="pane-tip">${d.tip}</div>`;
-  d.groups.forEach(g => {
-    if (g.title) html += `<div class="subgroup-title">${g.title}</div>`;
-    g.dims.forEach(dim => {
-      html += `<div class="dim"><div class="dim-label">${dim.label}</div><div class="chips">`;
-      dim.chips.forEach(w => {
-        html += `<button class="chip" data-cat="${cat}" data-word="${w}" aria-pressed="false">${w}</button>`;
+function renderPanes() {
+  CATS.forEach(cat => {
+    const pane = document.querySelector(`.pane[data-pane="${cat}"]`);
+    const d = DATA[cat];
+    let html = `<div class="pane-tip">${d.tip[lang]}</div>`;
+    d.groups.forEach(g => {
+      if (g.title) html += `<div class="subgroup-title">${L(g.title)}</div>`;
+      g.dims.forEach(dim => {
+        html += `<div class="dim"><div class="dim-label">${L(dim.label)}</div><div class="chips">`;
+        dim.chips.forEach(([zh, en]) => {
+          html += `<button type="button" class="chip" data-cat="${cat}" data-word="${escapeHtml(zh)}" aria-pressed="false">${escapeHtml(lang === "zh" ? zh : en)}</button>`;
+        });
+        html += `</div></div>`;
       });
-      html += `</div></div>`;
     });
+    const ph = t("customPh").replace("{cat}", t("cat")[cat].toLowerCase());
+    html += `<div class="custom-row">
+      <input type="text" maxlength="40" placeholder="${escapeHtml(ph)}" data-input="${cat}" aria-label="${escapeHtml(ph)}">
+      <button type="button" class="btn" data-add="${cat}">${t("add")}</button>
+    </div>`;
+    pane.innerHTML = html;
   });
-  html += `<div class="custom-row">
-    <input type="text" maxlength="20" placeholder="自己写一个${CAT_NAME[cat]}关键词…" data-input="${cat}" aria-label="自定义${CAT_NAME[cat]}关键词">
-    <button data-add="${cat}">添加</button>
-  </div>`;
-  pane.innerHTML = html;
-});
+}
 
-document.querySelectorAll(".chip").forEach(btn => {
-  const w = btn.dataset.word;
-  (chipIndex[w] = chipIndex[w] || []).push(btn);
-});
+function renderPresets() {
+  document.getElementById("presetRow").innerHTML =
+    PRESETS.map((p, i) => `<button type="button" class="preset" data-preset="${i}">${L(p.name)} <span>${L(p.tag)}</span></button>`).join("") +
+    `<button type="button" class="btn dice" id="randomBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1" fill="currentColor"/></svg>${t("random")}</button>`;
+  if (activePreset !== null) showPresetNote(activePreset);
+}
 
 /* ================= 交互 ================= */
+let activePreset = null;
+
 function toggleWord(cat, word) {
   const arr = state[cat];
   const i = arr.indexOf(word);
@@ -562,18 +770,17 @@ document.getElementById("builder").addEventListener("click", e => {
   const add = e.target.closest("[data-add]");
   if (add) addCustom(add.dataset.add);
 });
-
-document.querySelectorAll("[data-input]").forEach(inp => {
-  inp.addEventListener("keydown", e => {
-    if (e.key === "Enter") addCustom(inp.dataset.input);
-  });
+document.getElementById("builder").addEventListener("keydown", e => {
+  const inp = e.target.closest("[data-input]");
+  if (inp && e.key === "Enter") addCustom(inp.dataset.input);
 });
 
 function addCustom(cat) {
   const inp = document.querySelector(`[data-input="${cat}"]`);
   const w = inp.value.trim();
   if (!w) return;
-  if (!state[cat].includes(w)) state[cat].push(w);
+  const id = "c:" + w;
+  if (!state[cat].includes(id)) state[cat].push(id);
   inp.value = "";
   render();
 }
@@ -581,64 +788,70 @@ function addCustom(cat) {
 /* tabs */
 const tabs = document.querySelectorAll(".tab");
 function switchTab(cat) {
-  tabs.forEach(t => {
-    const on = t.dataset.cat === cat;
-    t.classList.toggle("active", on);
-    t.setAttribute("aria-selected", on);
+  tabs.forEach(tb => {
+    const on = tb.dataset.cat === cat;
+    tb.classList.toggle("active", on);
+    tb.setAttribute("aria-selected", on);
   });
-  document.querySelectorAll(".pane").forEach(p =>
-    p.classList.toggle("active", p.dataset.pane === cat));
+  document.querySelectorAll(".pane").forEach(p => p.classList.toggle("active", p.dataset.pane === cat));
 }
-tabs.forEach(t => t.addEventListener("click", () => switchTab(t.dataset.cat)));
+tabs.forEach(tb => tb.addEventListener("click", () => switchTab(tb.dataset.cat)));
 
 /* 公式块 & 卡片跳转 */
 document.querySelectorAll("[data-jump]").forEach(el => {
   el.addEventListener("click", () => {
     switchTab(el.dataset.jump);
-    document.getElementById("builder").scrollIntoView({behavior:"smooth", block:"start"});
+    document.getElementById("builderHead").scrollIntoView({behavior:"smooth", block:"start"});
   });
 });
 
 /* presets */
-document.querySelectorAll(".preset").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const p = PRESETS[+btn.dataset.preset];
+function showPresetNote(i) {
+  document.querySelectorAll(".preset").forEach(b => b.classList.toggle("active", +b.dataset.preset === i));
+  const note = document.getElementById("presetNote");
+  note.innerHTML = PRESETS[i].note[lang];
+  note.hidden = false;
+}
+document.getElementById("presetRow").addEventListener("click", e => {
+  const btn = e.target.closest(".preset");
+  if (btn) {
+    activePreset = +btn.dataset.preset;
+    const p = PRESETS[activePreset];
     CATS.forEach(c => state[c] = [...p[c]]);
     render();
-    document.querySelectorAll(".preset").forEach(b => b.classList.toggle("active", b === btn));
-    const note = document.getElementById("presetNote");
-    note.innerHTML = p.note;
-    note.hidden = false;
+    showPresetNote(activePreset);
     switchTab("subject");
-  });
+    return;
+  }
+  if (e.target.closest("#randomBtn")) randomIdea();
 });
 
-function clearPresetNote(){
+function clearPresetNote() {
+  activePreset = null;
   document.querySelectorAll(".preset").forEach(b => b.classList.remove("active"));
-  const note = document.getElementById("presetNote");
-  note.hidden = true;
+  document.getElementById("presetNote").hidden = true;
 }
 
 /* 随机灵感:每个类别抽 1-2 个词 */
-function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
-document.getElementById("randomBtn").addEventListener("click", () => {
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function randomIdea() {
   clearPresetNote();
   CATS.forEach(c => state[c] = []);
   // time: 抽一个时刻
-  state.time.push(pick(DATA.time.groups[0].dims[2].chips));
+  state.time.push(pick(DATA.time.groups[0].dims[2].chips)[0]);
   // subject: 随机选一个子类,抽前两维各一个词
   const g = pick(DATA.subject.groups);
-  state.subject.push(pick(g.dims[0].chips));
-  state.subject.push(pick(g.dims[1].chips));
+  state.subject.push(pick(g.dims[0].chips)[0]);
+  state.subject.push(pick(g.dims[1].chips)[0]);
   // scene: 自然或建筑抽一个 + 天气一个
   const sDims = DATA.scene.groups[0].dims;
-  state.scene.push(pick(pick([sDims[0], sDims[1]]).chips));
-  state.scene.push(pick(sDims[2].chips));
+  state.scene.push(pick(pick([sDims[0], sDims[1]]).chips)[0]);
+  state.scene.push(pick(sDims[2].chips)[0]);
   // style: 画面风格/色调/光源/景别 各一个
   const st = DATA.style.groups[0].dims;
-  [0,2,3,4].forEach(i => state.style.push(pick(st[i].chips)));
+  [0,2,3,4].forEach(i => state.style.push(pick(st[i].chips)[0]));
   render();
-});
+}
 
 /* clear & copy */
 document.getElementById("clearBtn").addEventListener("click", () => {
@@ -647,35 +860,41 @@ document.getElementById("clearBtn").addEventListener("click", () => {
   render();
 });
 
+function promptText() {
+  const sep = plang === "zh" ? "," : ", ";
+  return CATS.flatMap(c => state[c].map(w => wordText(w, plang))).join(sep);
+}
+
 document.getElementById("copyBtn").addEventListener("click", async () => {
-  const text = CATS.flatMap(c => state[c]).join(",");
-  if (!text) { showToast("先选几个关键词吧"); return; }
+  const text = promptText();
+  if (!text) { showToast(t("pickFirst")); return; }
   try {
     await navigator.clipboard.writeText(text);
-    showToast("已复制到剪贴板");
+    showToast(t("copied"));
   } catch (err) {
     // fallback
     const ta = document.createElement("textarea");
     ta.value = text;
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand("copy"); showToast("已复制到剪贴板"); }
-    catch(e){ showToast("复制失败,请手动选择文字"); }
+    try { document.execCommand("copy"); showToast(t("copied")); }
+    catch(e) { showToast(t("copyFail")); }
     document.body.removeChild(ta);
   }
 });
 
 let toastTimer;
 function showToast(msg) {
-  const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.classList.add("show");
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 1800);
 }
 
 /* ================= 渲染输出 ================= */
 function render() {
+  saveState();
   // chips 高亮
   document.querySelectorAll(".chip").forEach(btn => {
     const on = state[btn.dataset.cat].includes(btn.dataset.word);
@@ -683,34 +902,76 @@ function render() {
     btn.setAttribute("aria-pressed", on);
   });
   // 计数
-  CATS.forEach(c => {
-    const el = document.querySelector(`[data-cnt="${c}"]`);
-    el.textContent = state[c].length;
-  });
+  CATS.forEach(c => { document.querySelector(`[data-cnt="${c}"]`).textContent = state[c].length; });
   // 完整度
-  document.querySelectorAll(".m-dot").forEach(d =>
-    d.classList.toggle("ok", state[d.dataset.cat].length > 0));
+  document.querySelectorAll(".m-dot").forEach(d => d.classList.toggle("ok", state[d.dataset.cat].length > 0));
   // REC 灯
-  const total = CATS.reduce((n,c) => n + state[c].length, 0);
+  const total = CATS.reduce((n, c) => n + state[c].length, 0);
   document.getElementById("rec").classList.toggle("live", total > 0);
   // 提示词
   const out = document.getElementById("promptOut");
   if (total === 0) {
-    out.innerHTML = '<span class="vf-empty">还没选词。点击上方任意关键词,或试试一个示例预设。</span>';
+    out.innerHTML = `<span class="vf-empty">${t("empty")}</span>`;
     return;
   }
+  const comma = plang === "zh" ? "," : ", ";
   const parts = [];
-  CATS.forEach(c => {
-    state[c].forEach(w => parts.push(`<span class="seg seg-${c}">${escapeHtml(w)}</span>`));
-  });
-  out.innerHTML = parts.join('<span class="seg-comma">,</span>');
+  CATS.forEach(c => state[c].forEach(w => parts.push(`<span class="seg-${c}">${escapeHtml(wordText(w, plang))}</span>`)));
+  out.innerHTML = parts.join(`<span class="seg-comma">${comma}</span>`);
 }
 
-function escapeHtml(s){
-  return s.replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 }
 
-render();
+/* ================= 语言 ================= */
+function applyLang() {
+  document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
+  document.title = t("title");
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+  document.querySelectorAll("[data-cat-name]").forEach(el => { el.textContent = t("cat")[el.dataset.catName]; });
+  document.querySelectorAll("[data-lang-btn]").forEach(b => b.setAttribute("aria-pressed", b.dataset.langBtn === lang));
+  renderPanes();
+  renderPresets();
+  render();
+}
+document.querySelectorAll("[data-lang-btn]").forEach(b => b.addEventListener("click", () => {
+  if (lang === b.dataset.langBtn) return;
+  lang = b.dataset.langBtn;
+  try { localStorage.setItem(LS_LANG, lang); } catch(e) {}
+  applyLang();
+}));
+
+/* 提示词语言:可以和界面语言不同(大多数工具用英文效果更好) */
+function syncPlang() {
+  document.querySelectorAll("[data-plang-btn]").forEach(b => b.setAttribute("aria-pressed", b.dataset.plangBtn === plang));
+}
+document.querySelectorAll("[data-plang-btn]").forEach(b => b.addEventListener("click", () => {
+  plang = b.dataset.plangBtn;
+  try { localStorage.setItem(LS_PLANG, plang); } catch(e) {}
+  syncPlang();
+  render();
+}));
+
+/* ================= 日间 / 夜间 ================= */
+const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+function currentTheme() {
+  return document.documentElement.dataset.theme || (darkQuery.matches ? "dark" : "light");
+}
+function syncThemeButtons() {
+  const th = currentTheme();
+  document.querySelectorAll("[data-theme-btn]").forEach(b => b.setAttribute("aria-pressed", b.dataset.themeBtn === th));
+}
+document.querySelectorAll("[data-theme-btn]").forEach(b => b.addEventListener("click", () => {
+  document.documentElement.dataset.theme = b.dataset.themeBtn;
+  try { localStorage.setItem(LS_THEME, b.dataset.themeBtn); } catch(e) {}
+  syncThemeButtons();
+}));
+darkQuery.addEventListener("change", syncThemeButtons);
+syncThemeButtons();
+syncPlang();
+applyLang();
 </script>
 </body>
 </html>

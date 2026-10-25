@@ -1,10 +1,10 @@
-# Prompt Lab
+# Image Prompt Builder
 
 A single-page tool for writing AI image prompts by clicking instead of typing. Pick keywords from four blocks and get a copy-ready prompt — in **English** or Chinese — for Magnific (formerly Freepik), ChatGPT, Gemini, Grok and similar image tools.
 
-**Live:** https://chengwq95.github.io/prompt-lab/ (once GitHub Pages is enabled)
+**Live:** https://image-prompt-builder.pages.dev/
 
-Companion tool: [Video Prompt Builder](https://chengwq95.github.io/ai-video-prompt-builder/) — prompts for every step of a short AI video.
+Companion tool: [Video Prompt Builder](https://ai-video-prompt-builder.pages.dev/) — prompts for every step of a short AI video.
 
 ---
 
@@ -60,4 +60,5 @@ No install, no build step. It's a single HTML file: open `index.html` in any bro
 
 1. Repository **Settings → Pages**
 2. Source: **Deploy from a branch**, branch `main`, folder `/ (root)`
-3. Save and wait 1–2 minutes, then open `https://chengwq95.github.io/prompt-lab/`
+3. Save and wait 1–2 minutes, then open `https://chengwq95.github.io/image-prompt-builder/`
+

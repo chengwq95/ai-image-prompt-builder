@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Image Prompt Builder</title>
+<title>AI Image Prompt Builder</title>
 <meta name="description" content="Build AI image prompts from four blocks: time, subject, scene and style.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2316181D'/%3E%3Ccircle cx='24' cy='24' r='7' fill='%23F0B45E'/%3E%3Ccircle cx='40' cy='24' r='7' fill='%236CD0E0'/%3E%3Ccircle cx='24' cy='40' r='7' fill='%237FD6A0'/%3E%3Ccircle cx='40' cy='40' r='7' fill='%23D52B1E'/%3E%3C/svg%3E">
 <script>
@@ -396,7 +396,7 @@ footer a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--li
 
 <header class="topbar">
   <div class="wrap topbar-inner">
-    <a class="brand" href="#top" aria-label="Image Prompt Builder">
+    <a class="brand" href="#top" aria-label="AI Image Prompt Builder">
       <svg viewBox="0 0 64 64" aria-hidden="true"><rect class="logo-bg" width="64" height="64" rx="16"/><circle cx="24" cy="24" r="7" fill="var(--c-time)"/><circle cx="40" cy="24" r="7" fill="var(--c-subject)"/><circle cx="24" cy="40" r="7" fill="var(--c-scene)"/><circle cx="40" cy="40" r="7" fill="var(--accent)"/></svg>
       <span data-i18n="brand"></span>
     </a>
@@ -695,8 +695,8 @@ const PRESETS = [
 /* ================= 界面文字 ================= */
 const I18N = {
   en: {
-    title:"Image Prompt Builder", brand:"Image Prompt Builder",
-    videoLink:"Video builder", videoLinkLong:"Companion tool: Video Prompt Builder ↗",
+    title:"AI Image Prompt Builder", brand:"AI Image Prompt Builder",
+    videoLink:"Video builder", videoLinkLong:"Companion tool: AI Video Prompt Builder ↗",
     morning:"Morning", night:"Night",
     cat:{time:"Time", subject:"Subject", scene:"Scene", style:"Style"},
     eyebrow:"AI image prompts",
@@ -719,7 +719,7 @@ const I18N = {
     dg1t:"Looks flat", dg1:"Usually <em>light</em> and <em>mood</em> are missing. Try \"backlit\", \"neon lighting\" or \"suspenseful\".",
     dg2t:"Random-looking person", dg2:"<em>Face details</em> are missing. Hair, glasses, freckles, scars — the more specific, the more stable.",
     dg3t:"Looks like a phone snapshot", dg3:"Missing <em>camera language</em>. Add shot size, lens and depth of field: \"close-up, 85mm lens, shallow depth of field\".",
-    promoT:"Making a short AI video?", promo:"The Video Prompt Builder writes the prompts for every shot — character, stills and image-to-video.", promoBtn:"Open Video Prompt Builder →",
+    promoT:"Making a short AI video?", promo:"The AI Video Prompt Builder writes the prompts for every shot — character, stills and image-to-video.", promoBtn:"Open AI Video Prompt Builder →",
     footer:"Time + Subject + Scene + Style · add the block that's missing",
     vfTitle:"Viewfinder", plang:"Prompt in", clear:"Clear", copy:"Copy prompt",
     empty:"Nothing picked yet. Click any keyword above, or try a template.",
@@ -738,7 +738,7 @@ const I18N = {
     ]
   },
   zh: {
-    title:"图片提示词生成器", brand:"图片提示词生成器",
+    title:"AI 图片提示词生成器", brand:"AI 图片提示词生成器",
     videoLink:"视频提示词", videoLinkLong:"配套工具:AI 视频提示词生成器 ↗",
     morning:"日间", night:"夜间",
     cat:{time:"时间", subject:"主体", scene:"场景", style:"风格"},
@@ -762,7 +762,7 @@ const I18N = {
     dg1t:"图太平淡", dg1:"多半是<em>光源</em>和<em>氛围</em>没写。试试加「逆光」「霓虹灯光」「悬疑」。",
     dg2t:"人物长得随机", dg2:"<em>脸部细节</em>缺失。发型、眼镜、雀斑、疤痕,越具体越稳定。",
     dg3t:"像手机随手拍", dg3:"缺<em>镜头语言</em>。给它景别、焦段、景深:「特写、85mm、浅景深」。",
-    promoT:"想做 AI 短视频?", promo:"「AI 视频提示词生成器」帮你写好每个镜头的提示词:角色、静帧和图生视频。", promoBtn:"打开视频提示词生成器 →",
+    promoT:"想做 AI 短视频?", promo:"「AI 视频提示词生成器」帮你写好每个镜头的提示词:角色、静帧和图生视频。", promoBtn:"打开 AI 视频提示词生成器 →",
     footer:"时间 + 主体 + 场景 + 风格 · 缺哪块,回来补哪块",
     vfTitle:"取景器", plang:"提示词语言", clear:"清空", copy:"复制提示词",
     empty:"还没选词。点击上方任意关键词,或试试一个示例模板。",
@@ -1183,4 +1183,5 @@ applyLang();
 </script>
 </body>
 </html>
+
 

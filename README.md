@@ -1,10 +1,10 @@
-# Image Prompt Builder
+# AI Image Prompt Builder
 
 A single-page tool for writing AI image prompts by clicking instead of typing. Pick keywords from four blocks and get a copy-ready prompt — in **English** or Chinese — for Magnific (formerly Freepik), ChatGPT, Gemini, Grok and similar image tools.
 
-**Live:** https://image-prompt-builder.pages.dev/
+**Live:** https://ai-image-prompt-builder.pages.dev/
 
-Companion tool: [Video Prompt Builder](https://ai-video-prompt-builder.pages.dev/) — prompts for every step of a short AI video.
+Companion tool: [AI Video Prompt Builder](https://ai-video-prompt-builder.pages.dev/) — prompts for every step of a short AI video.
 
 ---
 
@@ -32,7 +32,7 @@ The first three blocks decide **what to draw**; Style decides **how it looks**.
 - **Live viewfinder**: the prompt builds at the bottom, color-coded by block, with a dot per block so you can see which one is missing.
 - **Prompt language**: English or Chinese, switched separately from the interface — most image tools work best in English.
 - **Troubleshooting checklist**: too flat / random-looking person / looks like a phone snapshot, and which block to add.
-- **EN / 中文** interface switch (English by default) and **Morning / Night** themes (follows your system until you choose). Language and theme are shared with the Video Prompt Builder.
+- **EN / 中文** interface switch (English by default) and **Morning / Night** themes (follows your system until you choose). Language and theme are shared with the AI Video Prompt Builder.
 - Your keywords and settings are saved in your browser (`localStorage`), so a refresh doesn't lose your work.
 
 ## Output
@@ -60,5 +60,4 @@ No install, no build step. It's a single HTML file: open `index.html` in any bro
 
 1. Repository **Settings → Pages**
 2. Source: **Deploy from a branch**, branch `main`, folder `/ (root)`
-3. Save and wait 1–2 minutes, then open `https://chengwq95.github.io/image-prompt-builder/`
-
+3. Save and wait 1–2 minutes, then open `https://chengwq95.github.io/ai-image-prompt-builder/`

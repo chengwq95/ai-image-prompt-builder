@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prompt Lab</title>
+<title>Image Prompt Builder</title>
 <meta name="description" content="Build AI image prompts from four blocks: time, subject, scene and style.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2316181D'/%3E%3Ccircle cx='24' cy='24' r='7' fill='%23F0B45E'/%3E%3Ccircle cx='40' cy='24' r='7' fill='%236CD0E0'/%3E%3Ccircle cx='24' cy='40' r='7' fill='%237FD6A0'/%3E%3Ccircle cx='40' cy='40' r='7' fill='%23D52B1E'/%3E%3C/svg%3E">
 <script>
@@ -396,13 +396,13 @@ footer a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--li
 
 <header class="topbar">
   <div class="wrap topbar-inner">
-    <a class="brand" href="#top" aria-label="Prompt Lab">
+    <a class="brand" href="#top" aria-label="Image Prompt Builder">
       <svg viewBox="0 0 64 64" aria-hidden="true"><rect class="logo-bg" width="64" height="64" rx="16"/><circle cx="24" cy="24" r="7" fill="var(--c-time)"/><circle cx="40" cy="24" r="7" fill="var(--c-subject)"/><circle cx="24" cy="40" r="7" fill="var(--c-scene)"/><circle cx="40" cy="40" r="7" fill="var(--accent)"/></svg>
       <span data-i18n="brand"></span>
     </a>
     <div class="controls">
       <button type="button" class="guide-btn" id="guideBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="lbl" data-i18n="guide"></span></button>
-      <a class="pill-link" href="https://chengwq95.github.io/ai-video-prompt-builder/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3"/></svg><span class="lbl" data-i18n="videoLink"></span></a>
+      <a class="pill-link" href="https://ai-video-prompt-builder.pages.dev/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3"/></svg><span class="lbl" data-i18n="videoLink"></span></a>
       <div class="switch" role="group" aria-label="Language">
         <button type="button" data-lang-btn="en" aria-pressed="true">EN</button>
         <button type="button" data-lang-btn="zh" aria-pressed="false">中文</button>
@@ -485,7 +485,7 @@ footer a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--li
 
   <div class="promo">
     <div><b data-i18n="promoT"></b><p data-i18n="promo"></p></div>
-    <a class="btn primary" href="https://chengwq95.github.io/ai-video-prompt-builder/" data-i18n="promoBtn"></a>
+    <a class="btn primary" href="https://ai-video-prompt-builder.pages.dev/" data-i18n="promoBtn"></a>
   </div>
 
 </main>
@@ -493,7 +493,7 @@ footer a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--li
 <footer>
   <div class="wrap">
     <span data-i18n="footer"></span>
-    <a href="https://chengwq95.github.io/ai-video-prompt-builder/" data-i18n="videoLinkLong"></a>
+    <a href="https://ai-video-prompt-builder.pages.dev/" data-i18n="videoLinkLong"></a>
   </div>
 </footer>
 
@@ -695,7 +695,7 @@ const PRESETS = [
 /* ================= 界面文字 ================= */
 const I18N = {
   en: {
-    title:"Prompt Lab", brand:"Prompt Lab",
+    title:"Image Prompt Builder", brand:"Image Prompt Builder",
     videoLink:"Video builder", videoLinkLong:"Companion tool: Video Prompt Builder ↗",
     morning:"Morning", night:"Night",
     cat:{time:"Time", subject:"Subject", scene:"Scene", style:"Style"},
@@ -738,7 +738,7 @@ const I18N = {
     ]
   },
   zh: {
-    title:"图片提示词实验室", brand:"图片提示词实验室",
+    title:"图片提示词生成器", brand:"图片提示词生成器",
     videoLink:"视频提示词", videoLinkLong:"配套工具:AI 视频提示词生成器 ↗",
     morning:"日间", night:"夜间",
     cat:{time:"时间", subject:"主体", scene:"场景", style:"风格"},
@@ -1183,3 +1183,4 @@ applyLang();
 </script>
 </body>
 </html>
+

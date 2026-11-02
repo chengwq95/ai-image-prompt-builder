@@ -28,6 +28,7 @@ The first three blocks decide **what to draw**; Style decides **how it looks**.
 - **Beginner-friendly**: a 3-step quick start and a 1-minute **guided tour** that highlights each part of the page (a bottom sheet on phones). Reopen it any time from **Guide** in the top bar.
 - **Nine templates**, each with a note on what it teaches: rainy-night detective, snow-mountain hunter, vintage object, Tang dynasty lady, bamboo-forest samurai, napping Shiba, Eastern myth, future city, retro teen.
 - **Clickable keywords** in four tabs — click to add, click again to remove — plus your own custom keywords.
+- **3D camera & pose**: drag handles around a 3D mannequin to set the exact camera angle (azimuth, elevation, distance) and pose (13 ready-made poses, or move the head, arms and legs yourself). A small "camera view" shows the framing, and the matching words — e.g. "front-right three-quarter view, slightly high angle, medium shot" — go straight into the prompt. When the 3D camera is on it replaces the shot-size and angle keywords so the prompt never contradicts itself.
 - **Random idea**: a random combination to practice with.
 - **Live viewfinder**: the prompt builds at the bottom, color-coded by block, with a dot per block so you can see which one is missing.
 - **Prompt language**: English or Chinese, switched separately from the interface — most image tools work best in English.

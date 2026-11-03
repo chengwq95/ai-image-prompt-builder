@@ -209,18 +209,29 @@ const CamPoseModel = (() => {
     if (el <= 50) return ["高角度俯拍", "high angle shot, looking down at the subject"];
     return ["鸟瞰俯视", "bird's-eye view from above"];
   }
+  // Shot size from what the camera actually sees: the lowest body landmark still in frame.
   function shotWords(cam, J, aspect = 1) {
-    const c = normalizeCamera(cam), spec = shotCamera(c, J), bounds = cameraBounds(J);
-    const view = makeView(spec.pos, spec.target, spec.fov, 100 * aspect, 100), projected = [];
-    for (const x of [bounds.min[0], bounds.max[0]]) for (const y of [bounds.min[1], bounds.max[1]]) for (const z of [bounds.min[2], bounds.max[2]]) projected.push(view.project([x, y, z]));
-    const inside = projected.every(p => p && p.x >= 0 && p.x <= 100 * aspect && p.y >= 0 && p.y <= 100);
-    if (inside) {
-      const height = Math.max(...projected.map(p => p.y)) - Math.min(...projected.map(p => p.y));
-      return height < 45 ? ['远景', 'wide shot'] : ['全身景', 'full shot, whole body in frame'];
+    const c = normalizeCamera(cam), spec = shotCamera(c, J), W = 100 * aspect;
+    const view = makeView(spec.pos, spec.target, spec.fov, W, 100);
+    const inFrame = p => { const q = view.project(p); return !!q && q.x >= -0.5 && q.x <= W + 0.5 && q.y >= -0.5 && q.y <= 100.5; };
+    const top = add(J.head, mv(J.headM, [0, 0.125, 0])), chin = add(J.head, mv(J.headM, [0, -0.11, 0.04]));
+    const headIn = inFrame(top) && inFrame(chin);
+    // Feet count as in frame when the ankles are (toes right at the edge still read as a full-body shot).
+    const nearFrame = p => { const q = view.project(p); return !!q && q.x >= -4 && q.x <= W + 4 && q.y >= -4 && q.y <= 104; };
+    const feetIn = ["lAnkle", "rAnkle"].every(k => nearFrame(J[k]));
+    if (headIn && feetIn) {
+      const ys = Object.values(J).filter(p => Array.isArray(p) && p.length === 3).map(p => view.project(p)).filter(Boolean).map(p => p.y);
+      return Math.max(...ys) - Math.min(...ys) < 45 ? ["远景", "wide shot, the whole figure small in the frame"] : ["全身景", "full shot, whole body in frame"];
     }
-    const coverage = 2 * c.distance * Math.tan(spec.fov * D2R / 2);
-    if (coverage < 0.65) return c.focus === 'head' ? ['脸部特写', 'face close-up'] : ['上身细节特写', 'close-up of the upper torso'];
-    return coverage < 1.25 ? ['近景', 'medium close-up'] : ['中景', 'medium shot'];
+    // With the face in frame, the lowest landmark still visible names the shot (a cropped crown is fine).
+    if (headIn || inFrame(J.head)) {
+      const midChest = add(J.chest, mv(J.ubM, [0, -0.17, 0.05]));
+      if (inFrame(J.lKnee) || inFrame(J.rKnee)) return ["中全景", "medium full shot, from the knees up"];
+      if (inFrame(J.pelvis)) return ["中景", "medium shot, from the waist up"];
+      if (inFrame(midChest)) return ["近景", "medium close-up, from the chest up"];
+      return headIn ? ["特写", "close-up of the face"] : ["大特写", "extreme close-up of the face"];
+    }
+    return ["局部特写", "close-up of part of the body, the head out of frame"];
   }
   function describeCamera(cam, lang, yaw = 0, J = skeleton(BASE()), aspect = 1) {
     const c = constrainCamera(cam, J), i = lang === 'zh' ? 0 : 1, rel = c.az - yaw;

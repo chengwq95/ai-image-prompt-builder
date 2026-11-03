@@ -54,7 +54,7 @@ const CamPose = (() => {
       renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
       renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
       renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFShadowMap;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.25;
     } catch (e) {
@@ -69,7 +69,7 @@ const CamPose = (() => {
     scene.add(new THREE.HemisphereLight(0xdde8ff, 0x55515a, 2.1));
     const key = new THREE.DirectionalLight(0xffeed6, 3.4);
     key.position.set(-3, 5, 4); key.castShadow = true;
-    key.shadow.mapSize.set(1024, 1024);
+    key.shadow.mapSize.set(2048, 2048); key.shadow.radius = 6;
     Object.assign(key.shadow.camera, { left: -2.5, right: 2.5, top: 3, bottom: -2, near: 0.1, far: 12 });
     key.shadow.bias = -0.0005; key.shadow.normalBias = 0.015;
     scene.add(key);
@@ -243,7 +243,7 @@ const CamPose = (() => {
       const background = drawing ? 0xebe9e3 : 0x141823;
       scene.background.setHex(background); scene.fog.color.setHex(background);
       grid.material.opacity = drawing ? 0.16 : 0.65;
-      floor.material.color.setHex(drawing ? 0xbbb9b0 : 0x080c13);
+      floor.material.color.setHex(drawing ? 0xd9d6cd : 0x161a25);
       skin.color.setHex(drawing ? 0xf2f0e8 : 0xc6b6a2);
       outlines.forEach(m => { m.visible = drawing; });
       construction.forEach(l => { l.material.color.setHex(drawing ? 0x666666 : 0x827d74); });
@@ -298,7 +298,12 @@ const CamPose = (() => {
         handle(cameraP, "distance", "#ffbc78", 8);
         const targetPoint = project(center), targetText = ui[lang][state.cam.focus + 'Target'];
         ctx.beginPath(); ctx.arc(targetPoint.x, targetPoint.y, 6, 0, Math.PI * 2); ctx.strokeStyle = '#ffce83'; ctx.lineWidth = 2; ctx.stroke();
-        ctx.font = '11px system-ui'; ctx.fillStyle = '#ffce83'; ctx.fillText(ui[lang].target + ': ' + targetText, targetPoint.x + 12, targetPoint.y - 10);
+        // Label on a dark pill so the figure behind it never hides the text.
+        const label = ui[lang].target + ': ' + targetText;
+        ctx.font = '11px system-ui';
+        const lw = ctx.measureText(label).width, lx = targetPoint.x + 12, ly = targetPoint.y - 22;
+        ctx.fillStyle = 'rgba(12,14,22,.78)'; ctx.beginPath(); ctx.roundRect(lx - 6, ly, lw + 12, 18, 9); ctx.fill();
+        ctx.fillStyle = '#ffce83'; ctx.fillText(label, lx, ly + 13);
       } else {
         const joints = Object.entries(PARTS).map(([part, config]) => ({ part, point: J[config.joint] }));
         // Paint far handles first so the nearest overlapping joint remains selectable.

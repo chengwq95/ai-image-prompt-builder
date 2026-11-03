@@ -97,3 +97,13 @@ test('fine joint edits produce relevant bilingual pose words', () => {
   assert.match(M.describePose(p, null, 'zh'), /左脚踝/);
   assert.match(M.describePose(p, null, 'zh'), /胸腰扭转约30度/);
 });
+
+test('shot size words follow what the camera actually frames', () => {
+  const J = M.skeleton(M.normalizePose({ preset: 'stand' }));
+  const words = (distance, focus) => M.describeCamera({ az: 45, el: 10, distance, focus }, 'en', 0, J, 1);
+  assert.match(words(0.5, 'head'), /close-up of the face/);
+  assert.match(words(1.4, 'chest'), /medium shot, from the waist up/);
+  assert.match(words(2.8, 'chest'), /full shot, whole body in frame/);
+  assert.match(words(7, 'whole'), /wide shot/);
+  assert.match(words(0.4, 'chest'), /head out of frame/);
+});

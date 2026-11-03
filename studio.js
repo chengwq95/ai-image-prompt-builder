@@ -7,20 +7,20 @@ const CamPose = (() => {
   const copy = x => JSON.parse(JSON.stringify(x));
   const ui = {
     en: {
-      editor: "Studio view · drag background to orbit", actual: "CAMERA VIEW", front: "Front", side: "Right", back: "Back", frame: "Frame figure",
+      editor: "Studio view · drag background to orbit", actual: "CAMERA VIEW", front: "Front", side: "Right", back: "Back", frame: "Fit scene",
       selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror this joint", flip: "Swap left / right", joints: "18 parts · 54 angle controls",
       fine: "Select a joint or body surface. Drag to pose; use sliders or arrow keys for precise angles.",
-      cameraHelp: "Green: orbit camera · pink: height · orange: framing. Background drag only changes the studio view.",
+      cameraHelp: "Yellow is the actual camera: drag it closer, through the pink reference arc. Green: orbit · pink: elevation. The target marker shows where the camera aims.",
       unsupported: "This browser could not start 3D. Enable WebGL or try another browser. Angle controls and prompt output still work.",
-      context: "3D paused. Restoring the graphics context…", restored: "3D restored", both: "Both sides", left: "Left to right", right: "Right to left", volume: "3D form", drawing: "Study lines"
+      context: "3D paused. Restoring the graphics context…", restored: "3D restored", both: "Both sides", left: "Left to right", right: "Right to left", volume: "3D form", drawing: "Study lines", focus: "Look at", headTarget: "Head", chestTarget: "Chest", wholeTarget: "Frame whole body", target: "Aim", distanceHint: "Actual camera distance in metres · 0.20–8.00 m", floorHint: "Lowest angle at this distance"
     },
     zh: {
-      editor: "工作视图 · 拖动空白处旋转", actual: "实际镜头画面", front: "正面", side: "右侧", back: "背面", frame: "查看全身",
+      editor: "工作视图 · 拖动空白处旋转", actual: "实际镜头画面", front: "正面", side: "右侧", back: "背面", frame: "查看整个场景",
       selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制",
       fine: "点选关节点或人物表面，拖动调整姿势；滑块和方向键可精确调角度。",
-      cameraHelp: "绿色：相机方位 · 粉色：仰俯角 · 橙色：景别。拖动空白处只旋转工作视图。",
+      cameraHelp: "黄色就是真实相机，可穿过粉色参考弧继续靠近。绿色调方位，粉色调仰俯；瞄准点标出实际朝向。",
       unsupported: "浏览器无法启动 3D，请启用 WebGL 或换一个浏览器。角度控制和提示词仍可使用。",
-      context: "3D 暂停，正在恢复图形显示…", restored: "3D 已恢复", both: "左右两侧", left: "左侧复制到右侧", right: "右侧复制到左侧", volume: "立体素体", drawing: "绘画线稿"
+      context: "3D 暂停，正在恢复图形显示…", restored: "3D 已恢复", both: "左右两侧", left: "左侧复制到右侧", right: "右侧复制到左侧", volume: "立体素体", drawing: "绘画线稿", focus: "镜头瞄准", headTarget: "头部", chestTarget: "胸部", wholeTarget: "全身取景", target: "瞄准", distanceHint: "真实相机距离，单位为米 · 0.20–8.00 m", floorHint: "当前距离的最低角度"
     }
   };
 
@@ -232,8 +232,8 @@ const CamPose = (() => {
       return { x: b.left - a.left, y: height - (b.top - a.top) - b.height, width: b.width, height: b.height };
     }
     function fitShot(J, r) {
-      const box = new THREE.Box3().setFromObject(rig);
-      const spec = M.framedCamera(state.cam, J, r.width / r.height, { min: box.min.toArray(), max: box.max.toArray() });
+      state.cam = M.constrainCamera(state.cam, J);
+      const spec = M.shotCamera(state.cam, J);
       shot.aspect = r.width / r.height; shot.fov = spec.fov; shot.position.copy(V(spec.pos)); shot.lookAt(V(spec.target)); shot.updateProjectionMatrix(); shot.updateMatrixWorld();
       return spec;
     }
@@ -251,17 +251,16 @@ const CamPose = (() => {
       const rigBox = new THREE.Box3().setFromObject(rig);
       const look = rigBox.getCenter(new THREE.Vector3());
       look.y = Math.max(0.7, look.y);
-      // The control rig is anchored to the figure, rather than the shot's moving
-      // framing target. Zooming from face to full body must not move its track.
-      controlCenter = rigBox.getCenter(new THREE.Vector3()).toArray();
-      const cameraP = controlPoint('dist');
+      // One physical camera pose drives the yellow icon, sight line and preview.
+      controlCenter = spec.target;
+      const cameraP = spec.pos;
       const far = state.tab === "camera" ? 1.3 / Math.min(1, width / height) : 1;
       let editorDistance = view.dist * far;
       if (state.tab === "camera" && !cameraEditorFrame) {
         const points = [V(cameraP)];
         for (const x of [rigBox.min.x, rigBox.max.x]) for (const y of [rigBox.min.y, rigBox.max.y]) for (const z of [rigBox.min.z, rigBox.max.z]) points.push(new THREE.Vector3(x, y, z));
-        for (let az = 0; az < 360; az += 5) points.push(V(add(mul(M.camDir({ az, el: 0 }), 1.35), [0, 0.012, 0])));
-        for (let el = -30; el <= 75; el += 3) points.push(V(add(controlCenter, mul(M.camDir({ az: state.cam.az, el }), 1))));
+        for (let az = 0; az < 360; az += 5) points.push(V(add(mul(M.camDir({ az, el: 0 }), 1.35), [controlCenter[0], 0.012, controlCenter[2]])));
+        for (let el = -60; el <= 85; el += 3) points.push(V(add(controlCenter, mul(M.camDir({ az: state.cam.az, el }), M.CAMERA.guideRadius))));
         new THREE.Box3().setFromPoints(points).getCenter(look);
         const direction = V(M.camDir({ az: view.yaw, el: view.pitch }));
         const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), direction).normalize();
@@ -283,7 +282,8 @@ const CamPose = (() => {
       helper.visible = state.tab === "camera";
       const center = controlCenter;
       if (helper.visible) {
-        const points = Array.from({ length: 65 }, (_, i) => add(center, mul(M.camDir({ az: state.cam.az, el: -30 + i * 105 / 64 }), 1)));
+        azRing.position.set(center[0], 0.012, center[2]);
+        const points = Array.from({ length: 65 }, (_, i) => add(center, mul(M.camDir({ az: state.cam.az, el: -60 + i * 145 / 64 }), M.CAMERA.guideRadius)));
         elevationLine.geometry.setFromPoints(points.map(V)); elevationLine.geometry.computeBoundingSphere();
         sightLine.geometry.setFromPoints([V(center), V(cameraP)]); sightLine.geometry.computeBoundingSphere(); sightLine.computeLineDistances();
         cameraBody.position.copy(V(cameraP)); cameraBody.lookAt(V(center));
@@ -295,7 +295,10 @@ const CamPose = (() => {
       if (state.tab === "camera") {
         handle(controlPoint('az'), "az", "#43dbb3", 8);
         handle(controlPoint('el'), "el", "#f482b0", 8);
-        handle(cameraP, "dist", "#ffbc78", 8);
+        handle(cameraP, "distance", "#ffbc78", 8);
+        const targetPoint = project(center), targetText = ui[lang][state.cam.focus + 'Target'];
+        ctx.beginPath(); ctx.arc(targetPoint.x, targetPoint.y, 6, 0, Math.PI * 2); ctx.strokeStyle = '#ffce83'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.font = '11px system-ui'; ctx.fillStyle = '#ffce83'; ctx.fillText(ui[lang].target + ': ' + targetText, targetPoint.x + 12, targetPoint.y - 10);
       } else {
         const joints = Object.entries(PARTS).map(([part, config]) => ({ part, point: J[config.joint] }));
         // Paint far handles first so the nearest overlapping joint remains selectable.
@@ -323,14 +326,18 @@ const CamPose = (() => {
       render();
     }
 
+    function cameraDescription(l) {
+      const [rw, rh] = ratio.split(':').map(Number);
+      return M.describeCamera(state.cam, l, state.pose.yaw, M.skeleton(state.pose), rw / rh || 1);
+    }
     function output() {
       const l = opts.plang?.() || lang;
-      root.querySelector(".cps-out-text").textContent = state.tab === "camera" ? M.describeCamera(state.cam, l, state.pose.yaw) : M.describePose(state.pose, state.cam, l);
+      root.querySelector(".cps-out-text").textContent = state.tab === "camera" ? cameraDescription(l) : M.describePose(state.pose, state.cam, l);
     }
-    function changed(kind) { if (kind === "pose") state.pose.preset = null; sync(); output(); render(); emit(kind); }
+    function changed(kind) { if (kind === "pose") state.pose.preset = null; state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose)); sync(); output(); render(); emit(kind); }
     const angle = x => `${Math.round(x)}°`;
     function slider(path, label, min, max, val, hint = "", step = 1, unit = "°") {
-      return `<label class="cps-sl"><span class="cps-sl-top"><span>${label}</span><output>${unit ? angle(val) : val.toFixed(2)}</output></span>
+      return `<label class="cps-sl"><span class="cps-sl-top"><span>${label}</span><output>${unit === "m" ? val.toFixed(2) + " m" : unit ? angle(val) : val.toFixed(2)}</output></span>
         <input aria-label="${label}" type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-angle="${path}">${hint ? `<small>${hint}</small>` : ""}</label>`;
     }
     function renderPanel() {
@@ -345,10 +352,10 @@ const CamPose = (() => {
       root.querySelector(".cps-out b").textContent = t.output;
       if (!renderer) status.textContent = text.unsupported;
       if (state.tab === "camera") {
-        panel.innerHTML = `<div class="cps-chips"><span>${t.camPresets}</span>${CAM_PRESETS.map((c, i) => `<button type="button" data-campreset="${i}">${c[lang]}</button>`).join("")}</div><div class="cps-sliders">
+        panel.innerHTML = `<div class="cps-chips"><span>${t.camPresets}</span>${CAM_PRESETS.map((c, i) => `<button type="button" data-campreset="${i}">${c[lang]}</button>`).join("")}</div><div class="cps-focus" role="group" aria-label="${text.focus}"><span>${text.focus}</span>${['head', 'chest', 'whole'].map(f => `<button type="button" data-focus="${f}" aria-pressed="${state.cam.focus === f}">${text[f + 'Target']}</button>`).join('')}</div><div class="cps-sliders">
           ${slider("cam.az", t.az, 0, 359, M.wrap360(state.cam.az - state.pose.yaw), t.azHint)}
-          ${slider("cam.el", t.el, -30, 75, state.cam.el, t.elHint)}
-          ${slider("cam.dist", t.dist, 0.6, 1.4, state.cam.dist, t.distHint, 0.01, "")}</div>`;
+          ${slider("cam.el", t.el, -60, 85, state.cam.el, t.elHint + ' · ' + text.floorHint + ': ' + Math.ceil(M.minCameraElevation(state.cam.distance, M.cameraTarget(state.cam, M.skeleton(state.pose)))) + '°', 0.1)}
+          ${slider("cam.distance", t.dist, 0.2, 8, state.cam.distance, text.distanceHint, 0.01, "m")}</div>`;
       } else {
         const config = PARTS[state.part];
         panel.innerHTML = `<div class="cps-chips"><span>${t.presets}</span>${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${state.pose.preset === p.id}">${p[lang]}</button>`).join("")}</div>
@@ -364,8 +371,10 @@ const CamPose = (() => {
       panel.querySelectorAll("[data-angle]").forEach(input => {
         const path = input.dataset.angle;
         const val = path === "cam.az" ? M.wrap360(state.cam.az - state.pose.yaw) : path.startsWith("cam.") ? state.cam[path.slice(4)] : M.get(state.pose, path.slice(5));
-        input.value = val; input.closest("label").querySelector("output").textContent = path === "cam.dist" ? val.toFixed(2) : angle(val);
+        if (path === 'cam.el') input.closest('label').querySelector('small').textContent = T[lang].elHint + ' · ' + ui[lang].floorHint + ': ' + Math.ceil(M.minCameraElevation(state.cam.distance, M.cameraTarget(state.cam, M.skeleton(state.pose)))) + '°';
+        input.value = val; input.closest("label").querySelector("output").textContent = path === "cam.distance" ? val.toFixed(2) + ' m' : angle(val);
       });
+      panel.querySelectorAll('[data-focus]').forEach(b => b.setAttribute('aria-pressed', b.dataset.focus === state.cam.focus));
       panel.querySelectorAll("[data-preset]").forEach(b => b.setAttribute("aria-pressed", state.pose.preset === b.dataset.preset));
     }
     function selectPart(part) { state.part = part; renderPanel(); render(); }
@@ -373,7 +382,7 @@ const CamPose = (() => {
       const button = e.target.closest("button"); if (!button) return;
       if (button.dataset.tab) { state.tab = button.dataset.tab; cameraEditorFrame = null; renderPanel(); render(); }
       else if (button.hasAttribute("data-reset")) {
-        if (state.tab === "camera") state.cam = { az: M.wrap360(state.pose.yaw + 45), el: 10, dist: 1 };
+        if (state.tab === "camera") state.cam = M.normalizeCamera({ az: M.wrap360(state.pose.yaw + 45), el: 10, distance: 2.8, focus: "chest" });
         else state.pose = M.normalizePose({ preset: "stand" });
         renderPanel(); render(); emit(state.tab === "camera" ? "cam" : "pose");
       } else if (button.dataset.view) {
@@ -383,8 +392,17 @@ const CamPose = (() => {
         drawing = button.dataset.mode === "drawing";
         root.dataset.render = drawing ? "drawing" : "volume";
         root.querySelectorAll("[data-mode]").forEach(b => b.setAttribute("aria-pressed", b === button)); render();
+      } else if (button.dataset.focus) {
+        state.cam.focus = button.dataset.focus;
+        if (state.cam.focus === 'whole') {
+          const J = updateFigure(), box = new THREE.Box3().setFromObject(rig), rect = insetRect();
+          state.cam.distance = M.fitCameraDistance(state.cam, J, rect.width / rect.height, { min: box.min.toArray(), max: box.max.toArray() });
+        }
+        cameraEditorFrame = null; changed('cam'); renderPanel();
       } else if (button.dataset.campreset !== undefined) {
-        const p = CAM_PRESETS[+button.dataset.campreset]; state.cam = { ...p.c, az: M.wrap360(p.c.az + state.pose.yaw) }; changed("cam");
+        const p = CAM_PRESETS[+button.dataset.campreset]; state.cam = M.normalizeCamera({ ...p.c, az: M.wrap360(p.c.az + state.pose.yaw) });
+        if (p.fit) { const J = updateFigure(), box = new THREE.Box3().setFromObject(rig), rect = insetRect(); state.cam.distance = M.fitCameraDistance(state.cam, J, rect.width / rect.height, { min: box.min.toArray(), max: box.max.toArray() }); }
+        cameraEditorFrame = null; changed("cam"); renderPanel();
       } else if (button.dataset.preset) {
         state.pose = M.normalizePose({ ...copy(PRESETS.find(p => p.id === button.dataset.preset).pose), preset: button.dataset.preset }); renderPanel(); render(); emit("pose");
       } else if (button.dataset.part) selectPart(button.dataset.part);
@@ -409,7 +427,7 @@ const CamPose = (() => {
     });
     root.querySelector(".cps-tabs").addEventListener("keydown", e => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
-      e.preventDefault(); state.tab = e.key === "Home" ? "camera" : e.key === "End" ? "pose" : state.tab === "camera" ? "pose" : "camera";
+      e.preventDefault(); state.tab = e.key === "Home" ? "camera" : e.key === "End" ? "pose" : state.tab === "camera" ? "pose" : "camera"; cameraEditorFrame = null;
       renderPanel(); root.querySelector(`[data-tab="${state.tab}"]`).focus(); render();
     });
     const point = e => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
@@ -477,11 +495,12 @@ const CamPose = (() => {
     canvas.addEventListener("wheel", e => { e.preventDefault(); view.dist = clamp(view.dist * (1 + Math.sign(e.deltaY) * 0.08), 1.7, 9); render(); }, { passive: false });
     canvas.addEventListener("webglcontextlost", e => { e.preventDefault(); lost = true; status.hidden = false; status.textContent = ui[lang].context; });
     canvas.addEventListener("webglcontextrestored", () => { lost = false; status.hidden = true; render(); });
+    state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose));
     const ro = new ResizeObserver(size); ro.observe(canvas); size(); renderPanel();
     return {
-      value, set(val = {}) { state.cam = M.normalizeCamera(val.cam); state.pose = M.normalizePose(val.pose); renderPanel(); render(); },
+      value, set(val = {}) { state.cam = M.normalizeCamera(val.cam); state.pose = M.normalizePose(val.pose); state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose)); cameraEditorFrame = null; renderPanel(); render(); },
       setLang(l) { lang = l; renderPanel(); }, setRatio(r) { ratio = r; size(); }, refresh() { size(); output(); },
-      describe(l) { return { camera: M.describeCamera(state.cam, l, state.pose.yaw), pose: M.describePose(state.pose, state.cam, l) }; },
+      describe(l) { return { camera: cameraDescription(l), pose: M.describePose(state.pose, state.cam, l) }; },
       destroy() { ro.disconnect(); cancelAnimationFrame(scheduled); const geometries = new Set(), materials = new Set(); scene.traverse(o => { if (o.geometry) geometries.add(o.geometry); if (o.material) materials.add(o.material); }); geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); continuous.skeleton.dispose(); skin.dispose(); selected.dispose(); renderer?.dispose(); root.replaceChildren(); }
     };
   }

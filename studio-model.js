@@ -116,76 +116,63 @@ const CamPoseModel = (() => {
     return J;
   }
 
-  /* ---------- camera model ---------- */
-  // az: 0 front, 90 the character's right, 180 back, 270 left. el: -30 (low) .. 60 (high). dist: 0.6 (close) .. 1.4 (wide).
+  /* ---------- physical camera: metres, one pose shared by the icon and preview ---------- */
+  const CAMERA = { minDistance: 0.2, maxDistance: 8, fov: 45, guideRadius: 1.1, floor: 0.06 };
   const camDir = c => norm(v(-Math.sin(c.az * D2R) * Math.cos(c.el * D2R), Math.sin(c.el * D2R), Math.cos(c.az * D2R) * Math.cos(c.el * D2R)));
-  function shotCamera(c, J, aspect = 1) {
-    // Frame by shot size: close-up on the face, medium from the waist up, full body, then wide.
-    const foot = Math.min(J.lAnkle[1], J.rAnkle[1], J.lToe[1], J.rToe[1]) - 0.06, head = J.head[1] + 0.125;
-    const fullY = (head + foot) / 2, height = head - foot;
-    const stops = [
-      [0.6, head - 0.15, 0.38], [0.7, head - 0.23, 0.65], [0.85, head - 0.4, 1.0],
-      [1.0, head - 0.52, 1.25], [1.05, fullY, height + 0.24], [1.25, fullY, height + 0.45], [1.4, fullY, height * 1.9]
-    ];
-    let k = 0;
-    while (k < stops.length - 2 && c.dist > stops[k + 1][0]) k++;
-    const [d0, y0, r0] = stops[k], [d1, y1, r1] = stops[k + 1];
-    const t = clamp((c.dist - d0) / (d1 - d0), 0, 1);
-    const blend = clamp((c.dist - 0.7) / 0.35, 0, 1);
-    const target = v(J.head[0] * (1 - blend), y0 + (y1 - y0) * t, J.head[2] * (1 - blend));
-    const radius = (r0 + (r1 - r0) * t) / (2 * Math.tan(16 * D2R)) / Math.min(1, aspect);
-    return { pos: add(target, mul(camDir(c), radius)), target, fov: 32 };
+  function cameraTarget(cam, J) {
+    if (cam.focus === 'head') return add(J.head, mv(J.headM, [0, -0.01, 0.09]));
+    return add(J.chest, mv(J.ubM, [0, cam.focus === 'whole' ? -0.16 : -0.08, 0.1]));
   }
-
-  function framedCamera(c, J, aspect, bounds) {
-    const spec = shotCamera(c, J, aspect), direction = camDir(c);
-    let target = spec.target, radius = Math.hypot(...sub(spec.pos, target)), fov = spec.fov;
-    if (c.dist > 1 && bounds) {
-      const center = mul(add(bounds.min, bounds.max), 0.5);
+  const minCameraElevation = (distance, target) => Math.max(-60, Math.asin(clamp((CAMERA.floor - target[1]) / distance, -1, 1)) / D2R);
+  function constrainToTarget(cam, target) {
+    const c = normalizeCamera(cam);
+    c.el = Math.max(Math.round(c.el * 10) / 10, Math.ceil(minCameraElevation(c.distance, target) * 10) / 10);
+    return c;
+  }
+  function constrainCamera(cam, J) { return constrainToTarget(cam, cameraTarget(normalizeCamera(cam), J)); }
+  function shotCamera(cam, J) {
+    const target = cameraTarget(normalizeCamera(cam), J), camera = constrainToTarget(cam, target);
+    return { target, pos: add(target, mul(camDir(camera), camera.distance)), fov: CAMERA.fov, camera };
+  }
+  // Compatibility entry point; no hidden reframing or field-of-view changes.
+  const framedCamera = (cam, J) => shotCamera(cam, J);
+  function cameraBounds(J) {
+    const points = Object.entries(J).filter(([k, p]) => Array.isArray(p) && p.length === 3 && !/forward/i.test(k)).map(([, p]) => p);
+    const min = [0, 1, 0].map((_, i) => Math.min(...points.map(p => p[i])) - (i === 1 ? 0.06 : 0.09));
+    const max = [0, 1, 0].map((_, i) => Math.max(...points.map(p => p[i])) + (i === 1 ? 0.14 : 0.09));
+    return { min, max };
+  }
+  function fitCameraDistance(cam, J, aspect = 1, bounds = cameraBounds(J)) {
+    const target = cameraTarget(normalizeCamera(cam), J), vf = Math.tan(CAMERA.fov * D2R / 2), hf = vf * aspect;
+    let distance = 0.2;
+    // At low angles a longer distance raises the floor limit; solve the final geometry together.
+    for (let pass = 0; pass < 12; pass++) {
+      const c = constrainToTarget({ ...normalizeCamera(cam), distance }, target), direction = camDir(c);
       const right = norm(cross([0, 1, 0], direction)), up = cross(direction, right);
-      const required = angle => {
-        const vf = Math.tan(angle * D2R / 2), hf = vf * aspect;
-        let distance = 0;
-        for (const x of [bounds.min[0], bounds.max[0]]) for (const y of [bounds.min[1], bounds.max[1]]) for (const z of [bounds.min[2], bounds.max[2]]) {
-          const d = sub([x, y, z], center);
-          distance = Math.max(distance, dot(d, direction) + Math.max(Math.abs(dot(d, right)) / hf, Math.abs(dot(d, up)) / vf) * 1.13);
-        }
-        return distance * (1 + Math.max(0, c.dist - 1.05) * 2.5);
-      };
-      let fullFov = 32, fullRadius = required(fullFov);
-      if (center[1] + direction[1] * fullRadius < 0.08) {
-        let low = 32, high = 150;
-        for (let i = 0; i < 28; i++) {
-          const middle = (low + high) / 2;
-          if (center[1] + direction[1] * required(middle) < 0.08) low = middle; else high = middle;
-        }
-        fullFov = high; fullRadius = required(fullFov);
+      let required = 0.2;
+      for (const x of [bounds.min[0], bounds.max[0]]) for (const y of [bounds.min[1], bounds.max[1]]) for (const z of [bounds.min[2], bounds.max[2]]) {
+        const d = sub([x, y, z], target);
+        required = Math.max(required, dot(d, direction) + Math.max(Math.abs(dot(d, right)) / hf, Math.abs(dot(d, up)) / vf) * 1.15);
       }
-      const t = clamp((c.dist - 1) / 0.05, 0, 1), mix = t * t * (3 - 2 * t);
-      target = add(mul(target, 1 - mix), mul(center, mix));
-      radius += (fullRadius - radius) * mix;
-      fov += (fullFov - fov) * mix;
+      distance = Math.max(distance, required);
     }
-    // Keep low shots above the floor at every framing distance, including medium shots.
-    if (direction[1] < 0) {
-      const maxRadius = Math.max(0.01, (target[1] - 0.08) / -direction[1]);
-      if (radius > maxRadius) { fov = 2 / D2R * Math.atan(Math.tan(fov * D2R / 2) * radius / maxRadius); radius = maxRadius; }
-    }
-    return { target, pos: add(target, mul(direction, radius)), fov };
+    return clamp(distance, CAMERA.minDistance, CAMERA.maxDistance);
   }
-
-  function cameraControlPoint(cam, id, center) {
-    if (id === 'az') return add(mul(camDir({ az: cam.az, el: 0 }), 1.35), [0, 0.012, 0]);
-    const scale = cam.el < 0 ? Math.min(1, Math.max(0.2, center[1] - 0.06) / -Math.sin(cam.el * D2R) / 2.17) : 1;
-    return add(center, mul(camDir(cam), id === 'dist' ? (1.65 + (cam.dist - 0.6) * 0.65) * scale : 1));
+  function cameraControlPoint(cam, id, target) {
+    const c = constrainToTarget(cam, target);
+    if (id === 'az') return add([target[0], 0.012, target[2]], mul(camDir({ az: c.az, el: 0 }), 1.35));
+    return add(target, mul(camDir(c), id === 'distance' ? c.distance : CAMERA.guideRadius));
   }
-  function dragCameraControl(cam, id, target, project, center) {
-    const current = cam[id], range = id === 'dist' ? 0.12 : 25, step = id === 'dist' ? 0.001 : 0.25;
-    let best = current, score = Infinity;
+  function dragCameraControl(cam, id, pointer, project, center) {
+    const c = normalizeCamera(cam), current = c[id];
+    const range = id === 'distance' ? Math.min(0.9, Math.max(0.2, current * 0.4)) : 25;
+    const step = id === 'distance' ? 0.0025 : 0.25;
+    const origin = project(cameraControlPoint(c, id, center));
+    let best = current, score = origin ? (origin.x - pointer.x) ** 2 + (origin.y - pointer.y) ** 2 : Infinity;
     for (let delta = -range; delta <= range + step / 2; delta += step) {
-      const value = id === 'az' ? ((current + delta) % 360 + 360) % 360 : clamp(current + delta, id === 'el' ? -30 : 0.6, id === 'el' ? 75 : 1.4);
-      const point = project(cameraControlPoint({ ...cam, [id]: value }, id, center));
-      const cost = (point.x - target.x) ** 2 + (point.y - target.y) ** 2 + delta * delta * (id === 'dist' ? 12.8 : 0.025);
+      const value = id === 'az' ? ((current + delta) % 360 + 360) % 360 : clamp(current + delta, id === 'el' ? -60 : CAMERA.minDistance, id === 'el' ? 85 : CAMERA.maxDistance);
+      const point = project(cameraControlPoint({ ...c, [id]: value }, id, center)); if (!point) continue;
+      const cost = (point.x - pointer.x) ** 2 + (point.y - pointer.y) ** 2 + delta * delta * (id === 'distance' ? 0.002 : 0.025);
       if (cost < score) { score = cost; best = value; }
     }
     return best;
@@ -222,19 +209,23 @@ const CamPoseModel = (() => {
     if (el <= 50) return ["高角度俯拍", "high angle shot, looking down at the subject"];
     return ["鸟瞰俯视", "bird's-eye view from above"];
   }
-  function distWords(d) {
-    if (d < 0.7) return ["特写", "close-up"];
-    if (d < 0.85) return ["近景", "medium close-up"];
-    if (d < 1.05) return ["中景", "medium shot"];
-    if (d < 1.25) return ["全身景", "full shot, whole body in frame"];
-    return ["远景", "wide shot"];
+  function shotWords(cam, J, aspect = 1) {
+    const c = normalizeCamera(cam), spec = shotCamera(c, J), bounds = cameraBounds(J);
+    const view = makeView(spec.pos, spec.target, spec.fov, 100 * aspect, 100), projected = [];
+    for (const x of [bounds.min[0], bounds.max[0]]) for (const y of [bounds.min[1], bounds.max[1]]) for (const z of [bounds.min[2], bounds.max[2]]) projected.push(view.project([x, y, z]));
+    const inside = projected.every(p => p && p.x >= 0 && p.x <= 100 * aspect && p.y >= 0 && p.y <= 100);
+    if (inside) {
+      const height = Math.max(...projected.map(p => p.y)) - Math.min(...projected.map(p => p.y));
+      return height < 45 ? ['远景', 'wide shot'] : ['全身景', 'full shot, whole body in frame'];
+    }
+    const coverage = 2 * c.distance * Math.tan(spec.fov * D2R / 2);
+    if (coverage < 0.65) return c.focus === 'head' ? ['脸部特写', 'face close-up'] : ['上身细节特写', 'close-up of the upper torso'];
+    return coverage < 1.25 ? ['近景', 'medium close-up'] : ['中景', 'medium shot'];
   }
-  // yaw: which way the character faces, so "front view" always means seeing their face.
-  function describeCamera(c, lang, yaw = 0) {
-    const i = lang === "zh" ? 0 : 1;
-    const rel = c.az - yaw;
+  function describeCamera(cam, lang, yaw = 0, J = skeleton(BASE()), aspect = 1) {
+    const c = constrainCamera(cam, J), i = lang === 'zh' ? 0 : 1, rel = c.az - yaw;
     const az = AZ[Math.round((((rel % 360) + 360) % 360) / 45) % 8][i];
-    return [az, elWords(c.el)[i], distWords(c.dist)[i]].join(lang === "zh" ? "," : ", ");
+    return [az, elWords(c.el)[i], shotWords(c, J, aspect)[i]].join(lang === 'zh' ? ',' : ', ');
   }
 
   // [zh one arm, en one arm, zh both arms, en both arms]
@@ -327,16 +318,15 @@ const CamPoseModel = (() => {
       seated: "Sitting (adds a stool)", presets: "Common poses", camPresets: "Common angles", output: "Prompt" }
   };
   const CAM_PRESETS = [
-    { zh: "正面平视", en: "Front, eye level", c: { az: 0, el: 0, dist: 1 } },
-    { zh: "四分之三侧面", en: "Three-quarter", c: { az: 45, el: 10, dist: 1 } },
-    { zh: "侧面", en: "Profile", c: { az: 90, el: 0, dist: 1 } },
-    { zh: "背影", en: "From behind", c: { az: 180, el: 10, dist: 1.15 } },
-    { zh: "仰拍全身", en: "Low-angle full body", c: { az: 20, el: -25, dist: 1.2 } },
-    { zh: "俯拍", en: "High angle", c: { az: 30, el: 40, dist: 1 } },
-    { zh: "脸部特写", en: "Face close-up", c: { az: 15, el: 5, dist: 0.62 } },
-    { zh: "大远景", en: "Wide establishing", c: { az: 30, el: 20, dist: 1.4 } }
+    { zh: '正面平视', en: 'Front, eye level', c: { az: 0, el: 0, distance: 2.8, focus: 'chest' } },
+    { zh: '四分之三侧面', en: 'Three-quarter', c: { az: 45, el: 10, distance: 2.8, focus: 'chest' } },
+    { zh: '侧面', en: 'Profile', c: { az: 90, el: 0, distance: 2.8, focus: 'chest' } },
+    { zh: '背影', en: 'From behind', c: { az: 180, el: 10, distance: 3.5, focus: 'chest' } },
+    { zh: '仰拍全身', en: 'Low-angle full body', fit: true, c: { az: 20, el: -25, distance: 3.5, focus: 'whole' } },
+    { zh: '俯拍', en: 'High angle', c: { az: 30, el: 40, distance: 2.8, focus: 'chest' } },
+    { zh: '脸部特写', en: 'Face close-up', c: { az: 15, el: 5, distance: 0.65, focus: 'head' } },
+    { zh: '大远景', en: 'Wide establishing', c: { az: 30, el: 20, distance: 7, focus: 'whole' } }
   ];
-
 
   // Explicit paths keep independent joints editable without relying on the selected limb.
   const control = (path, zh, en, min, max) => ({ path, zh, en, min, max });
@@ -372,9 +362,11 @@ const CamPoseModel = (() => {
     return p;
   }
   function normalizeCamera(raw = {}) {
-    if (!raw || typeof raw !== "object") raw = {};
-    return { az: wrap360(finite(raw.az, 45)), el: clamp(finite(raw.el, 10), -30, 75), dist: clamp(finite(raw.dist, 1), 0.6, 1.4) };
+    if (!raw || typeof raw !== 'object') raw = {};
+    const old = clamp(finite(raw.dist, 1), 0.6, 1.4);
+    const legacy = old <= 1 ? 0.65 + (old - 0.6) / 0.4 * 2.15 : 2.8 + (old - 1) / 0.4 * 4.2;
+    return { version: 2, az: wrap360(finite(raw.az, 45)), el: clamp(finite(raw.el, 10), -60, 85), distance: clamp(finite(raw.distance, legacy), CAMERA.minDistance, CAMERA.maxDistance), focus: ['head', 'chest', 'whole'].includes(raw.focus) ? raw.focus : 'chest' };
   }
 
-  return { D2R, clamp, v, add, sub, mul, dot, cross, norm, rx, ry, rz, mv, chain, BASE, P, PRESETS, B, skeleton, camDir, shotCamera, framedCamera, cameraControlPoint, dragCameraControl, makeView, describeCamera, describePose, T, CAM_PRESETS, PARTS, get, put, wrap360, normalizePose, normalizeCamera };
+  return { D2R, clamp, v, add, sub, mul, dot, cross, norm, rx, ry, rz, mv, chain, BASE, P, PRESETS, B, skeleton, CAMERA, camDir, shotCamera, framedCamera, cameraTarget, cameraBounds, constrainCamera, minCameraElevation, fitCameraDistance, cameraControlPoint, dragCameraControl, makeView, describeCamera, describePose, T, CAM_PRESETS, PARTS, get, put, wrap360, normalizePose, normalizeCamera };
 })();

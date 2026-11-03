@@ -423,6 +423,9 @@ footer a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--li
 .cps-out b{flex:none;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .cps-out-text{font-family:var(--mono);font-size:12.5px;line-height:1.6}
 .cps-panel{display:grid;gap:12px}
+.cps-view-tools .cps-download{margin-left:auto;background:var(--text);color:var(--on-text);border-color:var(--text);font-weight:600;padding:5px 10px}
+.cps-view-tools .cps-download:hover{opacity:.88}
+.cps-people{padding-bottom:10px;border-bottom:1px solid var(--line)}
 .cps-focus{display:flex;gap:7px;align-items:center;flex-wrap:wrap;font-size:12px}
 .cps-focus>span{color:var(--muted);margin-right:3px}
 .cps-focus button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;cursor:pointer}
@@ -548,6 +551,7 @@ footer a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--li
       <span data-i18n="studioUse"></span>
       <label class="use-toggle"><input type="checkbox" id="useCam"> <span data-i18n="useCam"></span></label>
       <label class="use-toggle"><input type="checkbox" id="usePose"> <span data-i18n="usePose"></span></label>
+      <label class="use-toggle"><input type="checkbox" id="useLight"> <span data-i18n="useLight"></span></label>
     </div>
     <div id="studio"></div>
   </section>
@@ -796,7 +800,7 @@ const I18N = {
     random:"Random idea",
     builderTitle:"Pick your keywords", builderSub:"Click to add, click again to remove",
     studioTitle:"3D camera & pose", studioSub:"Drag to set the exact angle and pose — no more hunting for words",
-    studioUse:"Add to prompt:", useCam:"Camera angle", usePose:"Pose",
+    studioUse:"Add to prompt:", useCam:"Camera angle", usePose:"Pose", useLight:"Lighting",
     by3d:"Replaced by the 3D camera angle (turn it off to use this word)",
     customPh:"Add your own {cat} keyword…", add:"Add",
     dgLabel:"Image not right? Check here",
@@ -842,7 +846,7 @@ const I18N = {
     random:"随机灵感",
     builderTitle:"挑选关键词", builderSub:"点击加入,再点一次取消",
     studioTitle:"3D 镜头与姿势", studioSub:"拖一拖就能定好角度和姿势,不用再想怎么描述",
-    studioUse:"加入提示词:", useCam:"镜头角度", usePose:"姿势",
+    studioUse:"加入提示词:", useCam:"镜头角度", usePose:"姿势", useLight:"光线",
     by3d:"已由 3D 镜头角度取代(关掉 3D 镜头即可使用这个词)",
     customPh:"自己写一个{cat}关键词…", add:"添加",
     dgLabel:"出图不对?对照排查",
@@ -888,7 +892,7 @@ try {
   if (raw) CATS.forEach(c => { if (Array.isArray(raw[c])) state[c] = raw[c]; });
 } catch(e) {}
 // 3D 镜头与姿势:角度/姿势本身,以及是否加入提示词
-let cp = { cam:null, pose:null, useCam:false, usePose:false };
+let cp = { cam:null, pose:null, pose2:null, second:false, light:null, useCam:false, usePose:false, useLight:false };
 try {
   const raw = JSON.parse(localStorage.getItem(LS_STATE));
   if (raw && raw.cp) cp = Object.assign(cp, raw.cp);
@@ -897,31 +901,35 @@ function saveState() { try { localStorage.setItem(LS_STATE, JSON.stringify({ ...
 
 const studio = CamPose.create(document.getElementById("studio"), {
   lang, ratio: "1:1", plang: () => plang,
-  value: { cam: cp.cam || undefined, pose: cp.pose || undefined },
+  value: { cam: cp.cam || undefined, pose: cp.pose || undefined, pose2: cp.pose2 || undefined, second: cp.second, light: cp.light || undefined },
   onChange(v, kind) {
-    // Touching the camera or the pose turns that part on in the prompt.
+    // Touching the camera, the pose or the light turns that part on in the prompt.
     if (kind === "cam") cp.useCam = true;
     if (kind === "pose") cp.usePose = true;
-    cp.cam = v.cam; cp.pose = v.pose;
+    if (kind === "light") cp.useLight = true;
+    Object.assign(cp, { cam: v.cam, pose: v.pose, pose2: v.pose2, second: v.second, light: v.light });
     syncUse(); render();
   }
 });
-if (!cp.cam) { const v0 = studio.value(); cp.cam = v0.cam; cp.pose = v0.pose; }
+if (!cp.cam) { const v0 = studio.value(); Object.assign(cp, { cam: v0.cam, pose: v0.pose, pose2: v0.pose2, second: v0.second, light: v0.light }); }
 function syncUse() {
   document.getElementById("useCam").checked = cp.useCam;
   document.getElementById("usePose").checked = cp.usePose;
+  document.getElementById("useLight").checked = cp.useLight;
 }
 document.getElementById("useCam").addEventListener("change", e => { cp.useCam = e.target.checked; render(); });
 document.getElementById("usePose").addEventListener("change", e => { cp.usePose = e.target.checked; render(); });
+document.getElementById("useLight").addEventListener("change", e => { cp.useLight = e.target.checked; render(); });
 syncUse();
 // 打开 3D 镜头时,它取代「景别」和「拍摄角度」里选的词,免得提示词自相矛盾
 const CAMERA_WORDS = new Set(DATA.style.groups[0].dims.filter(d => d.label[0] === "景别" || d.label[0] === "拍摄角度").flatMap(d => d.chips.map(c => c[0])));
-const overridden = (cat, w) => cp.useCam && cat === "style" && CAMERA_WORDS.has(w);
+const LIGHT_WORDS = new Set(DATA.style.groups[0].dims.filter(d => d.label[0] === "光源").flatMap(d => d.chips.map(c => c[0])));
+const overridden = (cat, w) => cat === "style" && ((cp.useCam && CAMERA_WORDS.has(w)) || (cp.useLight && LIGHT_WORDS.has(w)));
 const picked = cat => state[cat].filter(w => !overridden(cat, w));
 // 镜头词放进「风格」,姿势放进「主体」
 function extras(inLang) {
   const d = studio.describe(inLang);
-  return { time:[], scene:[], subject: cp.usePose ? [d.pose] : [], style: cp.useCam ? [d.camera] : [] };
+  return { time:[], scene:[], subject: cp.usePose ? [d.pose] : [], style: [...(cp.useCam ? [d.camera] : []), ...(cp.useLight ? [d.light] : [])] };
 }
 
 function wordText(id, inLang) {
@@ -1065,7 +1073,7 @@ function randomIdea() {
 document.getElementById("clearBtn").addEventListener("click", () => {
   clearPresetNote();
   CATS.forEach(c => state[c] = []);
-  cp.useCam = cp.usePose = false; syncUse();
+  cp.useCam = cp.usePose = cp.useLight = false; syncUse();
   render();
 });
 

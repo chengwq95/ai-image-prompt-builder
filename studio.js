@@ -84,7 +84,7 @@ const CamPose = (() => {
     key.position.set(-3, 5, 4); key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048); key.shadow.radius = 6;
     Object.assign(key.shadow.camera, { left: -2.5, right: 2.5, top: 3, bottom: -2, near: 0.1, far: 12 });
-    key.shadow.bias = -0.0005; key.shadow.normalBias = 0.015;
+    key.shadow.bias = -0.0008; key.shadow.normalBias = 0.035;
     Object.assign(key.shadow.camera, { left: -3.2, right: 3.2, top: 3.4, bottom: -2.4 });
     scene.add(key); scene.add(key.target);
     const rim = new THREE.DirectionalLight(0x9bbaff, 2.7); rim.position.set(3, 3, -3); scene.add(rim);
@@ -351,7 +351,7 @@ const CamPose = (() => {
       // One physical camera pose drives the yellow icon, sight line and preview.
       controlCenter = spec.target;
       const cameraP = spec.pos;
-      const far = state.tab === "camera" ? 1.3 / Math.min(1, width / height) : 1;
+      const far = state.tab === "camera" ? 1.3 / Math.min(1, width / height) : state.tab === "light" ? 1.35 : 1;
       let editorDistance = view.dist * far;
       if (state.tab === "camera" && !cameraEditorFrame) {
         const points = [V(cameraP)];

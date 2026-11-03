@@ -43,7 +43,7 @@ test('damaged storage is clamped and cannot inject NaN into a camera or skeleton
   const p = M.normalizePose({ yaw: Infinity, lean: 1000, lArm: { c: -99, a: 'bad', index: null }, rLeg: null, preset: 'unknown' });
   assert.equal(p.yaw, 0); assert.equal(p.lean, 60); assert.equal(p.lArm.c, 0); assert.equal(p.lArm.a, 8); assert.equal(p.preset, null);
   const c = M.normalizeCamera({ az: -90, el: 500, dist: NaN });
-  assert.equal(c.az, 270); assert.equal(c.el, 75); assert.equal(c.dist, 1);
+  assert.equal(c.az, 270); assert.equal(c.el, 85); assert.equal(c.distance, 2.8); assert.equal(c.focus, "chest");
   for (const raw of [null, false, {}, { headPitch: NaN }]) for (const x of Object.values(M.skeleton(M.normalizePose(raw))).flat()) assert.ok(Number.isFinite(x));
 });
 
@@ -72,7 +72,7 @@ test('ankles inherit the leg frame, and independent foot controls move the toes'
   for (const x of Object.values(edited).flat()) assert.ok(Number.isFinite(x));
 });
 
-test('shot camera targets remain continuous at framing stops and respect elevation and aspect', () => {
+test('legacy distance migration remains continuous and physical cameras respect elevation', () => {
   const J = M.skeleton(M.BASE());
   for (const distance of [0.7, 0.85, 1, 1.05, 1.25]) {
     const a = M.shotCamera({ az: 45, el: 30, dist: distance - 1e-7 }, J);
@@ -81,7 +81,7 @@ test('shot camera targets remain continuous at framing stops and respect elevati
     assert.ok(Math.hypot(...M.sub(a.pos, b.pos)) < 0.0001);
   }
   for (const aspect of [9 / 16, 1, 16 / 9]) for (const el of [-30, 0, 40, 75]) {
-    const c = { az: 75, el, dist: 1.2 }, sc = M.shotCamera(c, J, aspect);
+    const c = { az: 75, el, distance: 1.2, focus: "chest" }, sc = M.shotCamera(c, J, aspect);
     const direction = M.norm(M.sub(sc.pos, sc.target));
     near(direction[1], Math.sin(el * M.D2R));
     const projected = M.makeView(sc.pos, sc.target, sc.fov, 200 * aspect, 200).project(sc.target);

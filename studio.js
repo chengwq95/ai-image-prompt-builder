@@ -2,6 +2,9 @@
 const CamPose = (() => {
   const M = CamPoseModel;
   const { D2R, clamp, add, sub, mul, mv, B, PARTS, PRESETS, T, CAM_PRESETS } = M;
+  // Seat surface where the seated mesh's buttocks actually rest (measured: about 6 cm below the
+  // skeleton's seat height), so the body sits on the seat instead of sinking into it.
+  const SEAT_TOP = B.seat - 0.058;
   const V = p => new THREE.Vector3(...p);
   const identity = [1, 0, 0, 0, 1, 0, 0, 0, 1];
   const copy = x => JSON.parse(JSON.stringify(x));
@@ -164,9 +167,9 @@ const CamPose = (() => {
 
     for (const side of ["l", "r"]) group(side + "Hand", side + "Hand");
     const stool = new THREE.Group(); rig.add(stool);
-    const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.055, 40), propMat); seat.position.set(0, B.seat, -0.04); seat.castShadow = true; stool.add(seat);
+    const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.055, 40), propMat); seat.position.set(0, SEAT_TOP - 0.0275, -0.04); seat.castShadow = true; stool.add(seat);
     for (const x of [-0.15, 0.15]) for (const z of [-0.19, 0.11]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.023, B.seat, 12), propMat); leg.position.set(x, B.seat / 2, z); leg.castShadow = true; stool.add(leg);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.023, SEAT_TOP - 0.05, 12), propMat); leg.position.set(x, (SEAT_TOP - 0.05) / 2, z); leg.castShadow = true; stool.add(leg);
     }
     const props = makeProps(nodes, rig);
 
@@ -237,11 +240,26 @@ const CamPose = (() => {
     function makeProps(nodes, rig) {
       const box = (w, h, d, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.castShadow = true; m.receiveShadow = true; return m; };
       const items = {};
+      // A slab with rounded corners and softly bevelled edges, centred on the origin (w along x, h along y, d along z).
+      const slab = (w, h, d, r, mat, bevel = Math.min(d * 0.3, 0.003)) => {
+        const x = w / 2 - bevel, y = h / 2 - bevel, c = Math.max(0.0005, Math.min(r, x, y)), shape = new THREE.Shape();
+        shape.moveTo(-x + c, -y); shape.lineTo(x - c, -y); shape.quadraticCurveTo(x, -y, x, -y + c); shape.lineTo(x, y - c); shape.quadraticCurveTo(x, y, x - c, y);
+        shape.lineTo(-x + c, y); shape.quadraticCurveTo(-x, y, -x, y - c); shape.lineTo(-x, -y + c); shape.quadraticCurveTo(-x, -y, -x + c, -y);
+        const geo = new THREE.ExtrudeGeometry(shape, { depth: Math.max(0.0002, d - 2 * bevel), bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 3, curveSegments: 8 });
+        geo.translate(0, 0, -(d - 2 * bevel) / 2); geo.computeVertexNormals();
+        const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; return m;
+      };
       items.phone = new THREE.Group();
-      items.phone.add(box(0.07, 0.145, 0.009, darkMat));
-      const screen = box(0.060, 0.123, 0.001, new THREE.MeshStandardMaterial({ color: 0x263a50, roughness: 0.3 })); screen.position.z = -0.0055; items.phone.add(screen);
-      items.book = new THREE.Group(); items.book.add(box(0.16, 0.22, 0.026, bookMat));
-      const pages = box(0.151, 0.209, 0.021, cupMat); pages.position.x = 0.003; items.book.add(pages);
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.35, metalness: 0.6 });
+      items.phone.add(slab(0.071, 0.147, 0.0085, 0.011, frameMat));
+      const screen = slab(0.065, 0.141, 0.0008, 0.009, new THREE.MeshStandardMaterial({ color: 0x0e1622, roughness: 0.12, metalness: 0.2 }), 0.0002); screen.position.z = -0.0044; items.phone.add(screen);
+      const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.0055, 0.0016, 20), frameMat); lens.rotation.x = Math.PI / 2; lens.position.set(-0.021, 0.057, 0.0048); items.phone.add(lens);
+      // A hardback: two covers, a cream page block set back from the edges, and a rounded spine.
+      items.book = new THREE.Group();
+      for (const z of [-0.0115, 0.0115]) { const cover = slab(0.16, 0.222, 0.003, 0.004, bookMat, 0.001); cover.position.z = z; items.book.add(cover); }
+      const pages = slab(0.152, 0.212, 0.020, 0.002, cupMat, 0.001); pages.position.x = 0.002; items.book.add(pages);
+      const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.0128, 0.0128, 0.222, 18, 1, false, Math.PI, Math.PI), bookMat);
+      spine.position.x = -0.079; spine.castShadow = true; items.book.add(spine);
       items.cup = new THREE.Group();
       const wall = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.032, 0.10, 36, 1, true), cupMat); wall.castShadow = true; items.cup.add(wall);
       const rim = new THREE.Mesh(new THREE.TorusGeometry(0.0375, 0.0022, 8, 36), cupMat); rim.rotation.x = Math.PI / 2; rim.position.y = 0.05; items.cup.add(rim);
@@ -255,10 +273,10 @@ const CamPose = (() => {
       items.umbrella.add(shaft, canopy, handleBit, grip);
       for (const k of Object.keys(M.PROP_ATTACHMENTS)) rig.add(items[k]);
       items.chair = new THREE.Group(); {
-        const seatTop = box(0.44, 0.045, 0.42, woodMat); seatTop.position.y = B.seat;
-        const back = box(0.44, 0.46, 0.035, woodMat); back.position.set(0, B.seat + 0.25, -0.2);
+        const seatTop = box(0.44, 0.045, 0.42, woodMat); seatTop.position.y = SEAT_TOP - 0.0225;
+        const back = box(0.44, 0.46, 0.035, woodMat); back.position.set(0, SEAT_TOP + 0.23, -0.2);
         items.chair.add(seatTop, back);
-        for (const x of [-0.19, 0.19]) for (const z of [-0.18, 0.18]) { const l = box(0.035, B.seat, 0.035, woodMat); l.position.set(x, B.seat / 2, z); items.chair.add(l); }
+        for (const x of [-0.19, 0.19]) for (const z of [-0.18, 0.18]) { const l = box(0.035, SEAT_TOP - 0.045, 0.035, woodMat); l.position.set(x, (SEAT_TOP - 0.045) / 2, z); items.chair.add(l); }
       } rig.add(items.chair);
       items.table = new THREE.Group(); {
         const top = box(0.95, 0.04, 0.6, woodMat); top.position.y = 0.74; items.table.add(top);

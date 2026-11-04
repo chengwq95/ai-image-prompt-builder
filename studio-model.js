@@ -32,13 +32,13 @@ const CamPoseModel = (() => {
     lArm: arm(), rArm: arm(), lLeg: leg(), rLeg: leg()
   });
 
-  // Body types: overall height and how much each skinning bone widens (x, z) or thickens.
+  // Rest proportions and continuous surface profiles, baked before skinning.
   const BODY_TYPES = {
     male: { zh: "成年男性", en: "Adult man", height: 1, girth: {} },
-    female: { zh: "成年女性", en: "Adult woman", height: 0.94, say: null, girth: { torso: [0.9, 1, 0.94], pelvis: [1.1, 1, 1.05], lUpper: [0.88, 1, 0.88], rUpper: [0.88, 1, 0.88], lFore: [0.88, 1, 0.88], rFore: [0.88, 1, 0.88], neck: [0.9, 1, 0.9] } },
-    slim: { zh: "纤瘦", en: "Slim", height: 1, say: ["身材纤瘦", "slim build"], girth: { torso: [0.88, 1, 0.86], pelvis: [0.9, 1, 0.88], lUpper: [0.8, 1, 0.8], rUpper: [0.8, 1, 0.8], lFore: [0.84, 1, 0.84], rFore: [0.84, 1, 0.84], lThigh: [0.84, 1, 0.84], rThigh: [0.84, 1, 0.84], lShin: [0.88, 1, 0.88], rShin: [0.88, 1, 0.88], neck: [0.9, 1, 0.9] } },
-    strong: { zh: "健壮", en: "Muscular", height: 1.02, say: ["身材健壮", "muscular build"], girth: { torso: [1.16, 1, 1.12], pelvis: [1.05, 1, 1.05], lUpper: [1.3, 1, 1.3], rUpper: [1.3, 1, 1.3], lFore: [1.2, 1, 1.2], rFore: [1.2, 1, 1.2], lThigh: [1.15, 1, 1.15], rThigh: [1.15, 1, 1.15], lShin: [1.12, 1, 1.12], rShin: [1.12, 1, 1.12], neck: [1.25, 1, 1.25] } },
-    child: { zh: "小孩", en: "Child", height: 0.62, say: ["小孩", "a child"], girth: { head: [1.32, 1.32, 1.32], neck: [1.05, 1, 1.05], torso: [1.04, 1, 1.06] } }
+    female: { zh: "成年女性", en: "Adult woman", height: 0.94, say: ["成年女性", "an adult woman"], proportions: { shoulder: 0.166, hip: 0.108, spine: 0.435, neck: 0.088, head: 0.15, headSize: 0.98, handSize: 0.94, footSize: 0.94 }, girth: { torso: [0.91, 1, 0.94], pelvis: [1.1, 1, 1.07], lUpper: [0.86, 1, 0.88], rUpper: [0.86, 1, 0.88], lFore: [0.86, 1, 0.86], rFore: [0.86, 1, 0.86], lThigh: [1.03, 1, 1.03], rThigh: [1.03, 1, 1.03], lShin: [0.93, 1, 0.93], rShin: [0.93, 1, 0.93], neck: [0.86, 1, 0.86] } },
+    slim: { zh: "纤瘦", en: "Slim", height: 1, say: ["身材纤瘦", "slim build"], proportions: { shoulder: 0.177, hip: 0.092, handSize: 0.96, footSize: 0.96 }, girth: { torso: [0.86, 1, 0.82], pelvis: [0.88, 1, 0.86], lUpper: [0.76, 1, 0.78], rUpper: [0.76, 1, 0.78], lFore: [0.82, 1, 0.82], rFore: [0.82, 1, 0.82], lThigh: [0.8, 1, 0.8], rThigh: [0.8, 1, 0.8], lShin: [0.85, 1, 0.85], rShin: [0.85, 1, 0.85], neck: [0.88, 1, 0.88] } },
+    strong: { zh: "健壮", en: "Muscular", height: 1.02, say: ["身材健壮", "muscular build"], proportions: { shoulder: 0.215, hip: 0.103, neck: 0.095, handSize: 1.06, footSize: 1.03 }, girth: { torso: [1.16, 1, 1.15], pelvis: [1.02, 1, 1.04], lUpper: [1.25, 1, 1.3], rUpper: [1.25, 1, 1.3], lFore: [1.18, 1, 1.18], rFore: [1.18, 1, 1.18], lThigh: [1.17, 1, 1.2], rThigh: [1.17, 1, 1.2], lShin: [1.13, 1, 1.16], rShin: [1.13, 1, 1.16], neck: [1.2, 1, 1.18] } },
+    child: { zh: "小孩", en: "Child", height: 0.76, say: ["小孩", "a child"], proportions: { shoulder: 0.147, hip: 0.082, spine: 0.40, neck: 0.065, head: 0.17, upper: 0.235, fore: 0.205, hand: 0.068, thigh: 0.34, shin: 0.32, foot: 0.12, headSize: 1.17, handSize: 0.85, footSize: 0.82 }, girth: { head: [1.17, 1.17, 1.17], neck: [0.94, 1, 0.94], torso: [0.96, 1, 1.02], pelvis: [0.85, 0.84, 0.96], lUpper: [0.88, 1, 0.92], rUpper: [0.88, 1, 0.92], lFore: [0.88, 1, 0.92], rFore: [0.88, 1, 0.92], lThigh: [0.88, 1, 0.94], rThigh: [0.88, 1, 0.94], lShin: [0.93, 1, 0.96], rShin: [0.93, 1, 0.96] } }
   };
   // Hand props and furniture; hand props sit in the right hand.
   const PROPS = {
@@ -76,8 +76,11 @@ const CamPoseModel = (() => {
   // Body measurements (metres) for a ~1.75 m figure.
   const B = { pelvis: 0.95, spine: 0.45, neck: 0.1, head: 0.16, headR: 0.115, shoulder: 0.19, upper: 0.3, fore: 0.27, hand: 0.08, hip: 0.1, thigh: 0.45, shin: 0.45, foot: 0.15, seat: 0.48 };
 
+  const measurements = body => ({ ...B, headSize: 1, handSize: 1, footSize: 1, ...(BODY_TYPES[body] || BODY_TYPES.male).proportions });
+
   /** Joint positions for a pose (forward kinematics). */
   function skeleton(p) {
+    const B = measurements(p.body);
     // Positive body yaw and positive camera azimuth both turn toward -x (the subject's right).
     const body = chain(ry(-p.yaw), rx(p.pelvisPitch), rz(p.pelvisRoll));
     const upperBody = chain(body, rx(p.lean), rz(p.side), ry(-p.twist));
@@ -121,9 +124,11 @@ const CamPoseModel = (() => {
     if (p.seated) lift = B.seat + 0.06;
     else {
       const sole = [];
-      for (const side of ["l", "r"]) for (const x of [-0.047, 0.047]) for (const z of [-0.075, 0.17]) {
-        const toeOffset = z > 0.1 ? mv(rx(-p[side + "Leg"].toe), v(x, -0.055, z - 0.1)) : v(x, -0.055, z - 0.1);
-        const local = z > 0.1 ? add(v(0, 0, 0.1), toeOffset) : v(x, -0.055, z);
+      for (const side of ["l", "r"]) for (const x0 of [-0.047, 0.047]) for (const z0 of [-0.075, 0.17]) {
+        const x = x0 * B.footSize, z = z0 * B.footSize;
+        const pivot = 0.1 * B.footSize, soleY = -0.055 * B.footSize;
+        const toeOffset = mv(rx(-p[side + "Leg"].toe), v(x, soleY, z - pivot));
+        const local = z > pivot ? add(v(0, 0, pivot), toeOffset) : v(x, soleY, z);
         sole.push(add(J[side + "Ankle"], mv(J[side + "FootM"], local))[1]);
       }
       lift = -Math.min(...sole) + 0.006;
@@ -135,6 +140,7 @@ const CamPoseModel = (() => {
       J[k] = [q[0] * h + (p.x || 0), q[1] * h, q[2] * h + (p.z || 0)];
     }
     J.scale = h;
+    J.headSize = h * B.headSize; J.handSize = h * B.handSize; J.footSize = h * B.footSize;
     J.forward = mv(body, v(0, 0, 1));
     J.ubM = upperBody; J.bodyM = body; J.neckM = neckM;
     J.headForward = mv(headM, v(0, 0, 1));
@@ -145,8 +151,8 @@ const CamPoseModel = (() => {
   const CAMERA = { minDistance: 0.2, maxDistance: 8, fov: 45, guideRadius: 1.1, floor: 0.06 };
   const camDir = c => norm(v(-Math.sin(c.az * D2R) * Math.cos(c.el * D2R), Math.sin(c.el * D2R), Math.cos(c.az * D2R) * Math.cos(c.el * D2R)));
   function cameraTarget(cam, J) {
-    if (cam.focus === 'head') return add(J.head, mv(J.headM, [0, -0.01, 0.09]));
-    return add(J.chest, mv(J.ubM, [0, cam.focus === 'whole' ? -0.16 : -0.08, 0.1]));
+    if (cam.focus === 'head') return add(J.head, mv(J.headM, mul([0, -0.01, 0.09], J.headSize || 1)));
+    return add(J.chest, mv(J.ubM, mul([0, cam.focus === 'whole' ? -0.16 : -0.08, 0.1], J.scale || 1)));
   }
   const minCameraElevation = (distance, target) => Math.max(-60, Math.asin(clamp((CAMERA.floor - target[1]) / distance, -1, 1)) / D2R);
   function constrainToTarget(cam, target) {
@@ -239,7 +245,7 @@ const CamPoseModel = (() => {
     const c = normalizeCamera(cam), spec = shotCamera(c, J), W = 100 * aspect;
     const view = makeView(spec.pos, spec.target, spec.fov, W, 100);
     const inFrame = p => { const q = view.project(p); return !!q && q.x >= -0.5 && q.x <= W + 0.5 && q.y >= -0.5 && q.y <= 100.5; };
-    const top = add(J.head, mv(J.headM, [0, 0.125, 0])), chin = add(J.head, mv(J.headM, [0, -0.11, 0.04]));
+    const top = add(J.head, mv(J.headM, mul([0, 0.125, 0], J.headSize || 1))), chin = add(J.head, mv(J.headM, mul([0, -0.11, 0.04], J.headSize || 1)));
     const headIn = inFrame(top) && inFrame(chin);
     // Feet count as in frame when the ankles are (toes right at the edge still read as a full-body shot).
     const nearFrame = p => { const q = view.project(p); return !!q && q.x >= -4 && q.x <= W + 4 && q.y >= -4 && q.y <= 104; };
@@ -518,5 +524,5 @@ const CamPoseModel = (() => {
     return { camera: describeCamera(cam, lang, pose.yaw, J, aspect, J2), pose: poseText, light: describeLight(value.light, cam, lang) };
   }
 
-  return { describeScene, BODY_TYPES, PROPS, reach, normalizeLight, lightDir, describeLight, LIGHT_PRESETS, D2R, clamp, v, add, sub, mul, dot, cross, norm, rx, ry, rz, mv, chain, BASE, P, PRESETS, B, skeleton, CAMERA, camDir, shotCamera, framedCamera, cameraTarget, cameraBounds, constrainCamera, minCameraElevation, fitCameraDistance, cameraControlPoint, dragCameraControl, makeView, describeCamera, describePose, T, CAM_PRESETS, PARTS, get, put, wrap360, normalizePose, normalizeCamera };
+  return { describeScene, BODY_TYPES, PROPS, reach, normalizeLight, lightDir, describeLight, LIGHT_PRESETS, D2R, clamp, v, add, sub, mul, dot, cross, norm, rx, ry, rz, mv, chain, BASE, P, PRESETS, B, measurements, skeleton, CAMERA, camDir, shotCamera, framedCamera, cameraTarget, cameraBounds, constrainCamera, minCameraElevation, fitCameraDistance, cameraControlPoint, dragCameraControl, makeView, describeCamera, describePose, T, CAM_PRESETS, PARTS, get, put, wrap360, normalizePose, normalizeCamera };
 })();

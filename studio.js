@@ -14,7 +14,7 @@ const CamPose = (() => {
       unsupported: "This browser could not start 3D. Enable WebGL or try another browser. Angle controls and prompt output still work.",
       context: "3D paused. Restoring the graphics context…", restored: "3D restored", both: "Both sides", left: "Left to right", right: "Right to left", volume: "3D form", drawing: "Study lines", focus: "Look at", headTarget: "Head", chestTarget: "Chest", wholeTarget: "Frame whole body", target: "Aim", distanceHint: "Actual camera distance in metres · 0.20–8.00 m", floorHint: "Lowest angle at this distance",
       light: "Light", lightHelp: "Drag the sun to move the key light. Words describe the light as seen from the camera.", lightAz: "Light direction", lightAzHint: "0° = from the camera · 90° = from the frame's left · 180° = from behind", lightEl: "Light height", lightElHint: "low = long shadows · high = top light", soft: "Soft light", hard: "Hard light", lightPresets: "Common lighting",
-      body: "Body type", props: "Props", people: "People", personA: "Person 1", personB: "Person 2", addPerson: "+ Add a second person", removePerson: "Remove person 2", posX: "Position left / right", posZ: "Position front / back",
+      body: "Body type", props: "Props", people: "Models", personA: "A", personB: "B", addPerson: "+ Model", removePerson: "Remove B", model: "Model", posX: "Position left / right", posZ: "Position front / back",
       download: "Download camera view", downloaded: "Saved", ikHint: "Drag a wrist, hand or ankle: the whole arm or leg follows."
     },
     zh: {
@@ -25,7 +25,7 @@ const CamPose = (() => {
       unsupported: "浏览器无法启动 3D，请启用 WebGL 或换一个浏览器。角度控制和提示词仍可使用。",
       context: "3D 暂停，正在恢复图形显示…", restored: "3D 已恢复", both: "左右两侧", left: "左侧复制到右侧", right: "右侧复制到左侧", volume: "立体素体", drawing: "绘画线稿", focus: "镜头瞄准", headTarget: "头部", chestTarget: "胸部", wholeTarget: "全身取景", target: "瞄准", distanceHint: "真实相机距离，单位为米 · 0.20–8.00 m", floorHint: "当前距离的最低角度",
       light: "光线", lightHelp: "拖动太阳移动主光。描述按镜头看到的效果来写。", lightAz: "光的方向", lightAzHint: "0° = 从镜头方向 · 90° = 从画面左边 · 180° = 从背后", lightEl: "光的高度", lightElHint: "低 = 影子长 · 高 = 顶光", soft: "柔光", hard: "硬光", lightPresets: "常用光线",
-      body: "体型", props: "道具", people: "人物", personA: "人物 1", personB: "人物 2", addPerson: "+ 加第二个人", removePerson: "移除人物 2", posX: "位置 左右", posZ: "位置 前后",
+      body: "体型", props: "道具", people: "素体", personA: "A", personB: "B", addPerson: "+ 素体", removePerson: "移除 B", model: "素体", posX: "位置 左右", posZ: "位置 前后",
       download: "下载镜头画面", downloaded: "已保存", ikHint: "拖动手腕、手或脚踝，整条手臂或腿会自动跟着弯。"
     }
   };
@@ -38,7 +38,7 @@ const CamPose = (() => {
       pose2: opts.value?.pose2 ? M.normalizePose(opts.value.pose2) : defaultPose2(), second: opts.value?.second === true,
       light: M.normalizeLight(opts.value?.light), editing: "a"
     };
-    // The pose being edited (person 1 or person 2).
+    // The pose being edited (model A or B).
     const cur = () => (state.editing === "b" && state.second ? state.pose2 : state.pose);
     let view = { yaw: 25, pitch: 12, dist: 3.8 };
     let width = 0, height = 0, handles = [], dragging = null, scheduled = 0, lost = false, drawing = false;
@@ -67,7 +67,7 @@ const CamPose = (() => {
       renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
       renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
       renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.shadowMap.type = THREE.PCFShadowMap;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.25;
     } catch (e) {
@@ -195,9 +195,6 @@ const CamPose = (() => {
     for (const x of [-0.15, 0.15]) for (const z of [-0.19, 0.11]) {
       const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.023, B.seat, 12), propMat); leg.position.set(x, B.seat / 2, z); leg.castShadow = true; stool.add(leg);
     }
-    // A modest bust for the adult woman body type, carried by the chest group.
-    const bust = new THREE.Group(); nodes.torso.add(bust);
-    for (const side of [1, -1]) { const b = new THREE.Mesh(sphere, material); b.position.set(side * 0.062, 0.168, 0.07); b.scale.set(0.058, 0.052, 0.048); b.castShadow = true; bust.add(b); }
     const props = makeProps(nodes, rig);
 
     // Use one welded and skinned surface for the body. Keep the detailed articulated
@@ -207,7 +204,7 @@ const CamPose = (() => {
     const surfaceOutline = new THREE.SkinnedMesh(continuous.geometry, ink);
     rig.add(surfaceOutline); surfaceOutline.bind(continuous.skeleton, continuous.body.bindMatrix);
     surfaceOutline.scale.setScalar(1.003); surfaceOutline.visible = false; outlines.push(surfaceOutline);
-    return { id, rig, nodes, fingers, stool, bust, props, continuous, surfaceOutline, J: null };
+    return { id, rig, nodes, fingers, stool, props, continuous, surfaceOutline, J: null };
     }
 
     const rotation = new THREE.Matrix4();
@@ -219,12 +216,11 @@ const CamPose = (() => {
     // How a held prop shapes the right hand (display only; the saved finger angles stay put).
     const GRIP = { phone: [30, 40, 50, 60, 65], cup: [45, 70, 75, 78, 80], umbrella: [55, 85, 88, 90, 90], book: [20, 30, 35, 40, 45] };
     function poseFigure(fig, p) {
-      const J = M.skeleton(p), h = J.scale, body = M.BODY_TYPES[p.body] || M.BODY_TYPES.male;
-      const headScale = (body.girth.head || [1])[0];
-      place(fig, "pelvis", J.pelvis, J.bodyM, h); place(fig, "torso", J.waist, J.ubM, h); place(fig, "head", J.head, J.headM, h * headScale);
+      const J = M.skeleton(p), h = J.scale;
+      place(fig, "pelvis", J.pelvis, J.bodyM, h); place(fig, "torso", J.waist, J.ubM, h * M.measurements(p.body).spine / B.spine); place(fig, "head", J.head, J.headM, J.headSize);
       const held = (p.props || []).find(k => GRIP[k]);
       for (const [s, sign] of [["l", 1], ["r", -1]]) {
-        place(fig, s + "Hand", J[s + "Wrist"], J[s + "HandM"], h);
+        place(fig, s + "Hand", J[s + "Wrist"], J[s + "HandM"], J.handSize);
         const grip = s === "r" && held ? GRIP[held] : null;
         for (const [name, f] of Object.entries(fig.fingers[s])) {
           const curl = grip ? grip[["thumb", "index", "middle", "ring", "pinky"].indexOf(name)] : p[s + "Arm"][name];
@@ -235,9 +231,12 @@ const CamPose = (() => {
       const chair = (p.props || []).includes("chair");
       fig.stool.visible = p.seated && !chair;
       fig.stool.position.set(p.x || 0, 0, p.z || 0); fig.stool.scale.setScalar(h);
-      fig.bust.visible = p.body === "female";
       fig.props.update(J, p);
       fig.continuous.update(J, p);
+      if (fig.surfaceOutline.geometry !== fig.continuous.geometry) {
+        fig.surfaceOutline.geometry = fig.continuous.geometry;
+        fig.surfaceOutline.bind(fig.continuous.skeleton, fig.continuous.body.bindMatrix);
+      }
       fig.continuous.body.computeBoundingBox(); fig.continuous.body.computeBoundingSphere();
       fig.surfaceOutline.boundingBox = fig.continuous.body.boundingBox.clone().expandByScalar(0.005);
       fig.surfaceOutline.boundingSphere = fig.continuous.body.boundingSphere.clone(); fig.surfaceOutline.boundingSphere.radius += 0.005;
@@ -249,6 +248,17 @@ const CamPose = (() => {
       if (state.second) { if (figB.rig.parent !== cast) cast.add(figB.rig); poseFigure(figB, state.pose2); }
       else if (figB.rig.parent === cast) cast.remove(figB.rig);
       cast.updateMatrixWorld(true); return J;
+    }
+    function figureBounds() {
+      const bounds = new THREE.Box3();
+      cast.traverseVisible(obj => {
+        if (!obj.isMesh) return;
+        if (obj.isSkinnedMesh && !obj.boundingBox) obj.computeBoundingBox();
+        else if (!obj.geometry.boundingBox) obj.geometry.computeBoundingBox();
+        const local = obj.isSkinnedMesh ? obj.boundingBox : obj.geometry.boundingBox;
+        bounds.union(local.clone().applyMatrix4(obj.matrixWorld));
+      });
+      return bounds;
     }
 
     // Props: hand-held items follow the right hand; furniture follows the body's position and turn.
@@ -341,7 +351,7 @@ const CamPose = (() => {
       outlines.forEach(m => { m.visible = drawing; });
       construction.forEach(l => { l.material.color.setHex(drawing ? 0x666666 : 0x827d74); });
       const J = updateFigure(), r = insetRect(), spec = fitShot(J, r);
-      const rigBox = new THREE.Box3().setFromObject(cast);
+      const rigBox = figureBounds();
       // The key light: direction from the Light tab, soft or hard shadows.
       const lightCenter = J.chest, sunDir = M.lightDir(state.light);
       key.position.set(...add(lightCenter, mul(sunDir, 6))); key.target.position.set(...lightCenter); key.target.updateMatrixWorld();
@@ -408,6 +418,15 @@ const CamPose = (() => {
         ctx.fillStyle = "rgba(255,214,120,.25)"; ctx.beginPath(); ctx.arc(b.x, b.y, 18, 0, Math.PI * 2); ctx.fill();
         handle(sun, "sun", "#ffd678", 10);
       } else {
+        // Stable letters match the model buttons, even after the figures cross sides.
+        for (const fig of state.second ? [figA, figB] : [figA]) {
+          const q = project(add(fig.J.head, [0, 0.18 * fig.J.headSize, 0]));
+          if (q.z < -1 || q.z > 1) continue;
+          ctx.fillStyle = fig.id === state.editing ? '#ffce99' : '#c7d3e6';
+          ctx.beginPath(); ctx.roundRect(q.x - 13, q.y - 13, 26, 22, 8); ctx.fill();
+          ctx.font = 'bold 12px system-ui'; ctx.fillStyle = '#17202d'; ctx.textAlign = 'center';
+          ctx.fillText(fig.id.toUpperCase(), q.x, q.y + 2); ctx.textAlign = 'start';
+        }
         const EJ = figOf(state.editing).J || J;
         const joints = Object.entries(PARTS).map(([part, config]) => ({ part, point: EJ[config.joint] }));
         // Paint far handles first so the nearest overlapping joint remains selectable.
@@ -487,11 +506,11 @@ const CamPose = (() => {
           <div class="cps-sliders">${slider("light.az", text.lightAz, 0, 359, rel, text.lightAzHint)}${slider("light.el", text.lightEl, -20, 89, state.light.el, text.lightElHint)}</div>`;
       } else {
         const config = PARTS[state.part], pose = cur();
-        const people = `<div class="cps-focus cps-people" role="group"><span>${text.people}</span>
-          <button type="button" data-edit="a" aria-pressed="${state.editing === "a" || !state.second}">${text.personA}</button>
-          ${state.second ? `<button type="button" data-edit="b" aria-pressed="${state.editing === "b"}">${text.personB}</button><button type="button" data-second="0">${text.removePerson}</button>` : `<button type="button" data-second="1">${text.addPerson}</button>`}</div>`;
-        const bodies = `<div class="cps-focus" role="group"><span>${text.body}</span>${Object.entries(M.BODY_TYPES).map(([k, b]) => `<button type="button" data-body="${k}" aria-pressed="${pose.body === k}">${b[lang]}</button>`).join("")}</div>`;
-        const props = `<div class="cps-focus" role="group"><span>${text.props}</span>${Object.entries(M.PROPS).map(([k, b]) => `<button type="button" data-prop="${k}" aria-pressed="${pose.props.includes(k)}">${b[lang]}</button>`).join("")}</div>`;
+        const people = `<div class="cps-focus cps-people" role="group" aria-label="${text.people}"><span>${text.people}</span>
+          <button type="button" data-edit="a" aria-label="${text.model} A" aria-pressed="${state.editing === "a" || !state.second}">${text.personA}</button>
+          ${state.second ? `<button type="button" data-edit="b" aria-label="${text.model} B" aria-pressed="${state.editing === "b"}">${text.personB}</button><button type="button" data-second="0">${text.removePerson}</button>` : `<button type="button" data-second="1">${text.addPerson}</button>`}</div>`;
+        const bodies = `<div class="cps-focus" role="group" aria-label="${text.body}"><span>${text.body}</span>${Object.entries(M.BODY_TYPES).map(([k, b]) => `<button type="button" data-body="${k}" aria-pressed="${pose.body === k}">${b[lang]}</button>`).join("")}</div>`;
+        const props = `<div class="cps-focus" role="group" aria-label="${text.props}"><span>${text.props}</span>${Object.entries(M.PROPS).map(([k, b]) => `<button type="button" data-prop="${k}" aria-pressed="${pose.props.includes(k)}">${b[lang]}</button>`).join("")}</div>`;
         const where = state.editing === "b" && state.second ? `<div class="cps-sliders">${slider("pose.x", text.posX, -3, 3, pose.x, "", 0.05, "m")}${slider("pose.z", text.posZ, -3, 3, pose.z, "", 0.05, "m")}</div>` : "";
         panel.innerHTML = `${people}<div class="cps-chips"><span>${t.presets}</span>${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${pose.preset === p.id}">${p[lang]}</button>`).join("")}</div>
           ${bodies}${props}${where}
@@ -533,13 +552,13 @@ const CamPose = (() => {
       } else if (button.dataset.focus) {
         state.cam.focus = button.dataset.focus;
         if (state.cam.focus === 'whole') {
-          const J = updateFigure(), box = new THREE.Box3().setFromObject(rig), rect = insetRect();
+          const J = updateFigure(), box = figureBounds(), rect = insetRect();
           state.cam.distance = M.fitCameraDistance(state.cam, J, rect.width / rect.height, { min: box.min.toArray(), max: box.max.toArray() });
         }
         cameraEditorFrame = null; changed('cam'); renderPanel();
       } else if (button.dataset.campreset !== undefined) {
         const p = CAM_PRESETS[+button.dataset.campreset]; state.cam = M.normalizeCamera({ ...p.c, az: M.wrap360(p.c.az + state.pose.yaw) });
-        if (p.fit) { const J = updateFigure(), box = new THREE.Box3().setFromObject(rig), rect = insetRect(); state.cam.distance = M.fitCameraDistance(state.cam, J, rect.width / rect.height, { min: box.min.toArray(), max: box.max.toArray() }); }
+        if (p.fit) { const J = updateFigure(), box = figureBounds(), rect = insetRect(); state.cam.distance = M.fitCameraDistance(state.cam, J, rect.width / rect.height, { min: box.min.toArray(), max: box.max.toArray() }); }
         cameraEditorFrame = null; changed("cam"); renderPanel();
       } else if (button.dataset.preset) {
         // Keep who it is, where they stand and what they hold; take the preset's joints.
@@ -714,7 +733,7 @@ const CamPose = (() => {
       snapshot: exportShot,
       setLang(l) { lang = l; renderPanel(); }, setRatio(r) { ratio = r; size(); }, refresh() { size(); output(); },
       describe(l) { return scene3(l); },
-      destroy() { ro.disconnect(); cancelAnimationFrame(scheduled); const geometries = new Set(), materials = new Set(); scene.traverse(o => { if (o.geometry) geometries.add(o.geometry); if (o.material) materials.add(o.material); }); geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); figA.continuous.skeleton.dispose(); figB.continuous.skeleton.dispose(); skin.dispose(); skin2.dispose(); selected.dispose(); renderer?.dispose(); root.replaceChildren(); }
+      destroy() { ro.disconnect(); cancelAnimationFrame(scheduled); const geometries = new Set(), materials = new Set(); scene.traverse(o => { if (o.geometry) geometries.add(o.geometry); if (o.material) materials.add(o.material); }); geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); figA.continuous.dispose(); figB.continuous.dispose(); skin.dispose(); skin2.dispose(); selected.dispose(); renderer?.dispose(); root.replaceChildren(); }
     };
   }
   return { create, describeCamera: M.describeCamera, describePose: M.describePose, describeScene: M.describeScene, PRESETS };

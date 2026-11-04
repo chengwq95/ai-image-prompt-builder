@@ -191,6 +191,12 @@ const CamPoseModel = (() => {
     for (const side of ['l', 'r']) {
       frames[side + 'Clavicle'] = frame(J.chest, J[side + 'ClavicleM']);
       for (const [name, joint, rotation] of [['Upper', 'Shoulder', 'ArmM'], ['Fore', 'Elbow', 'ForeM'], ['Hand', 'Wrist', 'HandM'], ['Thigh', 'Hip', 'LegM'], ['Shin', 'Knee', 'ShinM'], ['Foot', 'Ankle', 'FootM']]) frames[side + name] = frame(J[side + joint], J[side + rotation]);
+      // Pronation turns gradually from the stable elbow to the wrist. Rotating the
+      // entire forearm at the elbow collapses its blend with the upper arm.
+      const A = p[side + 'Arm'], sign = side === 'l' ? 1 : -1;
+      for (const [name, fraction] of [['ForeBase', 0], ['ForeMid', 1 / 3], ['ForeDist', 2 / 3]]) {
+        frames[side + name] = frame(J[side + 'Elbow'], chain(J[side + 'ArmM'], rx(-A.c), ry(-sign * A.e * fraction)));
+      }
       frames[side + 'Toes'] = frame(add(J[side + 'Ankle'], mv(J[side + 'FootM'], mul([0, -0.02, 0.10], J.footSize))), chain(J[side + 'FootM'], rx(-p[side + 'Leg'].toe)));
       for (const [key, value] of Object.entries(handRig(p, side, J))) if (value.matrix) frames[key] = value;
     }

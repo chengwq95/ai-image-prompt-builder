@@ -11,9 +11,6 @@ const CamPose = (() => {
     lArm: [82, 52], rArm: [38, 52], lElbow: [91, 86], rElbow: [29, 86], lHand: [97, 118], rHand: [23, 118], lFingers: [100, 135], rFingers: [20, 135],
     lLeg: [72, 124], rLeg: [48, 124], lKnee: [73, 170], rKnee: [47, 170], lFoot: [75, 216], rFoot: [45, 216]
   };
-  const BODY_MAP_SVG = `<svg viewBox="0 0 120 240" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M60 41V108M38 52H82M38 52L29 86L23 118M82 52L91 86L97 118M48 124L47 170L45 216M72 124L73 170L75 216M48 124H72"/></g>
-    <circle cx="60" cy="20" r="13" fill="currentColor"/><path d="M60 41V108" stroke="currentColor" stroke-width="26" stroke-linecap="round"/></svg>`;
   const V = p => new THREE.Vector3(...p);
   const identity = [1, 0, 0, 0, 1, 0, 0, 0, 1];
   const copy = x => JSON.parse(JSON.stringify(x));
@@ -111,9 +108,9 @@ const CamPose = (() => {
     const helper = new THREE.Group(); scene.add(helper);
     // All figures live in `cast`; `rig` is the main figure (A). A second person (B) is optional.
     const cast = new THREE.Group(); scene.add(cast);
-    const skin = new THREE.MeshStandardMaterial({ color: 0xc6b6a2, roughness: 0.62, metalness: 0.03 });
+    const skin = new THREE.MeshStandardMaterial({ color: 0xc6b6a2, roughness: 0.65, metalness: 0 });
     const selected = new THREE.MeshStandardMaterial({ color: 0xe0b6a1, roughness: 0.6, emissive: 0x572513, emissiveIntensity: 0.15 });
-    const skin2 = new THREE.MeshStandardMaterial({ color: 0xa9b3c2, roughness: 0.62, metalness: 0.03 });
+    const skin2 = new THREE.MeshStandardMaterial({ color: 0xa9b3c2, roughness: 0.65, metalness: 0 });
     const propMat = new THREE.MeshStandardMaterial({ color: 0x596271, metalness: 0.3, roughness: 0.6 });
     const darkMat = new THREE.MeshStandardMaterial({ color: 0x1d2027, roughness: 0.35, metalness: 0.4 });
     const bookMat = new THREE.MeshStandardMaterial({ color: 0x7b3b2a, roughness: 0.7 });
@@ -331,6 +328,49 @@ const CamPose = (() => {
     }
     const figA = makeFigure("a", skin), rig = figA.rig; cast.add(rig);
     const figB = makeFigure("b", skin2);
+    // The joint picker uses the same anatomical body as the stage, in a fixed front
+    // view. Cache one small image per build so dragging joints needs no extra draw.
+    const bodyMapCache = new Map();
+    let mapRig, mapSurface, mapScene, mapCamera, mapTarget, mapMaterial;
+    function updateBodyMap() {
+      const mapCanvas = panel.querySelector('.cps-map canvas');
+      if (!mapCanvas || !renderer) return;
+      const type = cur().body;
+      if (!bodyMapCache.has(type)) {
+        if (!mapSurface) {
+          mapScene = new THREE.Scene(); mapRig = new THREE.Group(); mapScene.add(mapRig);
+          mapMaterial = new THREE.MeshStandardMaterial({ color: 0xc8c2b8, roughness: 0.7 });
+          mapSurface = StudioSurface.create(M, mapMaterial, mapRig);
+          mapScene.add(new THREE.HemisphereLight(0xf1f2f4, 0x6b6260, 2));
+          const light = new THREE.DirectionalLight(0xffedd7, 3); light.position.set(-2, 4, 4); mapScene.add(light);
+          const fill = new THREE.DirectionalLight(0xc2d7ee, 1); fill.position.set(2, 1, 2); mapScene.add(fill);
+          mapCamera = new THREE.OrthographicCamera(-0.5, 0.5, 1, -1, 0.1, 10);
+          mapTarget = new THREE.WebGLRenderTarget(192, 384);
+          mapTarget.texture.colorSpace = THREE.SRGBColorSpace;
+        }
+        const pose = M.P({ body: type, lArm: { a: 18, c: 6 }, rArm: { a: 18, c: 6 } }), J = M.skeleton(pose);
+        mapSurface.update(J, pose); mapSurface.body.computeBoundingBox();
+        const box = mapSurface.body.boundingBox, size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+        const H = Math.max(size.y * 1.08, size.x * 2.12), W = H / 2;
+        Object.assign(mapCamera, { left: -W / 2, right: W / 2, top: H / 2, bottom: -H / 2 });
+        mapCamera.position.set(center.x, center.y, 3); mapCamera.lookAt(center); mapCamera.updateProjectionMatrix(); mapCamera.updateMatrixWorld();
+        const oldTarget = renderer.getRenderTarget(), oldColor = renderer.getClearColor(new THREE.Color()), oldAlpha = renderer.getClearAlpha();
+        renderer.setRenderTarget(mapTarget); renderer.setScissorTest(false); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(mapScene, mapCamera);
+        const pixels = new Uint8Array(192 * 384 * 4); renderer.readRenderTargetPixels(mapTarget, 0, 0, 192, 384, pixels);
+        renderer.setRenderTarget(oldTarget); renderer.setClearColor(oldColor, oldAlpha);
+        const image = new ImageData(192, 384);
+        for (let y = 0; y < 384; y++) image.data.set(pixels.subarray((383 - y) * 192 * 4, (384 - y) * 192 * 4), y * 192 * 4);
+        const points = Object.fromEntries(Object.entries(PARTS).map(([name, part]) => {
+          const q = V(J[part.joint]).project(mapCamera); return [name, [(q.x + 1) * 50, (1 - q.y) * 50]];
+        }));
+        bodyMapCache.set(type, { image, points });
+      }
+      const { image, points } = bodyMapCache.get(type);
+      mapCanvas.getContext('2d').putImageData(image, 0, 0);
+      panel.querySelectorAll('.cps-map [data-part]').forEach(button => {
+        const [x, y] = points[button.dataset.part]; button.style.left = x + '%'; button.style.top = y + '%';
+      });
+    }
     const figOf = id => (id === "b" ? figB : figA);
 
     function line(points, color, dashed = false) {
@@ -371,6 +411,7 @@ const CamPose = (() => {
     function renderNow() {
       scheduled = 0;
       if (!renderer || lost || !width || !height) return;
+      updateBodyMap();
       const background = drawing ? 0xebe9e3 : 0x141823;
       scene.background.setHex(background); scene.fog.color.setHex(background);
       grid.material.opacity = drawing ? 0.16 : 0.65;
@@ -550,7 +591,7 @@ const CamPose = (() => {
         if (page === "presets") body = `<div class="cps-chips">${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${pose.preset === p.id}">${p[lang]}</button>`).join("")}</div>
           <label class="cps-check"><input type="checkbox" data-seated ${pose.seated ? "checked" : ""}> ${t.seated}</label>${where}`;
         else if (page === "figure") body = `${bodies}${props}${pose.props.some(k => M.PROPS[k].hand) ? `<button type="button" data-regrip>${text.regrip}</button>` : ""}`;
-        else body = `<div class="cps-joints"><div class="cps-map" role="group" aria-label="${text.selected}">${BODY_MAP_SVG}${Object.entries(BODY_MAP).map(([k, [x, y]]) => `<button type="button" data-part="${k}" aria-pressed="${k === state.part}" title="${PARTS[k][lang]}" aria-label="${PARTS[k][lang]}" style="left:${x / 1.2}%;top:${y / 2.4}%"></button>`).join("")}
+        else body = `<div class="cps-joints"><div class="cps-map" role="group" aria-label="${text.selected}"><canvas width="192" height="384" aria-hidden="true"></canvas>${Object.entries(BODY_MAP).map(([k, [x, y]]) => `<button type="button" data-part="${k}" aria-pressed="${k === state.part}" title="${PARTS[k][lang]}" aria-label="${PARTS[k][lang]}" style="left:${x / 1.2}%;top:${y / 2.4}%"></button>`).join("")}
             <span class="cps-map-side" style="left:4%">${text.mapRight}</span><span class="cps-map-side" style="right:4%">${text.mapLeft}</span></div>
           <div class="cps-joint-edit"><div class="cps-joint-heading"><strong>${config[lang]}</strong><button type="button" data-reset-part>${text.resetPart}</button></div>
             <div class="cps-sliders">${config.controls.map(c => slider("pose." + c.path, c[lang], c.min, c.max, M.get(pose, c.path))).join("")}</div>
@@ -774,9 +815,9 @@ const CamPose = (() => {
         state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose)); cameraEditorFrame = null; renderPanel(); render();
       },
       snapshot: exportShot,
-      setLang(l) { lang = l; renderPanel(); }, setRatio(r) { ratio = r; size(); }, refresh() { size(); output(); },
+      setLang(l) { lang = l; renderPanel(); render(); }, setRatio(r) { ratio = r; size(); }, refresh() { size(); output(); },
       describe(l) { return scene3(l); },
-      destroy() { ro.disconnect(); cancelAnimationFrame(scheduled); const geometries = new Set(), materials = new Set(); scene.traverse(o => { if (o.geometry) geometries.add(o.geometry); if (o.material) materials.add(o.material); }); geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); figA.continuous.dispose(); figB.continuous.dispose(); skin.dispose(); skin2.dispose(); selected.dispose(); renderer?.dispose(); root.replaceChildren(); }
+      destroy() { ro.disconnect(); cancelAnimationFrame(scheduled); const geometries = new Set(), materials = new Set(); scene.traverse(o => { if (o.geometry) geometries.add(o.geometry); if (o.material) materials.add(o.material); }); geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); figA.continuous.dispose(); figB.continuous.dispose(); mapSurface?.dispose(); mapTarget?.dispose(); mapMaterial?.dispose(); bodyMapCache.clear(); skin.dispose(); skin2.dispose(); selected.dispose(); renderer?.dispose(); root.replaceChildren(); }
     };
   }
   return { create, describeCamera: M.describeCamera, describePose: M.describePose, describeScene: M.describeScene, PRESETS };

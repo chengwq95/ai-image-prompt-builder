@@ -43,3 +43,50 @@ test('raising an arm does not pull the hip or the root of the thigh outwards', (
     assert.ok(position.distanceTo(old) < 0.0001, `Hip vertex ${i} moved with the arm`);
   }
 });
+
+test('every body type has its own bind shape without scaling posed bones', () => {
+  const point = new THREE.Vector3(), seen = new Set();
+  for (const body of Object.keys(M.BODY_TYPES)) {
+    const p = M.BASE(); p.body = body; p.lArm.a = p.rArm.a = 25; p.lArm.c = p.rArm.c = 5;
+    surface.update(M.skeleton(p), p); seen.add(surface.geometry);
+    const raw = surface.geometry.getAttribute('position');
+    for (let i = 0; i < surface.vertices; i++) {
+      surface.body.getVertexPosition(i, point);
+      assert.ok(point.distanceTo(new THREE.Vector3(raw.getX(i), raw.getY(i), raw.getZ(i))) < 1e-6, `${body}: bind mismatch at ${i}`);
+      const n = surface.geometry.getAttribute('normal');
+      assert.ok(Math.abs(Math.hypot(n.getX(i), n.getY(i), n.getZ(i)) - 1) < 0.02);
+    }
+    for (const bone of surface.skeleton.bones) assert.deepEqual(Array.from(bone.scale.toArray()), [1, 1, 1]);
+  }
+  assert.equal(seen.size, Object.keys(M.BODY_TYPES).length);
+});
+
+test('all body variants keep the hip stable when an arm is raised', () => {
+  const point = new THREE.Vector3();
+  for (const body of Object.keys(M.BODY_TYPES)) {
+    const p = M.normalizePose({ body }), J = M.skeleton(p); surface.update(J, p);
+    const samples = [];
+    for (let i = 0; i < surface.vertices; i++) {
+      surface.body.getVertexPosition(i, point);
+      if (Math.abs(point.x) < 0.12 * J.scale && Math.abs(point.y - J.pelvis[1]) < 0.04 * J.scale) samples.push([i, point.clone()]);
+    }
+    assert.ok(samples.length > 50);
+    const wave = M.normalizePose({ ...M.PRESETS.find(p => p.id === 'wave').pose, body });
+    surface.update(M.skeleton(wave), wave);
+    for (const [i, old] of samples) {
+      surface.body.getVertexPosition(i, point);
+      assert.ok(point.distanceTo(old) < 1e-5, `${body}: hip follows arm`);
+    }
+  }
+});
+
+test('switching body types restores the same mesh and pose without stale bind matrices', () => {
+  const point = new THREE.Vector3(), baseline = new Map();
+  for (const body of ['female', 'child', 'strong', 'slim', 'male', 'child', 'female']) {
+    const p = M.normalizePose({ ...M.PRESETS.find(p => p.id === 'sit').pose, body, x: 0.8, z: -0.3 });
+    surface.update(M.skeleton(p), p);
+    const sample = Array.from({ length: 30 }, (_, i) => surface.body.getVertexPosition(i * 600, point).toArray());
+    assert.ok(sample.flat().every(Number.isFinite));
+    if (baseline.has(body)) assert.deepEqual(sample, baseline.get(body)); else baseline.set(body, sample);
+  }
+});

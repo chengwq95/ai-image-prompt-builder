@@ -149,3 +149,26 @@ test('a second person makes a two-shot and is named by frame side', () => {
   const solo = M.describeScene({ cam: { az: 0, el: 5, distance: 3.6 }, pose: {} }, 'en', 16 / 9);
   assert.doesNotMatch(solo.camera, /two-shot/);
 });
+
+test('children have shorter relative limbs and a larger head-to-height ratio', () => {
+  const adult = M.skeleton(M.normalizePose({ body: 'male' })), child = M.skeleton(M.normalizePose({ body: 'child' }));
+  const length = (J, a, b) => Math.hypot(...M.sub(J[a], J[b]));
+  assert.ok(length(child, 'lHip', 'lKnee') / child.headSize < length(adult, 'lHip', 'lKnee') / adult.headSize * 0.7);
+  assert.ok(length(child, 'lShoulder', 'lElbow') / child.headSize < length(adult, 'lShoulder', 'lElbow') / adult.headSize * 0.75);
+  const heads = J => (J.head[1] + 0.12 * J.headSize) / (0.24 * J.headSize);
+  assert.ok(heads(child) > 5 && heads(child) < 6);
+  assert.ok(heads(adult) > 7 && heads(adult) < 8);
+  assert.ok(M.measurements('female').shoulder < M.B.shoulder && M.measurements('female').hip > M.B.hip);
+  assert.ok(M.measurements('strong').shoulder > M.B.shoulder);
+});
+
+test('camera head focus and reaching follow each body type at either model position', () => {
+  for (const body of Object.keys(M.BODY_TYPES)) {
+    const p = M.normalizePose({ body, x: 0.85, z: 0.2 }), J = M.skeleton(p);
+    const target = M.cameraTarget({ focus: 'head' }, J);
+    assert.ok(target[1] > J.neck[1] && target[2] > J.head[2]);
+    const goal = M.add(J.rWrist, [0, 0.15 * J.scale, 0.2 * J.scale]);
+    const next = M.reach(p, 'r', 'Arm', 'rWrist', goal), K = M.skeleton(next);
+    assert.ok(Math.hypot(...M.sub(K.rWrist, goal)) < 0.03, body);
+  }
+});

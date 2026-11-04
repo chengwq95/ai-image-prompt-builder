@@ -195,6 +195,8 @@ const CamPose = (() => {
       node.quaternion.setFromRotationMatrix(rotation); node.scale.setScalar(scale);
     }
     function poseFigure(fig, p, others = []) {
+      // A real arm cannot pass through the body: push it just clear before drawing (updates the pose).
+      M.resolveArms(p);
       const J = M.skeleton(p), h = J.scale;
       place(fig, "pelvis", J.pelvis, J.bodyM, h); place(fig, "torso", J.waist, J.ubM, h * M.measurements(p.body).spine / B.spine); place(fig, "head", J.head, J.headM, J.headSize);
       for (const side of ["l", "r"]) place(fig, side + "Hand", J[side + "Wrist"], J[side + "HandM"], J.handSize);

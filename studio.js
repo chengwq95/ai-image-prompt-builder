@@ -614,7 +614,7 @@ const CamPose = (() => {
     root.addEventListener("click", e => {
       const button = e.target.closest("button"); if (!button) return;
       if (button.dataset.tab) { state.tab = button.dataset.tab; cameraEditorFrame = null; renderPanel(); render(); }
-      else if (button.dataset.subtab) { state.poseTab = button.dataset.subtab; renderPanel(); }
+      else if (button.dataset.subtab) { state.poseTab = button.dataset.subtab; renderPanel(); render(); }
       else if (button.hasAttribute("data-reset")) {
         if (state.tab === "camera") state.cam = M.normalizeCamera({ az: M.wrap360(state.pose.yaw + 45), el: 10, distance: 2.8, focus: "chest" });
         else if (state.tab === "light") state.light = M.normalizeLight();

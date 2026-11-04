@@ -62,7 +62,7 @@ html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
 body{
   background:var(--bg);color:var(--text);font-family:var(--sans);
   font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;
-  padding-bottom:230px;transition:background .3s,color .3s;
+  padding-bottom:230px;transition:background .3s,color .3s,padding .2s;
 }
 .wrap{max-width:1080px;margin:0 auto;padding:0 28px}
 @media(max-width:640px){.wrap{padding:0 16px}}
@@ -337,6 +337,21 @@ footer a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--li
 .vf-actions{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap}
 .vf-actions .right{display:flex;gap:8px}
 .plang{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.vf-toggle{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--surface-2);border-radius:99px;padding:3px 10px 3px 8px;font-size:11.5px;color:var(--muted);cursor:pointer}
+.vf-toggle:hover{color:var(--text);border-color:var(--line-strong)}
+.vf-toggle svg{width:13px;height:13px;transition:transform .2s}
+.vf-right{display:flex;align-items:center;gap:12px}
+/* Collapsed: one slim line with the prompt and the copy button, so it never hides the page. */
+body.vf-mini{padding-bottom:84px}
+.viewfinder.mini .vf-inner{display:flex;align-items:center;gap:10px;padding-top:8px;padding-bottom:8px}
+.viewfinder.mini .vf-frame{flex:1;min-width:0;padding:7px 12px}
+.viewfinder.mini .vf-head{margin:0;flex-wrap:nowrap}
+.viewfinder.mini .vf-frame{display:flex;align-items:center;gap:12px}
+.viewfinder.mini .vf-title span:last-child,.viewfinder.mini .meter,.viewfinder.mini .plang,.viewfinder.mini #clearBtn{display:none}
+.viewfinder.mini .vf-prompt{flex:1;min-width:0;min-height:0;max-height:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5;font-size:12.5px}
+.viewfinder.mini .vf-frame::before,.viewfinder.mini .vf-frame::after,.viewfinder.mini .vf-corner{display:none}
+.viewfinder.mini .vf-actions{margin-top:0;flex-wrap:nowrap}
+.viewfinder.mini .vf-toggle svg{transform:rotate(180deg)}
 .plang .switch button{padding:3px 10px;font-size:12px}
 
 /* ---------- guided tour ---------- */
@@ -584,12 +599,13 @@ footer a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--li
       <span class="vf-corner"></span>
       <div class="vf-head">
         <div class="vf-title"><span class="rec" id="rec"></span><span data-i18n="vfTitle"></span></div>
-        <div class="meter">
+        <div class="vf-right"><div class="meter">
           <div class="m-dot" data-cat="time"><i></i><span data-cat-name="time"></span></div>
           <div class="m-dot" data-cat="subject"><i></i><span data-cat-name="subject"></span></div>
           <div class="m-dot" data-cat="scene"><i></i><span data-cat-name="scene"></span></div>
           <div class="m-dot" data-cat="style"><i></i><span data-cat-name="style"></span></div>
         </div>
+        <button type="button" class="vf-toggle" id="vfToggle" aria-expanded="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg><span id="vfToggleLbl"></span></button></div>
       </div>
       <div class="vf-prompt" id="promptOut" aria-live="polite"></div>
     </div>
@@ -809,7 +825,7 @@ const I18N = {
     dg3t:"Looks like a phone snapshot", dg3:"Missing <em>camera language</em>. Add shot size, lens and depth of field: \"close-up, 85mm lens, shallow depth of field\".",
     promoT:"Making a short AI video?", promo:"The AI Video Prompt Builder writes the prompts for every shot — character, stills and image-to-video.", promoBtn:"Open AI Video Prompt Builder →",
     footer:"Time + Subject + Scene + Style · add the block that's missing",
-    vfTitle:"Viewfinder", plang:"Prompt in", clear:"Clear", copy:"Copy prompt",
+    vfTitle:"Viewfinder", plang:"Prompt in", clear:"Clear", copy:"Copy prompt", vfHide:"Collapse", vfShow:"Expand",
     empty:"Nothing picked yet. Click any keyword above, or try a template.",
     copied:"Copied to clipboard", pickFirst:"Pick a few keywords first", copyFail:"Copy failed — please select the text manually",
     guide:"Guide", tourBtn:"Take the 1-minute tour",
@@ -855,7 +871,7 @@ const I18N = {
     dg3t:"像手机随手拍", dg3:"缺<em>镜头语言</em>。给它景别、焦段、景深:「特写、85mm、浅景深」。",
     promoT:"想做 AI 短视频?", promo:"「AI 视频提示词生成器」帮你写好每个镜头的提示词:角色、静帧和图生视频。", promoBtn:"打开 AI 视频提示词生成器 →",
     footer:"时间 + 主体 + 场景 + 风格 · 缺哪块,回来补哪块",
-    vfTitle:"取景器", plang:"提示词语言", clear:"清空", copy:"复制提示词",
+    vfTitle:"取景器", plang:"提示词语言", clear:"清空", copy:"复制提示词", vfHide:"收起", vfShow:"展开",
     empty:"还没选词。点击上方任意关键词,或试试一个示例模板。",
     copied:"已复制到剪贴板", pickFirst:"先选几个关键词吧", copyFail:"复制失败,请手动选择文字",
     guide:"新手引导", tourBtn:"1 分钟引导",
@@ -1160,6 +1176,7 @@ function applyLang() {
   renderPanes();
   renderPresets();
   studio.setLang(lang);
+  syncVf();
   render();
   if (tourIdx >= 0) showTourStep();
 }
@@ -1169,6 +1186,28 @@ document.querySelectorAll("[data-lang-btn]").forEach(b => b.addEventListener("cl
   try { localStorage.setItem(LS_LANG, lang); } catch(e) {}
   applyLang();
 }));
+
+/* 取景器:可以收起成一行;3D 工作台在画面中时自动收起,离开后恢复 */
+const vf = document.querySelector(".viewfinder");
+let vfPref = "open", vfAuto = false, vfOverride = false;
+try { if (localStorage.getItem("promptlab.vfMini") === "1") vfPref = "mini"; } catch(e) {}
+function syncVf() {
+  const mini = vfOverride ? vfPref === "mini" : (vfAuto || vfPref === "mini");
+  vf.classList.toggle("mini", mini);
+  document.body.classList.toggle("vf-mini", mini);
+  const b = document.getElementById("vfToggle");
+  b.setAttribute("aria-expanded", String(!mini));
+  document.getElementById("vfToggleLbl").textContent = t(mini ? "vfShow" : "vfHide");
+}
+document.getElementById("vfToggle").addEventListener("click", () => {
+  const mini = vf.classList.contains("mini");
+  vfPref = mini ? "open" : "mini"; vfOverride = vfAuto;
+  try { localStorage.setItem("promptlab.vfMini", vfPref === "mini" ? "1" : "0"); } catch(e) {}
+  syncVf();
+});
+new IntersectionObserver(([entry]) => {
+  vfAuto = entry.isIntersecting; if (!vfAuto) vfOverride = false; syncVf();
+}, { threshold: 0.15 }).observe(document.getElementById("studioCard"));
 
 /* 提示词语言:可以和界面语言不同(大多数工具用英文效果更好) */
 function syncPlang() {

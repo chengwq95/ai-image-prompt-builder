@@ -45,7 +45,7 @@ async function main() {
   const faces = rawFaces.map(f => f.map(i => map.get(i)));
   const adjacent = used.map(() => new Set());
   for (const face of faces) face.forEach((a, i) => { const b = face[(i + 1) % face.length]; adjacent[a].add(b); adjacent[b].add(a); });
-  const bind = M.BASE(); bind.lArm.a = bind.rArm.a = 25; bind.lArm.c = bind.rArm.c = 5;
+  const bind = M.bindPose();
   const keys = Object.keys(M.skinFrames(bind));
   const roles = name => {
     const side = name.endsWith('.L') ? 'l' : name.endsWith('.R') ? 'r' : null;

@@ -13,4 +13,4 @@ esbuild entry.js --bundle --minify --format=iife --global-name=THREE --legal-com
 ```
 
 The studio needs no CDN, model download, runtime package installation or build step.
-The character is original procedural geometry, with no external model or texture assets.
+The anatomical character data is derived from pinned CC0 MakeHuman assets, bundled locally. See HUMAN-ASSETS.md and HUMAN-ASSETS-LICENSE.md. No external requests or textures are needed at runtime.

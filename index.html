@@ -939,11 +939,9 @@ try {
   if (raw) CATS.forEach(c => { if (Array.isArray(raw[c])) state[c] = raw[c]; });
 } catch(e) {}
 // 3D 镜头与姿势:角度/姿势本身,以及是否加入提示词
+// The 3D studio always opens on its defaults (camera, pose, light, one model, nothing added to the
+// prompt); only the picked keywords above are remembered between visits.
 let cp = { cam:null, pose:null, pose2:null, second:false, light:null, useCam:false, usePose:false, useLight:false };
-try {
-  const raw = JSON.parse(localStorage.getItem(LS_STATE));
-  if (raw && raw.cp) cp = Object.assign(cp, raw.cp);
-} catch(e) {}
 function saveState() { try { localStorage.setItem(LS_STATE, JSON.stringify({ ...state, cp })); } catch(e) {} }
 
 const studio = CamPose.create(document.getElementById("studio"), {

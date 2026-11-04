@@ -130,6 +130,11 @@ async function main() {
       // thin. Give arms, hands and fingers back some thickness so they keep a sturdy, drawable volume.
       const bulk = { Upper: 1.1, Fore: 1.14, Thigh: 1, Shin: 1 };
       for (const [role, from, to, length] of [['Upper', a, e, 'upper'], ['Fore', e, w, 'fore'], ['Thigh', hp, k, 'thigh'], ['Shin', k, ankle, 'shin']]) native[s + role] = frame(from, axisFrame(from, to), [globalScale * bulk[role], M.measurements(body)[length] * J.scale / Math.hypot(...M.sub(to, from)), globalScale * bulk[role]]);
+      // The source palm is rolled ~123 degrees relative to the forearm's default
+      // transverse frame. Unwind that difference gradually before retargeting;
+      // otherwise the two weighted surfaces cancel at the wrist, forming a pinch.
+      const wristAcross = M.mv(transposed(native[s + 'Fore'].matrix), handX);
+      native[s + 'Fore'].wristRoll = Math.atan2(wristAcross[2], wristAcross[0]) / M.D2R;
       const width = Math.hypot(...across);
       native[s + 'Hand'] = frame(w, handR, [M.PALM.width * J.handSize / width * HAND_WIDTH, M.PALM.length * J.handSize / Math.hypot(...M.sub(middle, w)), globalScale * HAND_THICKNESS]);
       native[s + 'Foot'] = frame(ankle);
@@ -149,6 +154,11 @@ async function main() {
       for (const [index, weight] of weights[i]) {
         const name = keys[index], from = native[name], to = target[name];
         const local = M.mv(transposed(from.matrix), M.sub(points[id], from.origin)).map((v, axis) => v * from.scale[axis]);
+        if (name === 'lFore' || name === 'rFore') {
+          const t = M.clamp((-local[1] / (M.measurements(body).fore * J.scale) - 0.2) / 0.65, 0, 1);
+          const aligned = M.mv(M.ry(from.wristRoll * t * t * (3 - 2 * t)), local);
+          local[0] = aligned[0]; local[2] = aligned[2];
+        }
         if (/^(l|r)(Upper|Fore)$/.test(name)) {
           const length = M.measurements(body)[name.endsWith('Upper') ? 'upper' : 'fore'] * J.scale;
           const t = M.clamp(-local[1] / length, 0, 1);

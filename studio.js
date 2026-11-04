@@ -5,13 +5,22 @@ const CamPose = (() => {
   // Seat surface where the seated mesh's buttocks actually rest (measured: about 6 cm below the
   // skeleton's seat height), so the body sits on the seat instead of sinking into it.
   const SEAT_TOP = B.seat - 0.058;
+  // Front-view body map for picking a joint (viewBox 120 x 240; the subject's left is on the right).
+  const BODY_MAP = {
+    head: [60, 20], neck: [60, 41], chest: [60, 70], body: [60, 108],
+    lArm: [82, 52], rArm: [38, 52], lElbow: [91, 86], rElbow: [29, 86], lHand: [97, 118], rHand: [23, 118], lFingers: [100, 135], rFingers: [20, 135],
+    lLeg: [72, 124], rLeg: [48, 124], lKnee: [73, 170], rKnee: [47, 170], lFoot: [75, 216], rFoot: [45, 216]
+  };
+  const BODY_MAP_SVG = `<svg viewBox="0 0 120 240" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M60 41V108M38 52H82M38 52L29 86L23 118M82 52L91 86L97 118M48 124L47 170L45 216M72 124L73 170L75 216M48 124H72"/></g>
+    <circle cx="60" cy="20" r="13" fill="currentColor"/><path d="M60 41V108" stroke="currentColor" stroke-width="26" stroke-linecap="round"/></svg>`;
   const V = p => new THREE.Vector3(...p);
   const identity = [1, 0, 0, 0, 1, 0, 0, 0, 1];
   const copy = x => JSON.parse(JSON.stringify(x));
   const ui = {
     en: {
       editor: "Studio view · drag background to orbit", actual: "CAMERA VIEW", front: "Front", side: "Right", back: "Back", frame: "Fit scene",
-      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror this joint", flip: "Swap left / right", joints: "18 parts · 54 angle controls",
+      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror this joint", flip: "Swap left / right", joints: "18 parts · 54 angle controls", pagePoses: "Poses", pageFigure: "Body & props", pageJoints: "Joints", mapLeft: "L", mapRight: "R",
       fine: "Select a joint or body surface. Drag to pose; use sliders or arrow keys for precise angles.",
       cameraHelp: "Yellow is the actual camera: drag it closer, through the pink reference arc. Green: orbit · pink: elevation. The target marker shows where the camera aims.",
       unsupported: "This browser could not start 3D. Enable WebGL or try another browser. Angle controls and prompt output still work.",
@@ -22,7 +31,7 @@ const CamPose = (() => {
     },
     zh: {
       editor: "工作视图 · 拖动空白处旋转", actual: "实际镜头画面", front: "正面", side: "右侧", back: "背面", frame: "查看整个场景",
-      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制",
+      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制", pagePoses: "姿势", pageFigure: "体型与道具", pageJoints: "关节", mapLeft: "左", mapRight: "右",
       fine: "点选关节点或人物表面，拖动调整姿势；滑块和方向键可精确调角度。",
       cameraHelp: "黄色就是真实相机，可穿过粉色参考弧继续靠近。绿色调方位，粉色调仰俯；瞄准点标出实际朝向。",
       unsupported: "浏览器无法启动 3D，请启用 WebGL 或换一个浏览器。角度控制和提示词仍可使用。",
@@ -534,13 +543,19 @@ const CamPose = (() => {
         const bodies = `<div class="cps-focus" role="group" aria-label="${text.body}"><span>${text.body}</span>${Object.entries(M.BODY_TYPES).map(([k, b]) => `<button type="button" data-body="${k}" aria-pressed="${pose.body === k}">${b[lang]}</button>`).join("")}</div>`;
         const props = `<div class="cps-focus" role="group" aria-label="${text.props}"><span>${text.props}</span>${Object.entries(M.PROPS).map(([k, b]) => `<button type="button" data-prop="${k}" aria-pressed="${pose.props.includes(k)}">${b[lang]}</button>`).join("")}</div>`;
         const where = state.second ? `<div class="cps-sliders">${slider("pair.distance", text.spacing, 0.2, 4, M.modelDistance(state.pose, state.pose2), text.spacingHint, 0.01, "m")}${slider("pose.x", text.posX, -3, 3, pose.x, "", 0.01, "m")}${slider("pose.z", text.posZ, -3, 3, pose.z, "", 0.01, "m")}</div>` : "";
-        panel.innerHTML = `${people}${where}<div class="cps-chips"><span>${t.presets}</span>${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${pose.preset === p.id}">${p[lang]}</button>`).join("")}</div>
-          ${bodies}${props}${pose.props.some(k => M.PROPS[k].hand) ? `<button type="button" data-regrip>${text.regrip}</button>` : ""}
-          <div class="cps-joint-heading"><span>${text.joints}</span><div><button type="button" data-flip>${text.flip}</button><button type="button" data-mirror="${state.part.startsWith("l") ? "l" : "r"}" ${/^[lr]/.test(state.part) ? "" : "disabled"}>${text.mirror}</button></div></div>
-          <div class="cps-parts" role="group" aria-label="${text.selected}">${Object.entries(PARTS).map(([k, p]) => `<button type="button" data-part="${k}" aria-pressed="${k === state.part}">${p[lang]}</button>`).join("")}</div>
-          <div class="cps-joint-heading"><strong>${config[lang]}</strong><button type="button" data-reset-part>${text.resetPart}</button></div>
-          <div class="cps-sliders">${config.controls.map(c => slider("pose." + c.path, c[lang], c.min, c.max, M.get(pose, c.path))).join("")}</div>
-          <label class="cps-check"><input type="checkbox" data-seated ${pose.seated ? "checked" : ""}> ${t.seated}</label>`;
+        // Three short pages instead of one long panel: poses, figure & props, joints (with a body map).
+        const page = state.poseTab || "presets";
+        const subtabs = `<div class="cps-subtabs" role="tablist">${[["presets", text.pagePoses], ["figure", text.pageFigure], ["joints", text.pageJoints]].map(([k, label]) => `<button type="button" role="tab" data-subtab="${k}" aria-selected="${page === k}">${label}</button>`).join("")}</div>`;
+        let body = "";
+        if (page === "presets") body = `<div class="cps-chips">${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${pose.preset === p.id}">${p[lang]}</button>`).join("")}</div>
+          <label class="cps-check"><input type="checkbox" data-seated ${pose.seated ? "checked" : ""}> ${t.seated}</label>${where}`;
+        else if (page === "figure") body = `${bodies}${props}${pose.props.some(k => M.PROPS[k].hand) ? `<button type="button" data-regrip>${text.regrip}</button>` : ""}`;
+        else body = `<div class="cps-joints"><div class="cps-map" role="group" aria-label="${text.selected}">${BODY_MAP_SVG}${Object.entries(BODY_MAP).map(([k, [x, y]]) => `<button type="button" data-part="${k}" aria-pressed="${k === state.part}" title="${PARTS[k][lang]}" aria-label="${PARTS[k][lang]}" style="left:${x / 1.2}%;top:${y / 2.4}%"></button>`).join("")}
+            <span class="cps-map-side" style="left:4%">${text.mapRight}</span><span class="cps-map-side" style="right:4%">${text.mapLeft}</span></div>
+          <div class="cps-joint-edit"><div class="cps-joint-heading"><strong>${config[lang]}</strong><button type="button" data-reset-part>${text.resetPart}</button></div>
+            <div class="cps-sliders">${config.controls.map(c => slider("pose." + c.path, c[lang], c.min, c.max, M.get(pose, c.path))).join("")}</div>
+            <div class="cps-joint-tools"><button type="button" data-flip>${text.flip}</button><button type="button" data-mirror="${state.part.startsWith("l") ? "l" : "r"}" ${/^[lr]/.test(state.part) ? "" : "disabled"}>${text.mirror}</button></div></div></div>`;
+        panel.innerHTML = `${people}${subtabs}${body}`;
       }
       output();
     }
@@ -554,10 +569,11 @@ const CamPose = (() => {
       panel.querySelectorAll('[data-focus]').forEach(b => b.setAttribute('aria-pressed', b.dataset.focus === state.cam.focus));
       panel.querySelectorAll("[data-preset]").forEach(b => b.setAttribute("aria-pressed", cur().preset === b.dataset.preset));
     }
-    function selectPart(part) { state.part = part; renderPanel(); render(); }
+    function selectPart(part) { state.part = part; state.poseTab = "joints"; renderPanel(); render(); }
     root.addEventListener("click", e => {
       const button = e.target.closest("button"); if (!button) return;
       if (button.dataset.tab) { state.tab = button.dataset.tab; cameraEditorFrame = null; renderPanel(); render(); }
+      else if (button.dataset.subtab) { state.poseTab = button.dataset.subtab; renderPanel(); }
       else if (button.hasAttribute("data-reset")) {
         if (state.tab === "camera") state.cam = M.normalizeCamera({ az: M.wrap360(state.pose.yaw + 45), el: 10, distance: 2.8, focus: "chest" });
         else if (state.tab === "light") state.light = M.normalizeLight();

@@ -463,6 +463,20 @@ body.vf-mini{padding-bottom:84px}
 .cps-sl small{font-size:11.5px;color:var(--faint)}
 .cps-check{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
 .cps-check input{accent-color:var(--accent)}
+/* Narrow screens: one column in reading order. Wide screens: the stage stays pinned on the left
+   while the tabs and every control sit beside it, so nothing needs scrolling back and forth. */
+.cps-left,.cps-right{display:contents}
+.cps-top{order:-1}
+@media(min-width:900px){
+  .cps{grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);align-items:start;gap:16px}
+  .cps-left,.cps-right{display:grid;gap:12px;position:sticky;top:72px;min-width:0}
+  .cps-top{order:0}
+  .cps-right{align-content:start;max-height:calc(100vh - 160px);overflow-y:auto;overscroll-behavior:contain;padding-right:4px;scrollbar-width:thin}
+  .cps-stage{height:clamp(380px,calc(100vh - 260px),580px)}
+  .cps-right .cps-sliders{grid-template-columns:1fr;gap:14px;padding:14px}
+  .cps-right .cps-top{position:sticky;top:0;z-index:2;background:var(--surface);padding-bottom:4px}
+  .cps-view-tools{flex-wrap:nowrap;gap:8px}.cps-view-tools>.cps-editor-label{display:none}.cps-view-tools .cps-download{white-space:nowrap}
+}
 @media(max-width:640px){.cps-stage{height:410px}.cps-sliders{grid-template-columns:1fr;gap:14px}.cps-view-tools>span{flex-basis:100%}.cps-view-tools button{padding:4px 6px}.cps-help{font-size:10.5px}.cps-joint-heading{align-items:flex-start;flex-wrap:wrap}}
 .studio-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:40px}
 .studio-use{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-bottom:14px;font-size:13px;color:var(--muted)}
@@ -641,10 +655,10 @@ body.vf-mini{padding-bottom:84px}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="vendor/three.min.js"></script>
-<script src="studio-model.js?v=anatomy-4"></script>
-<script src="studio-body-data.js?v=anatomy-4"></script>
-<script src="studio-surface.js?v=anatomy-4"></script>
-<script src="studio.js?v=anatomy-4"></script>
+<script src="studio-model.js?v=anatomy-5"></script>
+<script src="studio-body-data.js?v=anatomy-5"></script>
+<script src="studio-surface.js?v=anatomy-5"></script>
+<script src="studio.js?v=anatomy-5"></script>
 <script>
 /* ================= 数据 ================= */
 const CATS = ["time","subject","scene","style"];

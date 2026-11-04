@@ -158,3 +158,38 @@ test('turning the palm does not pinch the elbow or collapse forearm cross-sectio
     });
   }
 });
+
+test('the wrist has a continuous forearm-to-palm width instead of a pinched bind seam', () => {
+  const point = new THREE.Vector3();
+  for (const body of Object.keys(M.BODY_TYPES)) for (const side of ['l', 'r']) for (const twist of [0, 75, -90]) {
+    const p = M.P({ body, lArm: { a: 25, c: 0, e: twist }, rArm: { a: 25, c: 0, e: twist } }), J = M.skeleton(p);
+    surface.update(J, p);
+    const R = J[side + 'HandM'], inverse = [R[0], R[3], R[6], R[1], R[4], R[7], R[2], R[5], R[8]];
+    const vertices = Array.from({ length: surface.vertices }, (_, i) => {
+      surface.body.getVertexPosition(i, point); return M.mul(M.mv(inverse, M.sub(point.toArray(), J[side + 'Wrist'])), 1 / J.handSize);
+    });
+    const ids = surface.geometry.getAttribute('skinIndex'), weights = surface.geometry.getAttribute('skinWeight'), index = surface.geometry.index.array;
+    const bones = new Set(surface.skeleton.bones.flatMap((b, i) => b.name.startsWith(side) && /^(Fore|Hand)/.test(b.name.slice(1)) ? [i] : []));
+    const valid = vertices.map((_, i) => [0, 1, 2, 3].reduce((sum, c) => sum + (bones.has(ids.array[i * 4 + c]) ? weights.array[i * 4 + c] / 255 : 0), 0) > 0.5);
+    const sections = [0.02, 0.01, 0, -0.01, -0.02].map(y => {
+      const intersections = [];
+      for (let i = 0; i < index.length; i += 3) {
+        const triangle = [index[i], index[i + 1], index[i + 2]]; if (!triangle.every(v => valid[v])) continue;
+        for (let e = 0; e < 3; e++) {
+          const a = vertices[triangle[e]], b = vertices[triangle[(e + 1) % 3]];
+          if ((a[1] < y) === (b[1] < y)) continue;
+          const t = (y - a[1]) / (b[1] - a[1]); intersections.push([a[0] + t * (b[0] - a[0]), a[2] + t * (b[2] - a[2])]);
+        }
+      }
+      assert.ok(intersections.length > 20);
+      return [0, 1].map(axis => Math.max(...intersections.map(p => p[axis])) - Math.min(...intersections.map(p => p[axis])));
+    });
+    const [width, depth] = sections[2], label = `${body} ${side} at ${twist}`;
+    assert.ok(width > 0.05 && width < 0.075, `${label}: pinched or oversized wrist width ${width}`);
+    assert.ok(depth > 0.032 && depth < 0.055, `${label}: pinched or oversized wrist depth ${depth}`);
+    for (let i = 1; i < sections.length; i++) for (const axis of [0, 1]) {
+      const ratio = sections[i][axis] / sections[i - 1][axis];
+      assert.ok(ratio > 0.8 && ratio < 1.25, `${label}: abrupt wrist transition at ${i}`);
+    }
+  }
+});

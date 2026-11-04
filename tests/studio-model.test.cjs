@@ -172,3 +172,78 @@ test('camera head focus and reaching follow each body type at either model posit
     assert.ok(Math.hypot(...M.sub(K.rWrist, goal)) < 0.03, body);
   }
 });
+
+test('spacing sets the horizontal distance, preserves poses and stays inside placement limits', () => {
+  const a = M.normalizePose({ ...M.PRESETS.find(x => x.id === 'run').pose, body: 'female', x: -0.4, z: 0.2 });
+  const b = M.normalizePose({ body: 'child', x: 0.8, z: 0.6 });
+  for (const distance of [0.2, 0.8, 1.5, 4]) {
+    const [A, B] = M.spaceModels(a, b, distance);
+    assert.ok(Math.abs(M.modelDistance(A, B) - distance) < 1e-10);
+    assert.equal(A.preset, a.preset); assert.deepEqual(A.lLeg, a.lLeg); assert.equal(B.body, 'child');
+    assert.ok(Math.abs((A.x + B.x) / 2 - 0.2) < 1e-10);
+    for (const p of [A, B]) assert.ok(Math.abs(p.x) <= 3 && Math.abs(p.z) <= 3);
+  }
+  const [A, B] = M.spaceModels({ x: 3, z: 3 }, { x: 3, z: 3 }, 4);
+  assert.equal(M.modelDistance(A, B), 4);
+  for (const p of [A, B]) assert.ok(Math.abs(p.x) <= 3 && Math.abs(p.z) <= 3);
+});
+
+test('holding a cup keeps it upright across the pose presets without replacing the arm action', () => {
+  for (const preset of M.PRESETS) {
+    const original = M.normalizePose({ ...preset.pose, body: 'female' }), p = M.holdProp(original, 'cup');
+    const up = M.mv(M.propFrame(p, 'cup').matrix, [0, 1, 0]);
+    assert.ok(up[1] > 0.99, `${preset.id}: cup tilts ${up[1]}`);
+    assert.deepEqual(p.lLeg, original.lLeg); assert.deepEqual(p.rLeg, original.rLeg);
+    if (preset.id !== 'stand' && preset.id !== 'lookback') {
+      for (const key of ['a', 'b', 'c', 'd']) assert.equal(p.rArm[key], original.rArm[key], `${preset.id}: arm ${key} changed`);
+    }
+  }
+});
+
+test('props share the skin hand frame through body, arm and wrist rotations', () => {
+  for (const body of Object.keys(M.BODY_TYPES)) for (const prop of Object.keys(M.PROP_ATTACHMENTS)) {
+    const p = M.holdProp(M.normalizePose({ body, yaw: 60, x: 0.8, z: -0.4 }), prop);
+    p.rArm.wristPitch += 10;
+    const J = M.skeleton(p), F = M.propFrame(p, prop, J), R = J.rHandM;
+    const transpose = [R[0], R[3], R[6], R[1], R[4], R[7], R[2], R[5], R[8]];
+    const local = M.mul(M.mv(transpose, M.sub(F.position, J.rWrist)), 1 / J.handSize);
+    local.forEach((n, i) => assert.ok(Math.abs(n - M.PROP_ATTACHMENTS[prop].position[i]) < 1e-10));
+    assert.ok(F.matrix.every(Number.isFinite));
+    assert.deepEqual(M.skinFrames(p, J).rHand.matrix, J.rHandM);
+  }
+});
+
+test('finger tips contact the phone back and umbrella grip instead of floating away', () => {
+  const localTips = prop => {
+    const p = M.holdProp(M.normalizePose({}), prop), J = M.skeleton(p), F = M.propFrame(p, prop, J), R = F.matrix;
+    const T = [R[0], R[3], R[6], R[1], R[4], R[7], R[2], R[5], R[8]], H = M.handRig(p, 'r', J);
+    return ['thumb', 'index', 'middle', 'ring', 'pinky'].map(k => M.mul(M.mv(T, M.sub(H['r' + k + 'Tip'], F.position)), 1 / F.scale));
+  };
+  const phone = localTips('phone');
+  assert.ok(phone.slice(1).every(p => Math.abs(p[2] + 0.0045) < 0.013));
+  assert.ok(phone[0][2] > 0.0045 && Math.abs(phone[0][0]) < 0.045);
+  for (const p of localTips('umbrella')) assert.ok(Math.abs(Math.hypot(p[0], p[2]) - 0.014) < 0.002);
+});
+
+test('legacy held props migrate once and later finger edits survive a reload', () => {
+  const old = M.normalizePose({ props: ['phone'], body: 'child' }), migrated = M.migratePose(old);
+  assert.equal(migrated.gripVersion, 1); assert.ok(migrated.rArm.b > 15);
+  migrated.rArm.index = 17; migrated.rArm.wristPitch = 12;
+  const again = M.migratePose(migrated);
+  assert.equal(again.rArm.index, 17); assert.equal(again.rArm.wristPitch, 12);
+  assert.equal(again.body, 'child');
+});
+
+test('a held cup is described as holding rather than an empty fist', () => {
+  const p = M.holdProp(M.normalizePose({}), 'cup'); p.preset = null;
+  assert.match(M.describePose(p, null, 'en'), /holding a cup/);
+  assert.doesNotMatch(M.describePose(p, null, 'en'), /right hand in a fist/);
+  assert.doesNotMatch(M.describePose(p, null, 'zh'), /右手握拳/);
+});
+
+test('side controls still spread a forward-raised arm and a seated thigh', () => {
+  const leg = M.normalizePose({ seated: true, lLeg: { a: 90, b: 45 } }), L = M.skeleton(leg);
+  assert.ok(L.lKnee[0] - L.lHip[0] > 0.3, 'a seated knee must move outwards');
+  const arm = M.normalizePose({ rArm: { a: 40, b: 90, c: 0 } }), A = M.skeleton(arm);
+  assert.ok(A.rShoulder[0] - A.rElbow[0] > 0.15, 'a forward arm must still move sideways');
+});

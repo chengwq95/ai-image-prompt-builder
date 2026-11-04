@@ -45,9 +45,7 @@ const CamPose = (() => {
     let cameraEditorFrame = null, controlCenter = [0, 1, 0];
     root.classList.add("cps");
     root.innerHTML = `
-      <div class="cps-top"><div class="cps-tabs" role="tablist" aria-label="3D studio">
-        <button type="button" role="tab" data-tab="camera"></button><button type="button" role="tab" data-tab="pose"></button><button type="button" role="tab" data-tab="light"></button>
-      </div><button type="button" class="cps-reset" data-reset></button></div>
+      <div class="cps-left">
         <div class="cps-view-tools"><span class="cps-editor-label"></span><div>
           <button type="button" data-view="front"></button><button type="button" data-view="side"></button><button type="button" data-view="back"></button><button type="button" data-view="frame"></button>
         </div><div class="cps-render-modes"><button type="button" data-mode="volume" aria-pressed="true"></button><button type="button" data-mode="drawing" aria-pressed="false"></button></div><button type="button" class="cps-download" data-download></button></div>
@@ -57,7 +55,13 @@ const CamPose = (() => {
         <div class="cps-status" role="status" hidden></div><div class="cps-help"></div>
       </div>
       <div class="cps-out"><b></b><span class="cps-out-text" aria-live="polite"></span></div>
-      <div class="cps-panel" role="tabpanel"></div>`;
+      </div>
+      <div class="cps-right">
+        <div class="cps-top"><div class="cps-tabs" role="tablist" aria-label="3D studio">
+        <button type="button" role="tab" data-tab="camera"></button><button type="button" role="tab" data-tab="pose"></button><button type="button" role="tab" data-tab="light"></button>
+      </div><button type="button" class="cps-reset" data-reset></button></div>
+      <div class="cps-panel" role="tabpanel"></div>
+      </div>`;
     const canvas = root.querySelector(".cps-main"), overlay = root.querySelector(".cps-overlay"), panel = root.querySelector(".cps-panel");
     const inset = root.querySelector(".cps-inset-preview"), ctx = overlay.getContext("2d"), status = root.querySelector(".cps-status");
     const value = () => ({ cam: { ...state.cam }, pose: copy(state.pose), pose2: copy(state.pose2), second: state.second, light: { ...state.light } });

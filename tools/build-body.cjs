@@ -79,6 +79,7 @@ async function main() {
   };
   weights.forEach((w, i) => { weights[i] = normalize(w); });
   const average = points => [0, 1, 2].map(a => points.reduce((sum, p) => sum + p[a], 0) / points.length);
+  const HAND_WIDTH = 1.08, HAND_THICKNESS = 1.2, FINGER_THICKNESS = 1.15;
   const transposed = R => [R[0], R[3], R[6], R[1], R[4], R[7], R[2], R[5], R[8]];
   const axisFrame = (a, b, across = [1, 0, 0]) => {
     const y = M.norm(M.sub(a, b)); let x = M.norm(M.sub(across, M.mul(y, M.dot(across, y))));
@@ -125,9 +126,12 @@ async function main() {
       const across = M.mul(M.sub(bone('finger2-1.' + suffix).head, bone('finger5-1.' + suffix).head), s === 'l' ? 1 : -1);
       const handR = axisFrame(w, middle, across), handX = [handR[0], handR[3], handR[6]];
       native[s + 'Clavicle'] = frame(chest, identity, [globalScale, torsoScale, globalScale]);
-      for (const [role, from, to, length] of [['Upper', a, e, 'upper'], ['Fore', e, w, 'fore'], ['Thigh', hp, k, 'thigh'], ['Shin', k, ankle, 'shin']]) native[s + role] = frame(from, axisFrame(from, to), [globalScale, M.measurements(body)[length] * J.scale / Math.hypot(...M.sub(to, from)), globalScale]);
+      // Limbs are stretched to the editor's proportions along their length only, which makes them read
+      // thin. Give arms, hands and fingers back some thickness so they keep a sturdy, drawable volume.
+      const bulk = { Upper: 1.1, Fore: 1.14, Thigh: 1, Shin: 1 };
+      for (const [role, from, to, length] of [['Upper', a, e, 'upper'], ['Fore', e, w, 'fore'], ['Thigh', hp, k, 'thigh'], ['Shin', k, ankle, 'shin']]) native[s + role] = frame(from, axisFrame(from, to), [globalScale * bulk[role], M.measurements(body)[length] * J.scale / Math.hypot(...M.sub(to, from)), globalScale * bulk[role]]);
       const width = Math.hypot(...across);
-      native[s + 'Hand'] = frame(w, handR, [0.071 * J.handSize / width, 0.086 * J.handSize / Math.hypot(...M.sub(middle, w)), globalScale]);
+      native[s + 'Hand'] = frame(w, handR, [0.071 * J.handSize / width * HAND_WIDTH, 0.086 * J.handSize / Math.hypot(...M.sub(middle, w)), globalScale * HAND_THICKNESS]);
       native[s + 'Foot'] = frame(ankle);
       // Anchor the toe frame so that, in the bind pose, toe vertices land exactly where the foot frame
       // would put them. Otherwise the toes are shifted against the foot and leave a ledge at their base.
@@ -136,7 +140,7 @@ async function main() {
       ['thumb', 'index', 'middle', 'ring', 'pinky'].forEach((finger, index) => {
         for (let segment = 0; segment < 3; segment++) {
           const name = s + finger + segment, part = bone(`finger${index + 1}-${segment + 1}.${suffix}`);
-          native[name] = frame(part.head, axisFrame(part.head, part.tail, handX), [globalScale, target[name].length / Math.hypot(...M.sub(part.tail, part.head)), globalScale]);
+          native[name] = frame(part.head, axisFrame(part.head, part.tail, handX), [globalScale * FINGER_THICKNESS, target[name].length / Math.hypot(...M.sub(part.tail, part.head)), globalScale * FINGER_THICKNESS]);
         }
       });
     }

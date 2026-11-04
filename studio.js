@@ -179,20 +179,29 @@ const CamPose = (() => {
     return { id, rig, nodes, stool, props, continuous, surfaceOutline, J: null };
     }
 
+    // Every joint of a skeleton plus points along each limb, used to keep furniture out of bodies.
+    function bodyPoints(J) {
+      const pts = Object.entries(J).filter(([k, v]) => !/forward/i.test(k) && Array.isArray(v) && v.length === 3 && v.every(Number.isFinite)).map(([, v]) => v);
+      for (const s of ["l", "r"]) for (const [a, b] of [["Hip", "Knee"], ["Knee", "Ankle"], ["Ankle", "Toe"], ["Shoulder", "Elbow"], ["Elbow", "Wrist"]]) {
+        const A = J[s + a], C = J[s + b]; if (!A || !C) continue;
+        for (const t of [0.25, 0.5, 0.75]) pts.push(A.map((v, i) => v + (C[i] - v) * t));
+      }
+      return pts;
+    }
     const rotation = new THREE.Matrix4();
     function place(fig, name, p, m = identity, scale = 1) {
       const node = fig.nodes[name]; node.position.set(...p);
       rotation.set(m[0], m[1], m[2], 0, m[3], m[4], m[5], 0, m[6], m[7], m[8], 0, 0, 0, 0, 1);
       node.quaternion.setFromRotationMatrix(rotation); node.scale.setScalar(scale);
     }
-    function poseFigure(fig, p) {
+    function poseFigure(fig, p, others = []) {
       const J = M.skeleton(p), h = J.scale;
       place(fig, "pelvis", J.pelvis, J.bodyM, h); place(fig, "torso", J.waist, J.ubM, h * M.measurements(p.body).spine / B.spine); place(fig, "head", J.head, J.headM, J.headSize);
       for (const side of ["l", "r"]) place(fig, side + "Hand", J[side + "Wrist"], J[side + "HandM"], J.handSize);
       const chair = (p.props || []).includes("chair");
       fig.stool.visible = p.seated && !chair;
       fig.stool.position.set(p.x || 0, 0, p.z || 0); fig.stool.scale.setScalar(h);
-      fig.props.update(J, p);
+      fig.props.update(J, p, others);
       fig.continuous.update(J, p);
       if (fig.surfaceOutline.geometry !== fig.continuous.geometry) {
         fig.surfaceOutline.geometry = fig.continuous.geometry;
@@ -205,8 +214,8 @@ const CamPose = (() => {
       return J;
     }
     function updateFigure() {
-      const J = poseFigure(figA, state.pose);
-      if (state.second) { if (figB.rig.parent !== cast) cast.add(figB.rig); poseFigure(figB, state.pose2); }
+      const J = poseFigure(figA, state.pose, state.second ? [M.skeleton(state.pose2)] : []);
+      if (state.second) { if (figB.rig.parent !== cast) cast.add(figB.rig); poseFigure(figB, state.pose2, [J]); }
       else if (figB.rig.parent === cast) cast.remove(figB.rig);
       cast.updateMatrixWorld(true); return J;
     }
@@ -253,7 +262,7 @@ const CamPose = (() => {
         const top = box(0.95, 0.04, 0.6, woodMat); top.position.y = 0.74; items.table.add(top);
         for (const x of [-0.42, 0.42]) for (const z of [-0.25, 0.25]) { const l = box(0.04, 0.72, 0.04, woodMat); l.position.set(x, 0.36, z); items.table.add(l); }
       } rig.add(items.table);
-      function update(J, p) {
+      function update(J, p, others = []) {
         const on = new Set(p.props || []), yaw = Math.atan2(J.forward[0], J.forward[2]);
         for (const [k, g] of Object.entries(items)) g.visible = on.has(k);
         for (const k of Object.keys(M.PROP_ATTACHMENTS)) {
@@ -262,10 +271,32 @@ const CamPose = (() => {
           rotation.set(R[0], R[1], R[2], 0, R[3], R[4], R[5], 0, R[6], R[7], R[8], 0, 0, 0, 0, 1);
           items[k].quaternion.setFromRotationMatrix(rotation);
         }
-        // The chair sits under a seated figure, otherwise beside them; the table stands in front.
+        // The chair sits under a seated figure; otherwise it goes beside them and the table in front,
+        // at the first spot where neither this body nor the other model passes through the furniture.
         const local = (x, z) => [(p.x || 0) + Math.cos(yaw) * x + Math.sin(yaw) * z, 0, (p.z || 0) - Math.sin(yaw) * x + Math.cos(yaw) * z];
-        items.chair.position.set(...(p.seated ? local(0, -0.04) : local(0.62, -0.05))); items.chair.rotation.y = yaw; items.chair.scale.setScalar(p.seated ? J.scale : 1);
-        items.table.position.set(...local(0, p.seated ? 0.5 : 0.55)); items.table.rotation.y = yaw;
+        const bodies = [J, ...others].map(bodyPoints).flat();
+        const clearance = (at, half, height) => {
+          let best = Infinity;
+          for (const q of bodies) {
+            if (q[1] > height) continue;
+            const dx = q[0] - at[0], dz = q[2] - at[2], u = Math.abs(Math.cos(yaw) * dx - Math.sin(yaw) * dz) - half[0], v = Math.abs(Math.sin(yaw) * dx + Math.cos(yaw) * dz) - half[1];
+            best = Math.min(best, Math.hypot(Math.max(u, 0), Math.max(v, 0)) - (u < 0 && v < 0 ? Math.min(-u, -v) : 0));
+          }
+          return best;
+        };
+        const choose = (spots, half, height, used = []) => {
+          let pick = null, score = -Infinity;
+          for (const [x, z] of spots) {
+            const at = local(x, z); if (used.some(u => Math.hypot(u[0] - at[0], u[2] - at[2]) < 0.75)) continue;
+            const c = clearance(at, half, height); if (c > 0.12) return at;
+            if (c > score) { score = c; pick = at; }
+          }
+          return pick || local(...spots[0]);
+        };
+        const chairAt = p.seated ? local(0, -0.04) : choose([[0.62, -0.05], [-0.62, -0.05], [0.6, -0.55], [-0.6, -0.55], [0, -0.75], [0.85, 0.25], [-0.85, 0.25], [0.95, -0.5], [-0.95, -0.5], [0, -1.1], [1.25, 0], [-1.25, 0]], [0.25, 0.25], 1.0);
+        items.chair.position.set(...chairAt); items.chair.rotation.y = yaw; items.chair.scale.setScalar(p.seated ? J.scale : 1);
+        const tableAt = choose([[0, p.seated ? 0.5 : 0.55], [0, 0.75], [0, 0.95], [0.9, 0.5], [-0.9, 0.5], [0, 1.25]], [0.5, 0.32], 0.8, on.has("chair") && !p.seated ? [chairAt] : []);
+        items.table.position.set(...tableAt); items.table.rotation.y = yaw;
       }
       return { update };
     }

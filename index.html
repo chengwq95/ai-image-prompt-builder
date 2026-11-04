@@ -461,6 +461,8 @@ body.vf-mini{padding-bottom:84px}
 .cps-sl output{font-family:var(--mono);color:var(--text)}
 .cps-sl input{width:100%;accent-color:var(--accent)}
 .cps-sl small{font-size:11.5px;color:var(--faint)}
+.cps-panel button[data-regrip]{justify-self:start;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--text);cursor:pointer}
+.cps-panel button[data-regrip]:hover{border-color:var(--line-strong)}
 .cps-check{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
 .cps-check input{accent-color:var(--accent)}
 /* Narrow screens: one column in reading order. Wide screens: the stage stays pinned on the left
@@ -655,10 +657,10 @@ body.vf-mini{padding-bottom:84px}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="vendor/three.min.js"></script>
-<script src="studio-model.js?v=anatomy-5"></script>
-<script src="studio-body-data.js?v=anatomy-5"></script>
-<script src="studio-surface.js?v=anatomy-5"></script>
-<script src="studio.js?v=anatomy-5"></script>
+<script src="studio-model.js?v=anatomy-6"></script>
+<script src="studio-body-data.js?v=anatomy-6"></script>
+<script src="studio-surface.js?v=anatomy-6"></script>
+<script src="studio.js?v=anatomy-6"></script>
 <script>
 /* ================= 数据 ================= */
 const CATS = ["time","subject","scene","style"];

@@ -1,5 +1,5 @@
-/* A continuous, smoothly blended male body, skinned to the same FK joints as the editor.
-   Geometry is generated once; posing only moves bones. No external model assets. */
+/* Shared continuous topology with anatomical rest-shape variants.
+   Shape and proportions are baked before binding; posing only rotates the joints. */
 const StudioSurface = (() => {
   function create(M, material, rig) {
     // Bind with the arms slightly separated from the torso, so a raised arm cannot
@@ -127,22 +127,89 @@ const StudioSurface = (() => {
     }
     geometry.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndices, 4)); geometry.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeights, 4));
     }
+    const baseGeometry = geometry, variants = new Map([['male', geometry]]);
     const rotation = new THREE.Matrix4();
-    function update(J, pose = M.BASE()) {
-      for (const s of ['l', 'r']) { J[s + 'ToeBase'] = M.add(J[s + 'Ankle'], M.mv(J[s + 'FootM'], [0, -0.02, 0.1])); J[s + 'ToeM'] = M.chain(J[s + 'FootM'], M.rx(-pose[s + 'Leg'].toe)); }
+    let activeType = 'male';
+    const gaussian = (x, center, width) => Math.exp(-(((x - center) / width) ** 2));
+    function variant(type) {
+      if (variants.has(type)) return variants.get(type);
+      const config = M.BODY_TYPES[type], dims = M.measurements(type), h = config.height;
+      const typedPose = { ...bindPose, body: type }, target = M.skeleton(typedPose);
+      for (const s of ['l', 'r']) {
+        target[s + 'ToeBase'] = M.add(target[s + 'Ankle'], M.mv(target[s + 'FootM'], M.mul([0, -0.02, 0.1], h * dims.footSize)));
+        target[s + 'ToeM'] = target[s + 'FootM'];
+      }
+      const result = baseGeometry.clone(), points = result.getAttribute('position');
+      const ids = baseGeometry.getAttribute('skinIndex'), weights = baseGeometry.getAttribute('skinWeight');
+      // Each bind-space point follows the same nearby bones as its skin weights.
+      // Adjacent vertices stay connected even where shoulder, hip and knee lengths differ.
+      for (let i = 0; i < points.count; i++) {
+        const source = [points.getX(i), points.getY(i), points.getZ(i)], out = [0, 0, 0];
+        for (let slot = 0; slot < 4; slot++) {
+          const weight = weights.getComponent(i, slot); if (!weight) continue;
+          const j = joints[ids.getComponent(i, slot)], R = rest[j.matrix], d = M.sub(source, rest[j.joint]);
+          const q = [R[0] * d[0] + R[3] * d[1] + R[6] * d[2], R[1] * d[0] + R[4] * d[1] + R[7] * d[2], R[2] * d[0] + R[5] * d[1] + R[8] * d[2]];
+          const g = [...(config.girth[j.name] || [1, 1, 1])], name = j.name;
+          const length = name.endsWith('Upper') ? 'upper' : name.endsWith('Fore') ? 'fore' : name.endsWith('Thigh') ? 'thigh' : name.endsWith('Shin') ? 'shin' : name === 'torso' ? 'spine' : name === 'neck' ? 'neck' : null;
+          if (length) g[1] = dims[length] / M.B[length];
+          if (name.endsWith('Hand')) g.fill(dims.handSize);
+          if (name.endsWith('Foot') || name.endsWith('Toes')) g.fill(dims.footSize);
+          if (name === 'head') g.fill(dims.headSize);
+          // Waist transitions and muscle volumes vary along the limb, rather than
+          // inflating every cross-section equally or scaling a posed bone.
+          if (type === 'female') {
+            if (name === 'pelvis') g[0] *= 1 - 0.05 * gaussian(q[1], 0.19, 0.10);
+            if (name === 'torso') {
+              g[0] *= 1 + 0.10 * gaussian(q[1], 0.01, 0.08);
+              const front = M.clamp((q[2] - 0.015) / 0.06, 0, 1);
+              q[2] += 0.036 * (gaussian(q[0], -0.064, 0.046) + gaussian(q[0], 0.064, 0.046)) * gaussian(q[1], 0.166, 0.065) * front;
+            }
+          } else if (type === 'strong') {
+            if (name === 'pelvis') g[0] *= 1 + 0.12 * gaussian(q[1], 0.15, 0.11);
+            if (name === 'torso') {
+              g[0] *= 0.86 + 0.22 * gaussian(q[1], 0.20, 0.13);
+              q[2] += 0.018 * gaussian(Math.abs(q[0]), 0.08, 0.065) * gaussian(q[1], 0.19, 0.065) * M.clamp(q[2] / 0.07, 0, 1);
+            }
+            if (name.endsWith('Upper')) { const bulge = gaussian(q[1], -0.115, 0.08); g[0] *= 1 + 0.11 * bulge; g[2] *= 1 + 0.14 * bulge; }
+            if (name.endsWith('Thigh')) g[0] *= 0.88 + 0.17 * gaussian(q[1], -0.19, 0.10);
+          } else if (type === 'child') {
+            // Neutral, soft torso: no adult waist taper or added chest anatomy.
+            if (name === 'torso') g[0] *= 1 + 0.16 * gaussian(q[1], 0.015, 0.12);
+            if (name === 'pelvis') g[0] *= 1 + 0.20 * gaussian(q[1], 0.15, 0.11);
+          }
+          const local = q.map((x, axis) => x * g[axis] * h), mapped = M.add(target[j.joint], M.mv(target[j.matrix], local));
+          for (let axis = 0; axis < 3; axis++) out[axis] += mapped[axis] * weight;
+        }
+        points.setXYZ(i, ...out);
+      }
+      points.needsUpdate = true;
+      result.deleteAttribute('normal'); result.computeVertexNormals(); result.computeBoundingBox(); result.computeBoundingSphere();
+      variants.set(type, result); return result;
+    }
+    function updateBones(J, pose) {
+      for (const s of ['l', 'r']) { J[s + 'ToeBase'] = M.add(J[s + 'Ankle'], M.mv(J[s + 'FootM'], M.mul([0, -0.02, 0.1], J.footSize || 1))); J[s + 'ToeM'] = M.chain(J[s + 'FootM'], M.rx(-pose[s + 'Leg'].toe)); }
       joints.forEach((j, i) => {
         const p = J[j.joint], R = J[j.matrix]; bones[i].position.set(...p);
         rotation.set(R[0], R[1], R[2], 0, R[3], R[4], R[5], 0, R[6], R[7], R[8], 0, 0, 0, 0, 1); bones[i].quaternion.setFromRotationMatrix(rotation);
-        // Body type: overall height plus per-bone girth (bones are not nested, so scales never compound).
-        const h = J.scale || 1, g = ((M.BODY_TYPES && M.BODY_TYPES[pose.body]) || { girth: {} }).girth[j.name] || [1, 1, 1];
-        bones[i].scale.set(h * g[0], h * g[1], h * g[2]);
+        bones[i].scale.setScalar(1);
       });
       rig.updateMatrixWorld(true);
     }
-    update(rest);
+    updateBones(rest, bindPose);
     const skeleton = new THREE.Skeleton(bones), body = new THREE.SkinnedMesh(geometry, material);
     body.name = 'Continuous male mannequin'; body.castShadow = true; body.receiveShadow = true; rig.add(body); body.bind(skeleton);
-    return { body, skeleton, geometry, update, vertices: geometry.getAttribute('position').count };
+    function update(J, pose = M.BASE()) {
+      const type = M.BODY_TYPES[pose.body] ? pose.body : 'male';
+      if (type !== activeType) {
+        body.geometry = variant(type); activeType = type;
+        const restPose = { ...bindPose, body: type };
+        updateBones(M.skeleton(restPose), restPose); body.bind(skeleton);
+        body.name = 'Continuous ' + type + ' mannequin';
+      }
+      updateBones(J, pose);
+    }
+    return { body, skeleton, get geometry() { return body.geometry; }, update, get type() { return activeType; }, vertices: geometry.getAttribute('position').count,
+      dispose() { variants.forEach(g => g.dispose()); skeleton.dispose(); } };
   }
   return { create };
 })();

@@ -32,13 +32,13 @@ const CamPoseModel = (() => {
     lArm: arm(), rArm: arm(), lLeg: leg(), rLeg: leg()
   });
 
-  // Rest proportions and continuous surface profiles, baked before skinning.
+  // Editor proportions; visual body variants come from the pinned anatomical mesh.
   const BODY_TYPES = {
-    male: { zh: "成年男性", en: "Adult man", height: 1, girth: {} },
-    female: { zh: "成年女性", en: "Adult woman", height: 0.94, say: ["成年女性", "an adult woman"], proportions: { shoulder: 0.166, hip: 0.108, spine: 0.435, neck: 0.088, head: 0.15, headSize: 0.98, handSize: 0.94, footSize: 0.94 }, girth: { torso: [0.91, 1, 0.94], pelvis: [1.1, 1, 1.07], lUpper: [0.86, 1, 0.88], rUpper: [0.86, 1, 0.88], lFore: [0.86, 1, 0.86], rFore: [0.86, 1, 0.86], lThigh: [1.03, 1, 1.03], rThigh: [1.03, 1, 1.03], lShin: [0.93, 1, 0.93], rShin: [0.93, 1, 0.93], neck: [0.86, 1, 0.86] } },
-    slim: { zh: "纤瘦", en: "Slim", height: 1, say: ["身材纤瘦", "slim build"], proportions: { shoulder: 0.177, hip: 0.092, handSize: 0.96, footSize: 0.96 }, girth: { torso: [0.86, 1, 0.82], pelvis: [0.88, 1, 0.86], lUpper: [0.76, 1, 0.78], rUpper: [0.76, 1, 0.78], lFore: [0.82, 1, 0.82], rFore: [0.82, 1, 0.82], lThigh: [0.8, 1, 0.8], rThigh: [0.8, 1, 0.8], lShin: [0.85, 1, 0.85], rShin: [0.85, 1, 0.85], neck: [0.88, 1, 0.88] } },
-    strong: { zh: "健壮", en: "Muscular", height: 1.02, say: ["身材健壮", "muscular build"], proportions: { shoulder: 0.215, hip: 0.103, neck: 0.095, handSize: 1.06, footSize: 1.03 }, girth: { torso: [1.16, 1, 1.15], pelvis: [1.02, 1, 1.04], lUpper: [1.25, 1, 1.3], rUpper: [1.25, 1, 1.3], lFore: [1.18, 1, 1.18], rFore: [1.18, 1, 1.18], lThigh: [1.17, 1, 1.2], rThigh: [1.17, 1, 1.2], lShin: [1.13, 1, 1.16], rShin: [1.13, 1, 1.16], neck: [1.2, 1, 1.18] } },
-    child: { zh: "小孩", en: "Child", height: 0.76, say: ["小孩", "a child"], proportions: { shoulder: 0.147, hip: 0.082, spine: 0.40, neck: 0.065, head: 0.17, upper: 0.235, fore: 0.205, hand: 0.068, thigh: 0.34, shin: 0.32, foot: 0.12, headSize: 1.17, handSize: 0.85, footSize: 0.82 }, girth: { head: [1.17, 1.17, 1.17], neck: [0.94, 1, 0.94], torso: [0.96, 1, 1.02], pelvis: [0.85, 0.84, 0.96], lUpper: [0.88, 1, 0.92], rUpper: [0.88, 1, 0.92], lFore: [0.88, 1, 0.92], rFore: [0.88, 1, 0.92], lThigh: [0.88, 1, 0.94], rThigh: [0.88, 1, 0.94], lShin: [0.93, 1, 0.96], rShin: [0.93, 1, 0.96] } }
+    male: { zh: "成年男性", en: "Adult man", height: 1 },
+    female: { zh: "成年女性", en: "Adult woman", height: 0.94, say: ["成年女性", "an adult woman"], proportions: { shoulder: 0.166, hip: 0.108, spine: 0.435, neck: 0.088, head: 0.15, headSize: 0.98, handSize: 0.94, footSize: 0.94 } },
+    slim: { zh: "纤瘦", en: "Slim", height: 1, say: ["身材纤瘦", "slim build"], proportions: { shoulder: 0.177, hip: 0.092, handSize: 0.96, footSize: 0.96 } },
+    strong: { zh: "健壮", en: "Muscular", height: 1.02, say: ["身材健壮", "muscular build"], proportions: { shoulder: 0.215, hip: 0.103, neck: 0.095, handSize: 1.06, footSize: 1.03 } },
+    child: { zh: "小孩", en: "Child", height: 0.76, say: ["小孩", "a child"], proportions: { shoulder: 0.147, hip: 0.082, spine: 0.40, neck: 0.065, head: 0.17, upper: 0.235, fore: 0.205, hand: 0.068, thigh: 0.34, shin: 0.32, foot: 0.12, headSize: 1.17, handSize: 0.85, footSize: 0.82 } }
   };
   // Hand props and furniture; hand props sit in the right hand.
   const PROPS = {
@@ -85,7 +85,7 @@ const CamPoseModel = (() => {
     const body = chain(ry(-p.yaw), rx(p.pelvisPitch), rz(p.pelvisRoll));
     const upperBody = chain(body, rx(p.lean), rz(p.side), ry(-p.twist));
     const neckM = chain(upperBody, ry(-p.neckYaw), rx(p.neckPitch), rz(-p.neckTilt));
-    const legDir = (L, s) => chain(body, rz(s * L.b), rx(-L.a), ry(-s * L.d));
+    const legDir = (L, s) => chain(body, rx(-L.a), rz(s * L.b), ry(-s * L.d));
     const pelvis0 = v(0, 0, 0);
     const J = {};
     J.pelvis = pelvis0;
@@ -97,9 +97,11 @@ const CamPoseModel = (() => {
     J.headM = headM;
     for (const [side, s] of [["l", 1], ["r", -1]]) {
       const A = p[side + "Arm"];
-      const sh = add(J.chest, mv(upperBody, v(s * B.shoulder, -0.02, 0)));
+      const shoulderLift = clamp((Math.max(A.a, A.b) - 55) / 125, 0, 1) * 12;
+      const clavicleM = chain(upperBody, rz(s * shoulderLift));
+      const sh = add(J.chest, mv(clavicleM, v(s * B.shoulder, -0.02, 0)));
       // Raise out to the side about z, forward about x, twist inward (d) about the arm, then bend the elbow.
-      const armM = chain(upperBody, rz(s * A.a), rx(-A.b), ry(-s * (A.d || 0)));
+      const armM = chain(clavicleM, rx(-A.b), rz(s * A.a), ry(-s * (A.d || 0)));
       const el = add(sh, mv(armM, v(0, -B.upper, 0)));
       const foreM = chain(armM, rx(-A.c), ry(-s * A.e));
       const handM = chain(foreM, rx(A.wristPitch), rz(s * A.wristYaw), ry(-s * A.wristRoll));
@@ -107,6 +109,7 @@ const CamPoseModel = (() => {
       const hd = add(wr, mv(handM, v(0, -B.hand, 0)));
       J[side + "Shoulder"] = sh; J[side + "Elbow"] = el; J[side + "Wrist"] = wr; J[side + "Hand"] = hd;
       J[side + "ArmM"] = armM; J[side + "ForeM"] = foreM; J[side + "HandM"] = handM;
+      J[side + "ClavicleM"] = clavicleM;
       const Lg = p[side + "Leg"];
       const hp = add(pelvis0, mv(body, v(s * B.hip, -0.04, 0)));
       const legM = legDir(Lg, s);
@@ -145,6 +148,102 @@ const CamPoseModel = (() => {
     J.ubM = upperBody; J.bodyM = body; J.neckM = neckM;
     J.headForward = mv(headM, v(0, 0, 1));
     return J;
+  }
+
+  // The palm and all three phalanges use one hand frame, shared by the skin and props.
+  const FINGERS = {
+    thumb: { root: [0.034, -0.026, 0.005], lengths: [0.030, 0.024, 0.019] },
+    index: { root: [0.025, -0.080, 0], lengths: [0.031, 0.023, 0.018] },
+    middle: { root: [0.008, -0.086, 0], lengths: [0.035, 0.025, 0.020] },
+    ring: { root: [-0.010, -0.080, 0], lengths: [0.032, 0.023, 0.019] },
+    pinky: { root: [-0.026, -0.068, 0], lengths: [0.025, 0.019, 0.016] }
+  };
+  function handRig(p, side, J = skeleton(p)) {
+    const sign = side === 'l' ? 1 : -1, A = p[side + 'Arm'], scale = J.handSize, R = J[side + 'HandM'];
+    const result = {};
+    Object.entries(FINGERS).forEach(([name, spec], index) => {
+      let point = add(J[side + 'Wrist'], mv(R, mul([spec.root[0] * sign, spec.root[1], spec.root[2]], scale)));
+      const spread = name === 'thumb' ? sign * (40 - A.thumb * 0.65) : sign * (2.5 - index) * A.spread;
+      let matrix = chain(R, rz(spread));
+      spec.lengths.forEach((length, segment) => {
+        const curl = A[name] * (name === 'thumb' ? [0.5, 0.7, 0.5] : [0.55, 0.85, 0.6])[segment];
+        matrix = chain(matrix, rx(-curl));
+        result[side + name + segment] = { position: point, matrix, length: length * scale };
+        point = add(point, mv(matrix, [0, -length * scale, 0]));
+      });
+      result[side + name + 'Tip'] = point;
+    });
+    return result;
+  }
+  function skinFrames(p, J = skeleton(p)) {
+    const frame = (position, matrix) => ({ position, matrix });
+    const frames = { pelvis: frame(J.pelvis, J.bodyM), torso: frame(J.waist, J.ubM), neck: frame(J.chest, J.neckM), head: frame(J.head, J.headM) };
+    for (const side of ['l', 'r']) {
+      frames[side + 'Clavicle'] = frame(J.chest, J[side + 'ClavicleM']);
+      for (const [name, joint, rotation] of [['Upper', 'Shoulder', 'ArmM'], ['Fore', 'Elbow', 'ForeM'], ['Hand', 'Wrist', 'HandM'], ['Thigh', 'Hip', 'LegM'], ['Shin', 'Knee', 'ShinM'], ['Foot', 'Ankle', 'FootM']]) frames[side + name] = frame(J[side + joint], J[side + rotation]);
+      frames[side + 'Toes'] = frame(add(J[side + 'Ankle'], mv(J[side + 'FootM'], mul([0, -0.02, 0.10], J.footSize))), chain(J[side + 'FootM'], rx(-p[side + 'Leg'].toe)));
+      for (const [key, value] of Object.entries(handRig(p, side, J))) if (value.matrix) frames[key] = value;
+    }
+    return frames;
+  }
+  const GRIPS = {
+    phone: { curls: [60, 30, 30, 35, 40] },
+    cup: { curls: [65, 80, 85, 85, 80] },
+    umbrella: { curls: [48, 86, 74, 73, 65] },
+    book: { curls: [60, 30, 30, 35, 40] }
+  };
+  const PROP_ATTACHMENTS = {
+    phone: { position: [0, -0.075, 0.052], angles: [0, 0, 0] },
+    book: { position: [0.050, -0.080, 0.050], angles: [0, 0, 0] },
+    cup: { position: [-0.004, -0.008, 0.048], angles: [0, 30, 90] },
+    umbrella: { position: [0, -0.078, 0.045], angles: [0, 30, 90] }
+  };
+  function propFrame(p, prop, J = skeleton(p)) {
+    const attachment = PROP_ATTACHMENTS[prop]; if (!attachment) return null;
+    const [x, y, z] = attachment.angles;
+    return { position: add(J.rWrist, mv(J.rHandM, mul(attachment.position, J.handSize))), matrix: chain(J.rHandM, rx(x), ry(y), rz(z)), scale: J.handSize };
+  }
+  function holdProp(pose, prop) {
+    const p = normalizePose(pose), grip = GRIPS[prop];
+    if (!grip) return p;
+    p.props = [...p.props.filter(k => !PROPS[k].hand), prop];
+    const A = p.rArm;
+    if (A.a < 25 && A.b < 15 && A.c < 30) Object.assign(A, { a: 10, b: 35, c: 95, d: 0, e: 0 });
+    // Keep the arm's action, and solve a comfortable wrist orientation for this prop.
+    const J = skeleton(p), [x, y, z] = PROP_ATTACHMENTS[prop].angles;
+    const up = mv(chain(rx(x), ry(y), rz(z)), [0, 1, 0]);
+    const foreBase = chain(J.rForeM, ry(-A.e));
+    const score = q => {
+      const R = chain(foreBase, ry(q[3]), rx(q[0]), rz(-q[1]), ry(q[2]));
+      const alignment = dot(mv(R, up), [0, 1, 0]);
+      const error = prop === 'phone' || prop === 'book' ? 1 - Math.abs(alignment) : 1 - alignment;
+      return error * 20 + (q[0] ** 2 + q[1] ** 2 * 1.5 + q[2] ** 2 * 0.8 + q[3] ** 2 * 0.15) * 0.00001;
+    };
+    let best = [0, 0, 0, 0], cost = score(best);
+    for (let pitch = -70; pitch <= 80; pitch += 15) for (let yaw = -30; yaw <= 30; yaw += 15) for (let roll = -60; roll <= 60; roll += 30) for (let fore = -90; fore <= 90; fore += 30) {
+      const q = [pitch, yaw, roll, fore], c = score(q); if (c < cost) { best = q; cost = c; }
+    }
+    for (const step of [5, 1]) {
+      const seed = [...best];
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let c = -1; c <= 1; c++) for (let d = -1; d <= 1; d++) {
+        const q = [clamp(seed[0] + a * step, -70, 80), clamp(seed[1] + b * step, -30, 30), clamp(seed[2] + c * step, -60, 60), clamp(seed[3] + d * step, -90, 90)], value = score(q);
+        if (value < cost) { best = q; cost = value; }
+      }
+    }
+    [A.wristPitch, A.wristYaw, A.wristRoll, A.e] = best; A.spread = 2;
+    p.gripVersion = 1;
+    ['thumb', 'index', 'middle', 'ring', 'pinky'].forEach((name, i) => { A[name] = grip.curls[i]; });
+    return p;
+  }
+  const modelDistance = (a, b) => Math.hypot((b.x || 0) - (a.x || 0), (b.z || 0) - (a.z || 0));
+  function spaceModels(a, b, requested) {
+    const A = normalizePose(a), B = normalizePose(b), distance = clamp(finite(requested, modelDistance(A, B)), 0.2, 4);
+    const old = modelDistance(A, B), direction = old > 1e-6 ? [(B.x - A.x) / old, (B.z - A.z) / old] : [1, 0];
+    for (const [i, axis] of ['x', 'z'].entries()) {
+      const half = direction[i] * distance / 2, center = clamp((A[axis] + B[axis]) / 2, -3 + Math.abs(half), 3 - Math.abs(half));
+      A[axis] = center - half; B[axis] = center + half;
+    }
+    return [A, B];
   }
 
   /* ---------- physical camera: metres, one pose shared by the icon and preview ---------- */
@@ -338,9 +437,11 @@ const CamPoseModel = (() => {
         if (Math.abs(A.e) > 25) parts.push(zh ? `${side}前臂旋转` : `${side}forearm rotated`);
         if (Math.abs(A.wristPitch) > 20 || Math.abs(A.wristYaw) > 15 || Math.abs(A.wristRoll) > 20) parts.push(zh ? `${side}手腕弯曲转动` : `${side}wrist bent or rotated`);
         const curls = [A.index, A.middle, A.ring, A.pinky];
-        if (curls.every(n => n > 65)) parts.push(zh ? `${side}手握拳` : `${side}hand in a fist`);
-        else if (A.index < 15 && curls.slice(1).every(n => n > 65)) parts.push(zh ? `${side}食指伸直，其余手指弯曲` : `${side}index finger extended, other fingers curled`);
-        else if (curls.every(n => n < 15) && A.spread > 12) parts.push(zh ? `${side}手张开五指` : `${side}hand open with fingers spread`);
+        if (!(s === 'r' && holding)) {
+          if (curls.every(n => n > 65)) parts.push(zh ? `${side}手握拳` : `${side}hand in a fist`);
+          else if (A.index < 15 && curls.slice(1).every(n => n > 65)) parts.push(zh ? `${side}食指伸直，其余手指弯曲` : `${side}index finger extended, other fingers curled`);
+          else if (curls.every(n => n < 15) && A.spread > 12) parts.push(zh ? `${side}手张开五指` : `${side}hand open with fingers spread`);
+        }
         if (Math.abs(leg.d) > 20) parts.push(zh ? `${side}髋旋转` : `${side}hip rotated`);
         if (Math.abs(leg.anklePitch) > 15 || Math.abs(leg.ankleRoll) > 12) parts.push(zh ? `${side}脚踝屈伸` : `${side}ankle flexed`);
         if (Math.abs(leg.toe) > 15) parts.push(zh ? `${side}脚趾弯曲` : `${side}toes bent`);
@@ -427,7 +528,12 @@ const CamPoseModel = (() => {
     p.body = BODY_TYPES[raw.body] ? raw.body : "male";
     p.x = clamp(finite(raw.x, 0), -3, 3); p.z = clamp(finite(raw.z, 0), -3, 3);
     p.props = Array.isArray(raw.props) ? [...new Set(raw.props.filter(k => PROPS[k]))] : [];
+    p.gripVersion = raw.gripVersion === 1 ? 1 : 0;
     return p;
+  }
+  function migratePose(raw) {
+    const p = normalizePose(raw), held = p.props.find(k => PROPS[k].hand);
+    return held && !p.gripVersion ? holdProp(p, held) : p;
   }
 
   /* ---------- reaching: move a hand or foot to a point (inverse kinematics) ---------- */
@@ -524,5 +630,5 @@ const CamPoseModel = (() => {
     return { camera: describeCamera(cam, lang, pose.yaw, J, aspect, J2), pose: poseText, light: describeLight(value.light, cam, lang) };
   }
 
-  return { describeScene, BODY_TYPES, PROPS, reach, normalizeLight, lightDir, describeLight, LIGHT_PRESETS, D2R, clamp, v, add, sub, mul, dot, cross, norm, rx, ry, rz, mv, chain, BASE, P, PRESETS, B, measurements, skeleton, CAMERA, camDir, shotCamera, framedCamera, cameraTarget, cameraBounds, constrainCamera, minCameraElevation, fitCameraDistance, cameraControlPoint, dragCameraControl, makeView, describeCamera, describePose, T, CAM_PRESETS, PARTS, get, put, wrap360, normalizePose, normalizeCamera };
+  return { PROP_ATTACHMENTS, propFrame, migratePose, handRig, skinFrames, holdProp, GRIPS, FINGERS, modelDistance, spaceModels, mm, describeScene, BODY_TYPES, PROPS, reach, normalizeLight, lightDir, describeLight, LIGHT_PRESETS, D2R, clamp, v, add, sub, mul, dot, cross, norm, rx, ry, rz, mv, chain, BASE, P, PRESETS, B, measurements, skeleton, CAMERA, camDir, shotCamera, framedCamera, cameraTarget, cameraBounds, constrainCamera, minCameraElevation, fitCameraDistance, cameraControlPoint, dragCameraControl, makeView, describeCamera, describePose, T, CAM_PRESETS, PARTS, get, put, wrap360, normalizePose, normalizeCamera };
 })();

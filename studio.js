@@ -14,7 +14,7 @@ const CamPose = (() => {
       unsupported: "This browser could not start 3D. Enable WebGL or try another browser. Angle controls and prompt output still work.",
       context: "3D paused. Restoring the graphics context…", restored: "3D restored", both: "Both sides", left: "Left to right", right: "Right to left", volume: "3D form", drawing: "Study lines", focus: "Look at", headTarget: "Head", chestTarget: "Chest", wholeTarget: "Frame whole body", target: "Aim", distanceHint: "Actual camera distance in metres · 0.20–8.00 m", floorHint: "Lowest angle at this distance",
       light: "Light", lightHelp: "Drag the sun to move the key light. Words describe the light as seen from the camera.", lightAz: "Light direction", lightAzHint: "0° = from the camera · 90° = from the frame's left · 180° = from behind", lightEl: "Light height", lightElHint: "low = long shadows · high = top light", soft: "Soft light", hard: "Hard light", lightPresets: "Common lighting",
-      body: "Body type", props: "Props", people: "Models", personA: "A", personB: "B", addPerson: "+ Model", removePerson: "Remove B", model: "Model", posX: "Position left / right", posZ: "Position front / back",
+      body: "Body type", props: "Props", people: "Models", personA: "A", personB: "B", addPerson: "+ Model", removePerson: "Remove B", model: "Model", posX: "Position left / right", posZ: "Position front / back", spacing: "Distance between models", spacingHint: "Metres between body centres · moves A and B equally", regrip: "Reset grip",
       download: "Download camera view", downloaded: "Saved", ikHint: "Drag a wrist, hand or ankle: the whole arm or leg follows."
     },
     zh: {
@@ -25,7 +25,7 @@ const CamPose = (() => {
       unsupported: "浏览器无法启动 3D，请启用 WebGL 或换一个浏览器。角度控制和提示词仍可使用。",
       context: "3D 暂停，正在恢复图形显示…", restored: "3D 已恢复", both: "左右两侧", left: "左侧复制到右侧", right: "右侧复制到左侧", volume: "立体素体", drawing: "绘画线稿", focus: "镜头瞄准", headTarget: "头部", chestTarget: "胸部", wholeTarget: "全身取景", target: "瞄准", distanceHint: "真实相机距离，单位为米 · 0.20–8.00 m", floorHint: "当前距离的最低角度",
       light: "光线", lightHelp: "拖动太阳移动主光。描述按镜头看到的效果来写。", lightAz: "光的方向", lightAzHint: "0° = 从镜头方向 · 90° = 从画面左边 · 180° = 从背后", lightEl: "光的高度", lightElHint: "低 = 影子长 · 高 = 顶光", soft: "柔光", hard: "硬光", lightPresets: "常用光线",
-      body: "体型", props: "道具", people: "素体", personA: "A", personB: "B", addPerson: "+ 素体", removePerson: "移除 B", model: "素体", posX: "位置 左右", posZ: "位置 前后",
+      body: "体型", props: "道具", people: "素体", personA: "A", personB: "B", addPerson: "+ 素体", removePerson: "移除 B", model: "素体", posX: "位置 左右", posZ: "位置 前后", spacing: "两人间距", spacingHint: "身体中心之间的距离（米）· 同时移动 A、B", regrip: "重新握持",
       download: "下载镜头画面", downloaded: "已保存", ikHint: "拖动手腕、手或脚踝，整条手臂或腿会自动跟着弯。"
     }
   };
@@ -34,8 +34,8 @@ const CamPose = (() => {
     let lang = opts.lang || "en", ratio = opts.ratio || "1:1";
     const defaultPose2 = () => M.normalizePose({ preset: "stand", x: 0.85, z: 0.15, yaw: 60 });
     let state = {
-      tab: "camera", cam: M.normalizeCamera(opts.value?.cam), pose: M.normalizePose(opts.value?.pose || { preset: "stand" }), part: "rArm",
-      pose2: opts.value?.pose2 ? M.normalizePose(opts.value.pose2) : defaultPose2(), second: opts.value?.second === true,
+      tab: "camera", cam: M.normalizeCamera(opts.value?.cam), pose: M.migratePose(opts.value?.pose || { preset: "stand" }), part: "rArm",
+      pose2: opts.value?.pose2 ? M.migratePose(opts.value.pose2) : defaultPose2(), second: opts.value?.second === true,
       light: M.normalizeLight(opts.value?.light), editing: "a"
     };
     // The pose being edited (model A or B).
@@ -108,18 +108,8 @@ const CamPose = (() => {
     let build = null; // the figure being constructed
     const outlines = [], construction = [];
     const ink = new THREE.MeshBasicMaterial({ color: 0x292d33, side: THREE.BackSide });
-    const sphere = new THREE.SphereGeometry(1, 28, 20);
 
     function group(name, part = name) { const g = new THREE.Group(); g.userData.part = part; build.nodes[name] = g; build.rig.add(g); return g; }
-    function mesh(g, geometry, part = g.userData.part, material = build.skin) {
-      const m = new THREE.Mesh(geometry, material); m.userData = { part, original: material, figure: build.id };
-      m.castShadow = true; m.receiveShadow = true; g.add(m); meshes.push(m);
-      if (material === build.skin) { const outline = new THREE.Mesh(geometry, ink); outline.scale.setScalar(1.04); outline.visible = false; m.add(outline); outlines.push(outline); }
-      return m;
-    }
-    function ellipsoid(g, position, scale, part, material = build.skin) {
-      const m = mesh(g, sphere, part, material); m.position.set(...position); m.scale.set(...scale); return m;
-    }
     // Elliptical rings give the torso and limbs real depth, taper and a smooth silhouette.
     function surface(rings, segments = 36) {
       // Interpolate the profile before revolving it, avoiding visible bands at the ribs or jaw.
@@ -145,8 +135,8 @@ const CamPose = (() => {
     }
     const headProfile = [[-0.127, 0.018, 0.032, 0.022], [-0.112, 0.047, 0.056, 0.019], [-0.075, 0.069, 0.077, 0.008], [-0.035, 0.083, 0.088], [0.015, 0.09, 0.095], [0.065, 0.085, 0.087, -0.006], [0.103, 0.064, 0.066, -0.007], [0.126, 0.025, 0.031], [0.13, 0.001, 0.001]];
     function makeFigure(id, material) {
-    build = { id, skin: material, rig: new THREE.Group(), nodes: {}, fingers: {} };
-    const { nodes, fingers, rig } = build;
+    build = { id, skin: material, rig: new THREE.Group(), nodes: {} };
+    const { nodes, rig } = build;
     const pelvis = group("pelvis", "body");
     const torso = group("torso", "chest");
     const head = group("head");
@@ -168,28 +158,7 @@ const CamPose = (() => {
     guide(torso, [[-0.145, 0.145, 0.064], [-0.085, 0.125, 0.098], [0, 0.12, 0.108], [0.085, 0.125, 0.098], [0.145, 0.145, 0.064]]);
     guide(pelvis, Array.from({ length: 65 }, (_, i) => [0.144 * Math.cos(i / 64 * Math.PI * 2), 0.025, 0.109 * Math.sin(i / 64 * Math.PI * 2)]));
 
-    for (const [s, sign] of [["l", 1], ["r", -1]]) {
-      const hand = group(s + "Hand", s + "Hand");
-      fingers[s] = {};
-      ["index", "middle", "ring", "pinky"].forEach((name, i) => {
-        const rootFinger = new THREE.Group(); rootFinger.position.set(sign * (0.027 - i * 0.018), -0.074 + (i === 3 ? 0.012 : 0), 0);
-        hand.add(rootFinger); const length = [0.073, 0.081, 0.075, 0.058][i], bones = [];
-        let parent = rootFinger;
-        [0.43, 0.32, 0.25].forEach((share, j) => {
-          const bone = new THREE.Group(); parent.add(bone); if (j) bone.position.y = -length * [0.43, 0.32][j - 1];
-          const m = ellipsoid(bone, [0, -length * share / 2, 0], [0.007 - i * 0.0004, length * share / 2 + 0.003, 0.007], s + "Fingers");
-          m.userData.finger = name; bones.push(bone); parent = bone;
-        });
-        fingers[s][name] = { root: rootFinger, bones, spread: sign * (1.5 - i) };
-      });
-      const thumbRoot = new THREE.Group(); thumbRoot.position.set(sign * 0.03, -0.023, 0.004); hand.add(thumbRoot);
-      const thumbBones = []; let parent = thumbRoot;
-      for (let j = 0; j < 3; j++) {
-        const bone = new THREE.Group(); parent.add(bone); if (j) bone.position.y = -0.021;
-        ellipsoid(bone, [0, -0.011, 0], [0.01 - j * 0.0015, 0.016, 0.009], s + "Fingers"); thumbBones.push(bone); parent = bone;
-      }
-      fingers[s].thumb = { root: thumbRoot, bones: thumbBones, spread: 0 };
-    }
+    for (const side of ["l", "r"]) group(side + "Hand", side + "Hand");
     const stool = new THREE.Group(); rig.add(stool);
     const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.055, 40), propMat); seat.position.set(0, B.seat, -0.04); seat.castShadow = true; stool.add(seat);
     for (const x of [-0.15, 0.15]) for (const z of [-0.19, 0.11]) {
@@ -197,14 +166,13 @@ const CamPose = (() => {
     }
     const props = makeProps(nodes, rig);
 
-    // Use one welded and skinned surface for the body. Keep the detailed articulated
-    // fingers; the construction groups still provide joint positions and guide lines.
+    // The body and fingers are a single anatomical skinned surface.
     const continuous = StudioSurface.create(M, material, rig);
     continuous.body.userData = { part: 'surface', original: material, figure: id }; meshes.push(continuous.body);
     const surfaceOutline = new THREE.SkinnedMesh(continuous.geometry, ink);
     rig.add(surfaceOutline); surfaceOutline.bind(continuous.skeleton, continuous.body.bindMatrix);
     surfaceOutline.scale.setScalar(1.003); surfaceOutline.visible = false; outlines.push(surfaceOutline);
-    return { id, rig, nodes, fingers, stool, props, continuous, surfaceOutline, J: null };
+    return { id, rig, nodes, stool, props, continuous, surfaceOutline, J: null };
     }
 
     const rotation = new THREE.Matrix4();
@@ -213,21 +181,10 @@ const CamPose = (() => {
       rotation.set(m[0], m[1], m[2], 0, m[3], m[4], m[5], 0, m[6], m[7], m[8], 0, 0, 0, 0, 1);
       node.quaternion.setFromRotationMatrix(rotation); node.scale.setScalar(scale);
     }
-    // How a held prop shapes the right hand (display only; the saved finger angles stay put).
-    const GRIP = { phone: [30, 40, 50, 60, 65], cup: [45, 70, 75, 78, 80], umbrella: [55, 85, 88, 90, 90], book: [20, 30, 35, 40, 45] };
     function poseFigure(fig, p) {
       const J = M.skeleton(p), h = J.scale;
       place(fig, "pelvis", J.pelvis, J.bodyM, h); place(fig, "torso", J.waist, J.ubM, h * M.measurements(p.body).spine / B.spine); place(fig, "head", J.head, J.headM, J.headSize);
-      const held = (p.props || []).find(k => GRIP[k]);
-      for (const [s, sign] of [["l", 1], ["r", -1]]) {
-        place(fig, s + "Hand", J[s + "Wrist"], J[s + "HandM"], J.handSize);
-        const grip = s === "r" && held ? GRIP[held] : null;
-        for (const [name, f] of Object.entries(fig.fingers[s])) {
-          const curl = grip ? grip[["thumb", "index", "middle", "ring", "pinky"].indexOf(name)] : p[s + "Arm"][name];
-          f.root.rotation.z = name === "thumb" ? sign * (0.7 + p[s + "Arm"].spread * D2R) : f.spread * p[s + "Arm"].spread * D2R;
-          f.bones.forEach((bone, j) => { bone.rotation.x = -curl * D2R * [0.65, 0.85, 0.6][j]; });
-        }
-      }
+      for (const side of ["l", "r"]) place(fig, side + "Hand", J[side + "Wrist"], J[side + "HandM"], J.handSize);
       const chair = (p.props || []).includes("chair");
       fig.stool.visible = p.seated && !chair;
       fig.stool.position.set(p.x || 0, 0, p.z || 0); fig.stool.scale.setScalar(h);
@@ -265,16 +222,23 @@ const CamPose = (() => {
     function makeProps(nodes, rig) {
       const box = (w, h, d, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.castShadow = true; m.receiveShadow = true; return m; };
       const items = {};
-      items.phone = new THREE.Group(); items.phone.add(box(0.07, 0.145, 0.009, darkMat)); items.phone.children[0].position.set(0, -0.075, 0.03); nodes.rHand.add(items.phone);
-      items.book = new THREE.Group(); items.book.add(box(0.16, 0.22, 0.03, bookMat)); items.book.children[0].position.set(0, -0.09, 0.035); nodes.rHand.add(items.book);
-      items.cup = new THREE.Group(); { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.032, 0.1, 28), cupMat); c.castShadow = true; items.cup.add(c); } rig.add(items.cup);
-      items.umbrella = new THREE.Group(); {
-        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 1, 10), darkMat); shaft.castShadow = true;
-        const canopy = new THREE.Mesh(new THREE.ConeGeometry(0.58, 0.24, 8, 1, true), umbrellaMat); canopy.castShadow = true;
-        items.umbrella.userData = { shaft, canopy };
-        const handleBit = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.008, 8, 16, Math.PI), darkMat); handleBit.position.set(0.035, -0.07, 0); handleBit.rotation.z = Math.PI;
-        items.umbrella.add(shaft, canopy, handleBit);
-      } rig.add(items.umbrella);
+      items.phone = new THREE.Group();
+      items.phone.add(box(0.07, 0.145, 0.009, darkMat));
+      const screen = box(0.060, 0.123, 0.001, new THREE.MeshStandardMaterial({ color: 0x263a50, roughness: 0.3 })); screen.position.z = -0.0055; items.phone.add(screen);
+      items.book = new THREE.Group(); items.book.add(box(0.16, 0.22, 0.026, bookMat));
+      const pages = box(0.151, 0.209, 0.021, cupMat); pages.position.x = 0.003; items.book.add(pages);
+      items.cup = new THREE.Group();
+      const wall = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.032, 0.10, 36, 1, true), cupMat); wall.castShadow = true; items.cup.add(wall);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.0375, 0.0022, 8, 36), cupMat); rim.rotation.x = Math.PI / 2; rim.position.y = 0.05; items.cup.add(rim);
+      const coffee = new THREE.Mesh(new THREE.CircleGeometry(0.035, 36), new THREE.MeshStandardMaterial({ color: 0x332013, roughness: 0.5 })); coffee.rotation.x = -Math.PI / 2; coffee.position.y = 0.034; items.cup.add(coffee);
+      const cupHandle = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.006, 10, 24), cupMat); cupHandle.position.set(-0.052, 0.005, 0); cupHandle.castShadow = true; items.cup.add(cupHandle);
+      items.umbrella = new THREE.Group();
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.95, 10), darkMat); shaft.position.y = 0.43; shaft.castShadow = true;
+      const canopy = new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.23, 16, 1, true), umbrellaMat); canopy.position.y = 0.95; canopy.castShadow = true;
+      const handleBit = new THREE.Mesh(new THREE.TorusGeometry(0.025, 0.007, 8, 20, Math.PI), darkMat); handleBit.position.set(0.025, -0.045, 0); handleBit.rotation.z = Math.PI;
+      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.105, 20), darkMat); grip.castShadow = true;
+      items.umbrella.add(shaft, canopy, handleBit, grip);
+      for (const k of Object.keys(M.PROP_ATTACHMENTS)) rig.add(items[k]);
       items.chair = new THREE.Group(); {
         const seatTop = box(0.44, 0.045, 0.42, woodMat); seatTop.position.y = B.seat;
         const back = box(0.44, 0.46, 0.035, woodMat); back.position.set(0, B.seat + 0.25, -0.2);
@@ -288,11 +252,12 @@ const CamPose = (() => {
       function update(J, p) {
         const on = new Set(p.props || []), yaw = Math.atan2(J.forward[0], J.forward[2]);
         for (const [k, g] of Object.entries(items)) g.visible = on.has(k);
-        items.cup.position.set(...M.add(J.rHand, [0, 0.015, 0])); items.cup.scale.setScalar(J.scale);
-        // The canopy opens just above the head, wherever the hand is.
-        items.umbrella.position.set(...J.rHand);
-        { const { shaft, canopy } = items.umbrella.userData, top = Math.max(0.35, J.head[1] + 0.32 * J.scale - J.rHand[1]);
-          shaft.scale.y = top; shaft.position.y = top / 2 - 0.06; canopy.position.y = top; canopy.scale.setScalar(Math.max(0.75, J.scale)); }
+        for (const k of Object.keys(M.PROP_ATTACHMENTS)) {
+          const frame = M.propFrame(p, k, J), R = frame.matrix;
+          items[k].position.set(...frame.position); items[k].scale.setScalar(frame.scale);
+          rotation.set(R[0], R[1], R[2], 0, R[3], R[4], R[5], 0, R[6], R[7], R[8], 0, 0, 0, 0, 1);
+          items[k].quaternion.setFromRotationMatrix(rotation);
+        }
         // The chair sits under a seated figure, otherwise beside them; the table stands in front.
         const local = (x, z) => [(p.x || 0) + Math.cos(yaw) * x + Math.sin(yaw) * z, 0, (p.z || 0) - Math.sin(yaw) * x + Math.cos(yaw) * z];
         items.chair.position.set(...(p.seated ? local(0, -0.04) : local(0.62, -0.05))); items.chair.rotation.y = yaw; items.chair.scale.setScalar(p.seated ? J.scale : 1);
@@ -476,7 +441,7 @@ const CamPose = (() => {
       const d = scene3(l);
       root.querySelector(".cps-out-text").textContent = state.tab === "camera" ? d.camera : state.tab === "light" ? d.light : d.pose;
     }
-    function changed(kind) { if (kind === "pose") cur().preset = null; state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose)); sync(); output(); render(); emit(kind); }
+    function changed(kind, keepPreset = false) { if (kind === "pose" && !keepPreset) cur().preset = null; state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose)); sync(); output(); render(); emit(kind); }
     const angle = x => `${Math.round(x)}°`;
     function slider(path, label, min, max, val, hint = "", step = 1, unit = "°") {
       return `<label class="cps-sl"><span class="cps-sl-top"><span>${label}</span><output>${unit === "m" ? val.toFixed(2) + " m" : unit ? angle(val) : val.toFixed(2)}</output></span>
@@ -511,9 +476,9 @@ const CamPose = (() => {
           ${state.second ? `<button type="button" data-edit="b" aria-label="${text.model} B" aria-pressed="${state.editing === "b"}">${text.personB}</button><button type="button" data-second="0">${text.removePerson}</button>` : `<button type="button" data-second="1">${text.addPerson}</button>`}</div>`;
         const bodies = `<div class="cps-focus" role="group" aria-label="${text.body}"><span>${text.body}</span>${Object.entries(M.BODY_TYPES).map(([k, b]) => `<button type="button" data-body="${k}" aria-pressed="${pose.body === k}">${b[lang]}</button>`).join("")}</div>`;
         const props = `<div class="cps-focus" role="group" aria-label="${text.props}"><span>${text.props}</span>${Object.entries(M.PROPS).map(([k, b]) => `<button type="button" data-prop="${k}" aria-pressed="${pose.props.includes(k)}">${b[lang]}</button>`).join("")}</div>`;
-        const where = state.editing === "b" && state.second ? `<div class="cps-sliders">${slider("pose.x", text.posX, -3, 3, pose.x, "", 0.05, "m")}${slider("pose.z", text.posZ, -3, 3, pose.z, "", 0.05, "m")}</div>` : "";
-        panel.innerHTML = `${people}<div class="cps-chips"><span>${t.presets}</span>${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${pose.preset === p.id}">${p[lang]}</button>`).join("")}</div>
-          ${bodies}${props}${where}
+        const where = state.second ? `<div class="cps-sliders">${slider("pair.distance", text.spacing, 0.2, 4, M.modelDistance(state.pose, state.pose2), text.spacingHint, 0.01, "m")}${slider("pose.x", text.posX, -3, 3, pose.x, "", 0.01, "m")}${slider("pose.z", text.posZ, -3, 3, pose.z, "", 0.01, "m")}</div>` : "";
+        panel.innerHTML = `${people}${where}<div class="cps-chips"><span>${t.presets}</span>${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${pose.preset === p.id}">${p[lang]}</button>`).join("")}</div>
+          ${bodies}${props}${pose.props.some(k => M.PROPS[k].hand) ? `<button type="button" data-regrip>${text.regrip}</button>` : ""}
           <div class="cps-joint-heading"><span>${text.joints}</span><div><button type="button" data-flip>${text.flip}</button><button type="button" data-mirror="${state.part.startsWith("l") ? "l" : "r"}" ${/^[lr]/.test(state.part) ? "" : "disabled"}>${text.mirror}</button></div></div>
           <div class="cps-parts" role="group" aria-label="${text.selected}">${Object.entries(PARTS).map(([k, p]) => `<button type="button" data-part="${k}" aria-pressed="${k === state.part}">${p[lang]}</button>`).join("")}</div>
           <div class="cps-joint-heading"><strong>${config[lang]}</strong><button type="button" data-reset-part>${text.resetPart}</button></div>
@@ -525,9 +490,9 @@ const CamPose = (() => {
     function sync() {
       panel.querySelectorAll("[data-angle]").forEach(input => {
         const path = input.dataset.angle;
-        const val = path === "cam.az" ? M.wrap360(state.cam.az - state.pose.yaw) : path === "light.az" ? M.wrap360(state.light.az - state.cam.az) : path.startsWith("light.") ? state.light[path.slice(6)] : path.startsWith("cam.") ? state.cam[path.slice(4)] : M.get(cur(), path.slice(5));
+        const val = path === "pair.distance" ? M.modelDistance(state.pose, state.pose2) : path === "cam.az" ? M.wrap360(state.cam.az - state.pose.yaw) : path === "light.az" ? M.wrap360(state.light.az - state.cam.az) : path.startsWith("light.") ? state.light[path.slice(6)] : path.startsWith("cam.") ? state.cam[path.slice(4)] : M.get(cur(), path.slice(5));
         if (path === 'cam.el') input.closest('label').querySelector('small').textContent = T[lang].elHint + ' · ' + ui[lang].floorHint + ': ' + Math.ceil(M.minCameraElevation(state.cam.distance, M.cameraTarget(state.cam, M.skeleton(state.pose)))) + '°';
-        input.value = val; input.closest("label").querySelector("output").textContent = path === "cam.distance" || path === "pose.x" || path === "pose.z" ? val.toFixed(2) + ' m' : angle(val);
+        input.value = val; input.closest("label").querySelector("output").textContent = path === "pair.distance" || path === "cam.distance" || path === "pose.x" || path === "pose.z" ? val.toFixed(2) + ' m' : angle(val);
       });
       panel.querySelectorAll('[data-focus]').forEach(b => b.setAttribute('aria-pressed', b.dataset.focus === state.cam.focus));
       panel.querySelectorAll("[data-preset]").forEach(b => b.setAttribute("aria-pressed", cur().preset === b.dataset.preset));
@@ -563,6 +528,8 @@ const CamPose = (() => {
       } else if (button.dataset.preset) {
         // Keep who it is, where they stand and what they hold; take the preset's joints.
         const old = cur(), next = M.normalizePose({ ...copy(PRESETS.find(p => p.id === button.dataset.preset).pose), preset: button.dataset.preset, body: old.body, props: old.props, x: old.x, z: old.z });
+        const held = next.props.find(k => M.PROPS[k].hand);
+        if (held) Object.assign(next, M.holdProp(next, held));
         if (state.editing === "b" && state.second) { next.yaw = next.yaw || old.yaw; state.pose2 = next; } else state.pose = next;
         renderPanel(); render(); emit("pose");
       } else if (button.dataset.part) selectPart(button.dataset.part);
@@ -592,25 +559,28 @@ const CamPose = (() => {
         cameraEditorFrame = null; renderPanel(); render(); emit("pose");
       } else if (button.dataset.body) {
         cur().body = button.dataset.body; cameraEditorFrame = null; renderPanel(); render(); emit("pose");
+      } else if (button.hasAttribute("data-regrip")) {
+        const pose = cur(), held = pose.props.find(k => M.PROPS[k].hand);
+        if (held) Object.assign(pose, M.holdProp(pose, held));
+        renderPanel(); render(); emit("pose");
       } else if (button.dataset.prop) {
         const pose = cur(), k = button.dataset.prop, on = !pose.props.includes(k);
         pose.props = on ? [...pose.props, k] : pose.props.filter(x => x !== k);
-        // Only one item in the hand at a time.
-        if (on && M.PROPS[k].hand) {
-          pose.props = pose.props.filter(x => x === k || !M.PROPS[x].hand);
-          const HOLD = { phone: { a: 12, b: 35, c: 100, d: 20 }, cup: { a: 10, b: 30, c: 95, d: 10 }, umbrella: { a: 12, b: 35, c: 80, d: 10 }, book: { a: 10, b: 25, c: 90, d: 25 } };
-          if (pose.rArm.b < 15 && pose.rArm.c < 30) { Object.assign(pose.rArm, HOLD[k]); pose.preset = null; }
-        }
+        if (on && M.PROPS[k].hand) Object.assign(pose, M.holdProp(pose, k));
         renderPanel(); render(); emit("pose");
       }
     });
     root.addEventListener("input", e => {
       const path = e.target.dataset.angle;
       if (path) {
+        if (path === "pair.distance") {
+          [state.pose, state.pose2] = M.spaceModels(state.pose, state.pose2, +e.target.value);
+          cameraEditorFrame = null; changed("pose", true); return;
+        }
         if (path.startsWith("cam.")) state.cam[path.slice(4)] = path === "cam.az" ? M.wrap360(+e.target.value + state.pose.yaw) : +e.target.value;
         else if (path.startsWith("light.")) state.light[path.slice(6)] = path === "light.az" ? M.wrap360(+e.target.value + state.cam.az) : +e.target.value;
         else M.put(cur(), path.slice(5), +e.target.value);
-        changed(path.startsWith("cam.") ? "cam" : path.startsWith("light.") ? "light" : "pose");
+        changed(path.startsWith("cam.") ? "cam" : path.startsWith("light.") ? "light" : "pose", path === "pose.x" || path === "pose.z");
       } else if (e.target.hasAttribute("data-seated")) { cur().seated = e.target.checked; changed("pose"); }
     });
     root.querySelector(".cps-tabs").addEventListener("keydown", e => {
@@ -725,8 +695,8 @@ const CamPose = (() => {
     const ro = new ResizeObserver(size); ro.observe(canvas); size(); renderPanel();
     return {
       value, set(val = {}) {
-        state.cam = M.normalizeCamera(val.cam); state.pose = M.normalizePose(val.pose);
-        state.pose2 = val.pose2 ? M.normalizePose(val.pose2) : defaultPose2(); state.second = val.second === true; state.light = M.normalizeLight(val.light);
+        state.cam = M.normalizeCamera(val.cam); state.pose = M.migratePose(val.pose);
+        state.pose2 = val.pose2 ? M.migratePose(val.pose2) : defaultPose2(); state.second = val.second === true; state.light = M.normalizeLight(val.light);
         if (!state.second) state.editing = "a";
         state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose)); cameraEditorFrame = null; renderPanel(); render();
       },

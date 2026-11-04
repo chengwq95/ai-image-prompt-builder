@@ -129,7 +129,10 @@ async function main() {
       const width = Math.hypot(...across);
       native[s + 'Hand'] = frame(w, handR, [0.071 * J.handSize / width, 0.086 * J.handSize / Math.hypot(...M.sub(middle, w)), globalScale]);
       native[s + 'Foot'] = frame(ankle);
-      native[s + 'Toes'] = frame(average([bone('toe2-1.' + suffix).head, bone('toe4-1.' + suffix).head]));
+      // Anchor the toe frame so that, in the bind pose, toe vertices land exactly where the foot frame
+      // would put them. Otherwise the toes are shifted against the foot and leave a ledge at their base.
+      const footTo = target[s + 'Foot'], toesTo = target[s + 'Toes'];
+      native[s + 'Toes'] = frame(M.add(ankle, M.mul(M.mv(transposed(footTo.matrix), M.sub(toesTo.position, footTo.position)), 1 / globalScale)));
       ['thumb', 'index', 'middle', 'ring', 'pinky'].forEach((finger, index) => {
         for (let segment = 0; segment < 3; segment++) {
           const name = s + finger + segment, part = bone(`finger${index + 1}-${segment + 1}.${suffix}`);

@@ -1,24 +1,217 @@
-// Regenerate the locally bundled body geometry after editing studio-surface.js.
-// No packages or network needed: node tools/build-body.cjs
+// Compile pinned CC0 MakeHuman geometry/weights into an offline, anatomical drawing rig.
+// node tools/build-body.cjs --source-dir=../human-source
+// node tools/build-body.cjs --download (fetches the same pinned CC0 assets into tools/.human-cache)
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const crypto = require('node:crypto');
+const revision = 'a8bc2d54ff0ac92e78ff71431b1023eda42bf482';
 const root = path.resolve(__dirname, '..');
-const context = vm.createContext({ console });
-for (const file of ['vendor/three.min.js', 'studio-model.js', 'studio-surface.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context);
-const result = vm.runInContext('StudioSurface.create(CamPoseModel, new THREE.MeshStandardMaterial(), new THREE.Group())', context);
-const geo = result.geometry;
-const encode = data => Buffer.from(data.buffer, data.byteOffset, data.byteLength).toString('base64');
-const position = Int16Array.from(geo.getAttribute('position').array, n => Math.round(n * 10000));
-const normal = Int8Array.from(geo.getAttribute('normal').array, n => Math.round(Math.max(-1, Math.min(1, n)) * 127));
-const skinIndex = Uint8Array.from(geo.getAttribute('skinIndex').array);
-const source = geo.getAttribute('skinWeight').array, skinWeight = new Uint8Array(source.length);
-for (let i = 0; i < source.length; i += 4) {
-  let sum = 0, largest = 0;
-  for (let j = 0; j < 4; j++) { skinWeight[i + j] = Math.round(source[i + j] * 255); sum += skinWeight[i + j]; if (source[i + j] > source[i + largest]) largest = j; }
-  skinWeight[i + largest] += 255 - sum;
+const supplied = process.argv.find(x => x.startsWith('--source-dir='));
+const source = supplied ? path.resolve(supplied.split('=').slice(1).join('=')) : path.join(__dirname, '.human-cache');
+const files = ['LICENSE.ASSETS.md', 'makehuman/data/3dobjs/base.obj', 'makehuman/data/rigs/default.mhskel', 'makehuman/data/rigs/default_weights.mhw'];
+for (const race of ['african', 'asian', 'caucasian']) for (const [sex, age] of [['male', 'young'], ['female', 'young'], ['male', 'child'], ['female', 'child']]) files.push(`makehuman/data/targets/macrodetails/${race}-${sex}-${age}.target`);
+for (const shape of ['maxmuscle-averageweight', 'minmuscle-minweight']) files.push(`makehuman/data/targets/macrodetails/universal-male-young-${shape}.target`);
+async function main() {
+  if (process.argv.includes('--download')) {
+    fs.mkdirSync(source, { recursive: true });
+    await Promise.all(files.map(async file => {
+      const response = await fetch(`https://raw.githubusercontent.com/makehumancommunity/makehuman/${revision}/${file}`);
+      if (!response.ok) throw new Error(`${file}: ${response.status}`);
+      fs.writeFileSync(path.join(source, path.basename(file)), Buffer.from(await response.arrayBuffer()));
+    }));
+  }
+  const read = file => fs.readFileSync(path.join(source, file), 'utf8');
+  const manifestPath = path.join(root, 'tools/human-assets-manifest.json');
+  if (fs.existsSync(manifestPath)) {
+    const expected = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    if (expected.revision !== revision) throw new Error('Source manifest revision does not match');
+    for (const file of expected.files) {
+      const hash = crypto.createHash('sha256').update(fs.readFileSync(path.join(source, path.basename(file.path)))).digest('hex');
+      if (hash !== file.sha256) throw new Error('Source checksum mismatch: ' + file.path);
+    }
+  }
+  const rig = JSON.parse(read('default.mhskel')), nativeWeights = JSON.parse(read('default_weights.mhw')).weights;
+  const context = vm.createContext({ console });
+  vm.runInContext(fs.readFileSync(path.join(root, 'studio-model.js'), 'utf8'), context);
+  const M = vm.runInContext('CamPoseModel', context), identity = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  const raw = [], rawFaces = []; let group = '';
+  for (const line of read('base.obj').split('\n')) {
+    if (line.startsWith('v ')) raw.push(line.trim().split(/\s+/).slice(1).map(Number));
+    if (line.startsWith('g ')) group = line.trim().slice(2);
+    if (line.startsWith('f ') && group === 'body') rawFaces.push(line.trim().split(/\s+/).slice(1).map(s => +s.split('/')[0] - 1));
+  }
+  const used = [...new Set(rawFaces.flat())].sort((a, b) => a - b), map = new Map(used.map((v, i) => [v, i]));
+  const faces = rawFaces.map(f => f.map(i => map.get(i)));
+  const adjacent = used.map(() => new Set());
+  for (const face of faces) face.forEach((a, i) => { const b = face[(i + 1) % face.length]; adjacent[a].add(b); adjacent[b].add(a); });
+  const bind = M.BASE(); bind.lArm.a = bind.rArm.a = 25; bind.lArm.c = bind.rArm.c = 5;
+  const keys = Object.keys(M.skinFrames(bind));
+  const roles = name => {
+    const side = name.endsWith('.L') ? 'l' : name.endsWith('.R') ? 'r' : null;
+    const finger = name.match(/^finger([1-5])-([1-3])/);
+    if (finger) return side + ['thumb', 'index', 'middle', 'ring', 'pinky'][+finger[1] - 1] + (+finger[2] - 1);
+    if (name.startsWith('upperarm')) return side + 'Upper';
+    if (name.startsWith('lowerarm')) return side + 'Fore';
+    if (name.startsWith('wrist') || name.startsWith('metacarpal')) return side + 'Hand';
+    if (name.startsWith('upperleg')) return side + 'Thigh';
+    if (name.startsWith('lowerleg')) return side + 'Shin';
+    if (name.startsWith('foot')) return side + 'Foot';
+    if (name.startsWith('toe')) return side + 'Toes';
+    if (name.startsWith('clavicle') || name.startsWith('shoulder')) return side + 'Clavicle';
+    if (name.startsWith('neck')) return 'neck';
+    if (name === 'root' || name.startsWith('pelvis') || /^spine0[45]/.test(name)) return 'pelvis';
+    if (name.startsWith('spine') || name.startsWith('breast')) return 'torso';
+    return 'head';
+  };
+  const weights = used.map(() => new Map());
+  for (const [name, entries] of Object.entries(nativeWeights)) {
+    const bone = keys.indexOf(roles(name));
+    if (bone < 0) throw new Error('Unmapped bone: ' + name);
+    for (const [vertex, weight] of entries) if (map.has(vertex)) {
+      const w = weights[map.get(vertex)]; w.set(bone, (w.get(bone) || 0) + weight);
+    }
+  }
+  const normalize = w => {
+    const sum = [...w.values()].reduce((a, b) => a + b, 0);
+    if (sum < 1e-8) throw new Error('Unweighted body vertex');
+    return new Map([...w].map(([k, v]) => [k, v / sum]));
+  };
+  weights.forEach((w, i) => { weights[i] = normalize(w); });
+  const average = points => [0, 1, 2].map(a => points.reduce((sum, p) => sum + p[a], 0) / points.length);
+  const transposed = R => [R[0], R[3], R[6], R[1], R[4], R[7], R[2], R[5], R[8]];
+  const axisFrame = (a, b, across = [1, 0, 0]) => {
+    const y = M.norm(M.sub(a, b)); let x = M.norm(M.sub(across, M.mul(y, M.dot(across, y))));
+    if (Math.hypot(...M.cross(x, y)) < 0.01) x = M.norm(M.cross(y, [0, 0, 1]));
+    const z = M.norm(M.cross(x, y)); x = M.cross(y, z);
+    return [x[0], y[0], z[0], x[1], y[1], z[1], x[2], y[2], z[2]];
+  };
+  const shapes = {};
+  for (const body of Object.keys(M.BODY_TYPES)) {
+    const points = raw.map(v => [...v]);
+    const addTarget = (name, factor) => {
+      for (const line of read(name + '.target').split('\n')) {
+        if (!line.trim() || line.startsWith('#')) continue;
+        const [id, x, y, z] = line.trim().split(/\s+/).map(Number);
+        points[id][0] += x * factor; points[id][1] += y * factor; points[id][2] += z * factor;
+      }
+    };
+    const sexAge = body === 'child' ? [['male', 'child', 0.5], ['female', 'child', 0.5]] : [[body === 'female' ? 'female' : 'male', 'young', 1]];
+    for (const [sex, age, weight] of sexAge) for (const race of ['african', 'asian', 'caucasian']) addTarget(`${race}-${sex}-${age}`, weight / 3);
+    if (body === 'strong') addTarget('universal-male-young-maxmuscle-averageweight', 0.9);
+    if (body === 'slim') addTarget('universal-male-young-minmuscle-minweight', 0.6);
+    points.forEach(p => { p[0] /= 10; p[1] /= 10; p[2] /= 10; });
+    const joint = name => average(rig.joints[name].map(i => points[i]));
+    const bone = name => { const b = rig.bones[name]; return { head: joint(b.head), tail: joint(b.tail) }; };
+    const native = {}, pose = { ...bind, body }, J = M.skeleton(pose), target = M.skinFrames(pose, J);
+    const shoulders = ['L', 'R'].map(s => bone('upperarm01.' + s).head), hips = ['L', 'R'].map(s => bone('upperleg01.' + s).head);
+    const pelvis = M.add(average(hips), [0, 0.04, 0]), chest = M.add(average(shoulders), [0, 0.02, 0]);
+    const spineLength = chest[1] - pelvis[1], waist = M.add(pelvis, M.mul(M.sub(chest, pelvis), 0.2 / M.B.spine));
+    const head = bone('head'), headCenter = average([head.head, head.tail]);
+    const headYs = used.filter((_, i) => (weights[i].get(keys.indexOf('head')) || 0) > 0.8).map(i => points[i][1]);
+    const allY = used.map(i => points[i][1]);
+    const globalScale = (J.head[1] + J.headSize * 0.125) / (Math.max(...allY) - Math.min(...allY));
+    const torsoScale = M.measurements(body).spine * J.scale / spineLength;
+    const frame = (origin, matrix = identity, scale = [globalScale, globalScale, globalScale]) => ({ origin, matrix, scale });
+    native.pelvis = frame(pelvis);
+    native.torso = frame(waist, identity, [globalScale, torsoScale, globalScale]);
+    native.neck = frame(chest, identity, [globalScale, (J.head[1] - J.chest[1]) / (headCenter[1] - chest[1]), globalScale]);
+    const headScale = 0.24 * J.headSize / (Math.max(...headYs) - Math.min(...headYs));
+    native.head = frame(headCenter, identity, [headScale, headScale, headScale]);
+    for (const [s, suffix] of [['l', 'L'], ['r', 'R']]) {
+      const a = bone('upperarm01.' + suffix).head, e = bone('lowerarm01.' + suffix).head, w = bone('wrist.' + suffix).head;
+      const hp = bone('upperleg01.' + suffix).head, k = bone('lowerleg01.' + suffix).head, ankle = bone('foot.' + suffix).head;
+      const middle = bone('finger3-1.' + suffix).head;
+      const across = M.mul(M.sub(bone('finger2-1.' + suffix).head, bone('finger5-1.' + suffix).head), s === 'l' ? 1 : -1);
+      const handR = axisFrame(w, middle, across), handX = [handR[0], handR[3], handR[6]];
+      native[s + 'Clavicle'] = frame(chest, identity, [globalScale, torsoScale, globalScale]);
+      for (const [role, from, to, length] of [['Upper', a, e, 'upper'], ['Fore', e, w, 'fore'], ['Thigh', hp, k, 'thigh'], ['Shin', k, ankle, 'shin']]) native[s + role] = frame(from, axisFrame(from, to), [globalScale, M.measurements(body)[length] * J.scale / Math.hypot(...M.sub(to, from)), globalScale]);
+      const width = Math.hypot(...across);
+      native[s + 'Hand'] = frame(w, handR, [0.071 * J.handSize / width, 0.086 * J.handSize / Math.hypot(...M.sub(middle, w)), globalScale]);
+      native[s + 'Foot'] = frame(ankle);
+      native[s + 'Toes'] = frame(average([bone('toe2-1.' + suffix).head, bone('toe4-1.' + suffix).head]));
+      ['thumb', 'index', 'middle', 'ring', 'pinky'].forEach((finger, index) => {
+        for (let segment = 0; segment < 3; segment++) {
+          const name = s + finger + segment, part = bone(`finger${index + 1}-${segment + 1}.${suffix}`);
+          native[name] = frame(part.head, axisFrame(part.head, part.tail, handX), [globalScale, target[name].length / Math.hypot(...M.sub(part.tail, part.head)), globalScale]);
+        }
+      });
+    }
+    const transformed = used.map((id, i) => {
+      const sum = [0, 0, 0];
+      for (const [index, weight] of weights[i]) {
+        const name = keys[index], from = native[name], to = target[name];
+        const local = M.mv(transposed(from.matrix), M.sub(points[id], from.origin)).map((v, axis) => v * from.scale[axis]);
+        const out = M.add(to.position, M.mv(to.matrix, local));
+        for (let axis = 0; axis < 3; axis++) sum[axis] += out[axis] * weight;
+      }
+      return sum;
+    });
+    // Preserve anatomical volumes while simplifying small surface details for a
+    // neutral drawing mannequin. Hands and joint transitions are left untouched.
+    const gauss = (x, width) => Math.exp(-((x / width) ** 2));
+    const detail = transformed.map(v => {
+      const q = M.mul(M.sub(v, J.pelvis), 1 / J.scale);
+      const front = M.clamp((q[2] - 0.025) / 0.06, 0, 1);
+      const groin = gauss(q[0], 0.055) * gauss(q[1] + 0.105, 0.075) * front;
+      const chest = gauss(Math.abs(q[0]) - 0.075, 0.035) * gauss(q[1] - (M.measurements(body).spine - 0.15), 0.035) * M.clamp((q[2] - 0.11) / 0.05, 0, 1);
+      return Math.max(groin, chest);
+    });
+    let smooth = transformed;
+    for (let pass = 0; pass < 16; pass++) smooth = smooth.map((point, i) => {
+      const weight = detail[i] * 0.55; if (weight < 0.003) return point;
+      const mean = average([...adjacent[i]].map(n => smooth[n]));
+      return point.map((v, a) => v + (mean[a] - v) * weight);
+    });
+    shapes[body] = smooth;
+  }
+  // Subdivide the anatomical edge loops once, retaining the artist-authored skin weights.
+  const edges = [], lookup = new Map(), vertexFaces = used.map(() => []), vertexEdges = used.map(() => []);
+  faces.forEach((face, fi) => face.forEach((a, i) => {
+    vertexFaces[a].push(fi); const b = face[(i + 1) % face.length], key = Math.min(a, b) + ':' + Math.max(a, b);
+    let ei = lookup.get(key);
+    if (ei === undefined) { ei = edges.length; lookup.set(key, ei); edges.push({ a, b, faces: [] }); vertexEdges[a].push(ei); vertexEdges[b].push(ei); }
+    edges[ei].faces.push(fi);
+  }));
+  const mergeWeights = entries => {
+    const out = new Map(); for (const [w, factor] of entries) for (const [b, v] of w) out.set(b, (out.get(b) || 0) + v * factor);
+    return normalize(out);
+  };
+  const faceWeights = faces.map(f => mergeWeights(f.map(i => [weights[i], 1 / f.length])));
+  const edgeWeights = edges.map(e => mergeWeights([[weights[e.a], 0.5], [weights[e.b], 0.5]]));
+  const finalWeights = [...weights, ...edgeWeights, ...faceWeights];
+  const quads = [];
+  faces.forEach((f, fi) => f.forEach((v, i) => {
+    const next = f[(i + 1) % f.length], prev = f[(i + f.length - 1) % f.length];
+    const e1 = lookup.get(Math.min(v, next) + ':' + Math.max(v, next)), e0 = lookup.get(Math.min(v, prev) + ':' + Math.max(v, prev));
+    quads.push([v, used.length + e1, used.length + edges.length + fi, used.length + e0]);
+  }));
+  const indices = Uint16Array.from(quads.flatMap(([a, b, c, d]) => [a, b, c, a, c, d]));
+  if (finalWeights.length > 65535) throw new Error('Too many vertices for 16-bit indices');
+  const encode = data => Buffer.from(data.buffer, data.byteOffset, data.byteLength).toString('base64');
+  const variants = {};
+  for (const [body, points] of Object.entries(shapes)) {
+    const centers = faces.map(f => average(f.map(i => points[i])));
+    const edgePoints = edges.map(e => e.faces.length === 2 ? average([points[e.a], points[e.b], ...e.faces.map(i => centers[i])]) : average([points[e.a], points[e.b]]));
+    const adjusted = points.map((point, i) => {
+      const boundary = vertexEdges[i].map(e => edges[e]).filter(e => e.faces.length === 1);
+      if (boundary.length === 2) return point.map((v, a) => 0.75 * v + boundary.reduce((sum, e) => sum + points[e.a === i ? e.b : e.a][a], 0) * 0.125);
+      const n = vertexFaces[i].length, F = average(vertexFaces[i].map(f => centers[f])), R = average(vertexEdges[i].map(e => average([points[edges[e].a], points[edges[e].b]])));
+      return point.map((v, a) => (F[a] + 2 * R[a] + (n - 3) * v) / n);
+    });
+    variants[body] = { position: encode(Int16Array.from([...adjusted, ...edgePoints, ...centers].flat(), v => Math.round(v * 10000))) };
+  }
+  const ids = new Uint8Array(finalWeights.length * 4), values = new Uint8Array(ids.length);
+  finalWeights.forEach((w, i) => {
+    const top = [...w].sort((a, b) => b[1] - a[1]).slice(0, 4), sum = top.reduce((n, x) => n + x[1], 0); let quantized = 0;
+    top.forEach(([bone, weight], j) => { ids[i * 4 + j] = bone; values[i * 4 + j] = Math.round(weight / sum * 255); quantized += values[i * 4 + j]; });
+    values[i * 4] += 255 - quantized;
+  });
+  const data = { version: 2, source: { project: 'MakeHuman', revision, license: 'CC0-1.0' }, vertices: finalWeights.length, bones: keys, variants, skinIndex: encode(ids), skinWeight: encode(values), index: encode(indices) };
+  fs.writeFileSync(path.join(root, 'studio-body-data.js'), '// CC0 MakeHuman anatomical mesh and weights; generated by tools/build-body.cjs.\nconst StudioBodyData = ' + JSON.stringify(data) + ';\n');
+  const manifest = { revision, files: files.map(file => ({ path: file, sha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(source, path.basename(file)))).digest('hex') })) };
+  fs.writeFileSync(path.join(root, 'tools/human-assets-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+  fs.copyFileSync(path.join(source, 'LICENSE.ASSETS.md'), path.join(root, 'vendor/HUMAN-ASSETS-LICENSE.md'));
+  console.log(`Generated ${data.vertices} vertices, ${indices.length / 3} triangles, ${keys.length} anatomical skinning bones; ${edges.filter(e => e.faces.length === 1).length} boundary edges.`);
 }
-if (result.vertices > 65535) throw new Error('Body exceeds the 16-bit index format');
-const data = { version: 1, vertices: result.vertices, position: encode(position), normal: encode(normal), skinIndex: encode(skinIndex), skinWeight: encode(skinWeight), index: encode(Uint16Array.from(geo.index.array)) };
-fs.writeFileSync(path.join(root, 'studio-body-data.js'), '// Original continuous male mannequin. Generated by node tools/build-body.cjs.\nconst StudioBodyData = ' + JSON.stringify(data) + ';\n');
-console.log(`Generated ${result.vertices} shared vertices, ${geo.index.count / 3} triangles, ${result.skeleton.bones.length} skinning bones.`);
+main().catch(e => { console.error(e); process.exitCode = 1; });

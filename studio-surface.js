@@ -3,7 +3,7 @@
 const StudioSurface = (() => {
   function create(M, material, rig) {
     const data = StudioBodyData;
-    if (data.version !== 2) throw new Error('The anatomical body data must be rebuilt');
+    if (data.version !== 3) throw new Error('The anatomical body data must be rebuilt');
     const decode = (value, Type) => {
       const raw = atob(value), bytes = new Uint8Array(raw.length);
       for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);

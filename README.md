@@ -76,7 +76,7 @@ node --test tests/*.test.cjs
 
 Regression checks cover body/camera handedness, all 54 angle controls, legacy saved poses, invalid values, bone lengths, ankle inheritance, camera framing transitions, bilingual pose descriptions, connected mesh topology, surface normals, skinning weights, and hip stability when raising an arm. The render library version and license are recorded in `vendor/README.md`.
 
-The continuous body and fingers have 53,514 shared vertices and 107,024 triangles, driven by 50 skinning bones. Geometry and weights are bundled for offline startup. Rebuild with `node tools/build-body.cjs --download`; see `tools/README.md` and `vendor/HUMAN-ASSETS.md` for pinned sources, CC0 licensing and cached-source builds.
+The continuous body and fingers have 53,514 shared vertices and 107,024 triangles, driven by 56 skinning bones. Forearm rotation is distributed from elbow to wrist to preserve volume, with tapered muscle fullness for each build. The joint picker renders the same anatomical mesh in a neutral front view, matching the selected body type. Geometry and weights are bundled for offline startup. Rebuild with `node tools/build-body.cjs --download`; see `tools/README.md` and `vendor/HUMAN-ASSETS.md` for pinned sources, CC0 licensing and cached-source builds.
 
 ## Deploy to GitHub Pages
 

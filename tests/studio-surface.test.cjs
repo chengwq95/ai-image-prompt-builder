@@ -90,3 +90,29 @@ test('switching body types restores the same mesh and pose without stale bind ma
     if (baseline.has(body)) assert.deepEqual(sample, baseline.get(body)); else baseline.set(body, sample);
   }
 });
+
+test('body and fingers have no open seams and use authored anatomical bone weights', () => {
+  const edges = new Map(), index = surface.geometry.index.array;
+  for (let i = 0; i < index.length; i += 3) for (const [a, b] of [[index[i], index[i + 1]], [index[i + 1], index[i + 2]], [index[i + 2], index[i]]]) {
+    const key = Math.min(a, b) + ':' + Math.max(a, b); edges.set(key, (edges.get(key) || 0) + 1);
+  }
+  assert.ok([...edges.values()].every(n => n === 2));
+  assert.ok(surface.skeleton.bones.some(b => b.name === 'rindex2'));
+  assert.ok(surface.skeleton.bones.some(b => b.name === 'lClavicle'));
+});
+
+test('running, sitting, overhead and wide hip poses do not tear the joint surface', () => {
+  const point = new THREE.Vector3(), positions = new Float32Array(surface.vertices * 3);
+  const poses = ['run', 'sit', 'cheer'].map(id => M.PRESETS.find(p => p.id === id).pose);
+  poses.push(M.P({ seated: true, lLeg: { a: 88, b: 60, c: 100 }, rLeg: { a: 88, b: 60, c: 100 }, lArm: { a: 85 }, rArm: { a: 85 } }));
+  for (const body of Object.keys(M.BODY_TYPES)) for (const raw of poses) {
+    const p = M.normalizePose({ ...raw, body }); surface.update(M.skeleton(p), p);
+    for (let i = 0; i < surface.vertices; i++) {
+      surface.body.getVertexPosition(i, point); assert.ok(Number.isFinite(point.lengthSq())); point.toArray(positions, i * 3);
+    }
+    const ids = surface.geometry.index.array, distance = (a, b) => Math.hypot(positions[a * 3] - positions[b * 3], positions[a * 3 + 1] - positions[b * 3 + 1], positions[a * 3 + 2] - positions[b * 3 + 2]);
+    let longest = 0;
+    for (let i = 0; i < ids.length; i += 3) longest = Math.max(longest, distance(ids[i], ids[i + 1]), distance(ids[i + 1], ids[i + 2]), distance(ids[i + 2], ids[i]));
+    assert.ok(longest < 0.08, `${body}: torn joint edge ${longest}`);
+  }
+});

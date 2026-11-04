@@ -34,7 +34,7 @@ test('the editor exposes 18 parts and 54 distinct bounded angle controls', () =>
 test('legacy saved poses receive defaults for new joints without losing old angles', () => {
   const p = M.normalizePose({ yaw: 60, lArm: { a: 72, b: 35, c: 95, d: 30 }, lLeg: { a: 45, b: 4, c: 60 } });
   assert.equal(p.lArm.a, 72); assert.equal(p.lArm.c, 95); assert.equal(p.lLeg.c, 60);
-  assert.equal(p.lArm.wristPitch, 0); assert.equal(p.lArm.index, 8); assert.equal(p.lLeg.anklePitch, 0);
+  assert.equal(p.lArm.wristPitch, 0); assert.equal(p.lArm.index, 14); assert.equal(p.lArm.e, 75); assert.equal(p.lLeg.anklePitch, 0);
   assert.equal(p.twist, 0); assert.equal(p.rArm.a, 8);
   for (const x of Object.values(M.skeleton(p)).flat()) assert.ok(Number.isFinite(x));
 });

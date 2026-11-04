@@ -18,14 +18,44 @@ const StudioSurface = (() => {
       geometry.setAttribute('skinIndex', new THREE.Uint8BufferAttribute(ids, 4));
       geometry.setAttribute('skinWeight', new THREE.Uint8BufferAttribute(weights, 4, true));
       geometry.setIndex(new THREE.BufferAttribute(index, 1));
+      mittenToes(geometry, type);
       geometry.computeVertexNormals(); geometry.computeBoundingBox(); geometry.computeBoundingSphere();
       variants.set(type, geometry); return geometry;
     }
+    // A drawing mannequin has no separate toes: fold the toe area into one rounded foot front,
+    // with a flat sole. Vertices move toward a smooth ellipsoid by how much the toe bone owns them.
+    function mittenToes(geometry, type) {
+      const pos = geometry.getAttribute('position'), frames = M.skinFrames(bindPose(type));
+      for (const side of ['l', 'r']) {
+        const bone = data.bones.indexOf(side + 'Toes'), F = frames[side + 'Toes'];
+        if (bone < 0 || !F) continue;
+        const R = F.matrix, local = [], own = [];
+        for (let i = 0; i < pos.count; i++) {
+          let w = 0;
+          for (let k = 0; k < 4; k++) if (ids[i * 4 + k] === bone) w += weights[i * 4 + k] / 255;
+          if (w < 0.02) continue;
+          const d = [pos.getX(i) - F.position[0], pos.getY(i) - F.position[1], pos.getZ(i) - F.position[2]];
+          // Into the toe frame (R is row-major; its transpose takes world to local).
+          local.push([i, R[0] * d[0] + R[3] * d[1] + R[6] * d[2], R[1] * d[0] + R[4] * d[1] + R[7] * d[2], R[2] * d[0] + R[5] * d[1] + R[8] * d[2]]);
+          own.push(w);
+        }
+        const core = local.filter((_, k) => own[k] > 0.5);
+        if (core.length < 8) continue;
+        const lo = [1, 2, 3].map(a => Math.min(...core.map(p => p[a]))), hi = [1, 2, 3].map(a => Math.max(...core.map(p => p[a])));
+        const c = lo.map((x, a) => (x + hi[a]) / 2), r = lo.map((x, a) => Math.max(0.006, (hi[a] - x) / 2 * 1.04));
+        local.forEach(([i, x, y, z], k) => {
+          const q = [x - c[0], y - c[1], z - c[2]], m = Math.hypot(q[0] / r[0], q[1] / r[1], q[2] / r[2]) || 1;
+          const t = [c[0] + q[0] / m, Math.max(lo[1], c[1] + q[1] / m), c[2] + q[2] / m];
+          const s = Math.min(1, own[k] * 1.4), blend = s * s * (3 - 2 * s);
+          const nx = x + (t[0] - x) * blend, ny = y + (t[1] - y) * blend, nz = z + (t[2] - z) * blend;
+          pos.setXYZ(i, F.position[0] + R[0] * nx + R[1] * ny + R[2] * nz, F.position[1] + R[3] * nx + R[4] * ny + R[5] * nz, F.position[2] + R[6] * nx + R[7] * ny + R[8] * nz);
+        });
+      }
+      pos.needsUpdate = true;
+    }
     const bones = data.bones.map(name => { const bone = new THREE.Bone(); bone.name = name; rig.add(bone); return bone; });
     const rotation = new THREE.Matrix4();
-    const bindPose = type => {
-      const p = M.BASE(); p.body = type; p.lArm.a = p.rArm.a = 25; p.lArm.c = p.rArm.c = 5; return p;
-    };
+    const bindPose = type => M.bindPose(type);
     function updateBones(frames) {
       data.bones.forEach((name, i) => {
         const { position, matrix: R } = frames[name];

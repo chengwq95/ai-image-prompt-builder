@@ -47,7 +47,7 @@ test('raising an arm does not pull the hip or the root of the thigh outwards', (
 test('every body type has its own bind shape without scaling posed bones', () => {
   const point = new THREE.Vector3(), seen = new Set();
   for (const body of Object.keys(M.BODY_TYPES)) {
-    const p = M.BASE(); p.body = body; p.lArm.a = p.rArm.a = 25; p.lArm.c = p.rArm.c = 5;
+    const p = M.bindPose(body);
     surface.update(M.skeleton(p), p); seen.add(surface.geometry);
     const raw = surface.geometry.getAttribute('position');
     for (let i = 0; i < surface.vertices; i++) {

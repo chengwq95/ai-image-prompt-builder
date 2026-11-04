@@ -314,7 +314,9 @@ const CamPose = (() => {
       skin.color.setHex(drawing ? 0xf2f0e8 : 0xc6b6a2);
       skin2.color.setHex(drawing ? 0xe4e8ee : 0xa9b3c2);
       outlines.forEach(m => { m.visible = drawing; });
-      construction.forEach(l => { l.material.color.setHex(drawing ? 0x666666 : 0x827d74); });
+      // The old construction lines were sized for the procedural head and torso; on the anatomical
+      // mesh they float off the surface (a stray line above the head), so they stay hidden.
+      construction.forEach(l => { l.visible = false; });
       const J = updateFigure(), r = insetRect(), spec = fitShot(J, r);
       const rigBox = figureBounds();
       // The key light: direction from the Light tab, soft or hard shadows.

@@ -49,7 +49,13 @@ const CamPoseModel = (() => {
     chair: { zh: "椅子", en: "Chair", say: ["旁边有一把椅子", "a chair beside them"], seatSay: ["坐在椅子上", "sitting on a chair"] },
     table: { zh: "桌子", en: "Table", say: ["面前有一张桌子", "a table in front of them"] }
   };
-  const arm = () => ({ ...limb(8, 0, 10), e: 0, wristPitch: 0, wristYaw: 0, wristRoll: 0, thumb: 12, index: 8, middle: 12, ring: 16, pinky: 20, spread: 5 });
+  // A relaxed hand: forearm turned so the palm faces the thigh, thumb tucked in, fingers softly curled.
+  const REST_FOREARM = 75;
+  // The pose the anatomical mesh was compiled in (tools/build-body.cjs). Kept fixed so changing the
+  // everyday defaults above never moves the mesh's reference frame.
+  const BIND_ARM = { a: 25, b: 0, c: 5, d: 0, e: 0, wristPitch: 0, wristYaw: 0, wristRoll: 0, thumb: 12, index: 8, middle: 12, ring: 16, pinky: 20, spread: 5 };
+  const bindPose = (body = "male") => { const p = BASE(); p.body = body; Object.assign(p.lArm, BIND_ARM); Object.assign(p.rArm, BIND_ARM); return p; };
+  const arm = () => ({ ...limb(8, 0, 10), e: REST_FOREARM, wristPitch: 0, wristYaw: 0, wristRoll: 0, thumb: 32, index: 14, middle: 18, ring: 22, pinky: 26, spread: 2 });
   const leg = () => ({ ...limb(0, 4, 0), anklePitch: 0, ankleRoll: 0, toe: 0 });
   const P = o => {
     const p = Object.assign(BASE(), o);
@@ -434,7 +440,7 @@ const CamPoseModel = (() => {
       for (const [s, side] of [["l", zh ? "左" : "left "], ["r", zh ? "右" : "right "]]) {
         const A = p[s + "Arm"], leg = p[s + "Leg"];
         if (A.c > 25 && !armWords(A)) parts.push(zh ? `${side}肘弯曲约${Math.round(A.c)}度` : `${side}elbow bent about ${Math.round(A.c)} degrees`);
-        if (Math.abs(A.e) > 25) parts.push(zh ? `${side}前臂旋转` : `${side}forearm rotated`);
+        if (Math.abs(A.e - REST_FOREARM) > 30) parts.push(zh ? `${side}前臂旋转` : `${side}forearm rotated`);
         if (Math.abs(A.wristPitch) > 20 || Math.abs(A.wristYaw) > 15 || Math.abs(A.wristRoll) > 20) parts.push(zh ? `${side}手腕弯曲转动` : `${side}wrist bent or rotated`);
         const curls = [A.index, A.middle, A.ring, A.pinky];
         if (!(s === 'r' && holding)) {
@@ -630,5 +636,5 @@ const CamPoseModel = (() => {
     return { camera: describeCamera(cam, lang, pose.yaw, J, aspect, J2), pose: poseText, light: describeLight(value.light, cam, lang) };
   }
 
-  return { PROP_ATTACHMENTS, propFrame, migratePose, handRig, skinFrames, holdProp, GRIPS, FINGERS, modelDistance, spaceModels, mm, describeScene, BODY_TYPES, PROPS, reach, normalizeLight, lightDir, describeLight, LIGHT_PRESETS, D2R, clamp, v, add, sub, mul, dot, cross, norm, rx, ry, rz, mv, chain, BASE, P, PRESETS, B, measurements, skeleton, CAMERA, camDir, shotCamera, framedCamera, cameraTarget, cameraBounds, constrainCamera, minCameraElevation, fitCameraDistance, cameraControlPoint, dragCameraControl, makeView, describeCamera, describePose, T, CAM_PRESETS, PARTS, get, put, wrap360, normalizePose, normalizeCamera };
+  return { bindPose, PROP_ATTACHMENTS, propFrame, migratePose, handRig, skinFrames, holdProp, GRIPS, FINGERS, modelDistance, spaceModels, mm, describeScene, BODY_TYPES, PROPS, reach, normalizeLight, lightDir, describeLight, LIGHT_PRESETS, D2R, clamp, v, add, sub, mul, dot, cross, norm, rx, ry, rz, mv, chain, BASE, P, PRESETS, B, measurements, skeleton, CAMERA, camDir, shotCamera, framedCamera, cameraTarget, cameraBounds, constrainCamera, minCameraElevation, fitCameraDistance, cameraControlPoint, dragCameraControl, makeView, describeCamera, describePose, T, CAM_PRESETS, PARTS, get, put, wrap360, normalizePose, normalizeCamera };
 })();

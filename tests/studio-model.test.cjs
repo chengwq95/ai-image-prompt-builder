@@ -247,3 +247,15 @@ test('side controls still spread a forward-raised arm and a seated thigh', () =>
   const arm = M.normalizePose({ rArm: { a: 40, b: 90, c: 0 } }), A = M.skeleton(arm);
   assert.ok(A.rShoulder[0] - A.rElbow[0] > 0.15, 'a forward arm must still move sideways');
 });
+
+test('an arm that would cut through the torso is moved just clear of it', () => {
+  for (const body of Object.keys(M.BODY_TYPES)) {
+    const p = M.normalizePose({ body, rArm: { a: -30, b: 10, c: 120 } });
+    assert.ok(M.armPenetration(p, 'r') > 0.5, `${body}: test pose should clip`);
+    M.resolveArms(p);
+    assert.equal(M.armPenetration(p, 'r'), 0, `${body}: arm still inside the body`);
+    assert.ok(p.rArm.a - -30 <= 80 && Math.abs(p.rArm.b - 10) <= 70);
+  }
+  const relaxed = M.normalizePose({}), before = JSON.stringify(relaxed);
+  M.resolveArms(relaxed); assert.equal(JSON.stringify(relaxed), before, 'a clear pose is left alone');
+});

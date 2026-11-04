@@ -116,3 +116,45 @@ test('running, sitting, overhead and wide hip poses do not tear the joint surfac
     assert.ok(longest < 0.08, `${body}: torn joint edge ${longest}`);
   }
 });
+
+test('turning the palm does not pinch the elbow or collapse forearm cross-sections', () => {
+  const point = new THREE.Vector3(), fractions = [0.05, 0.3, 0.5, 0.9];
+  const cross = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  const halfHull = points => {
+    const h = []; for (const p of points) { while (h.length > 1 && cross(h.at(-2), h.at(-1), p) <= 0) h.pop(); h.push(p); }
+    h.pop(); return h;
+  };
+  function sections(body, twist, side) {
+    const p = M.P({ body, lArm: { a: 25, c: 0, e: twist }, rArm: { a: 25, c: 0, e: twist } }), J = M.skeleton(p);
+    surface.update(J, p);
+    const R = J[side + 'ArmM'], inverse = [R[0], R[3], R[6], R[1], R[4], R[7], R[2], R[5], R[8]];
+    const vertices = Array.from({ length: surface.vertices }, (_, i) => {
+      surface.body.getVertexPosition(i, point); return M.mv(inverse, M.sub(point.toArray(), J[side + 'Elbow']));
+    });
+    const ids = surface.geometry.getAttribute('skinIndex'), weights = surface.geometry.getAttribute('skinWeight'), index = surface.geometry.index.array;
+    const bones = new Set(surface.skeleton.bones.flatMap((b, i) => b.name.startsWith(side) && /^(Upper|Fore|Hand)/.test(b.name.slice(1)) ? [i] : []));
+    const arm = vertices.map((_, i) => [0, 1, 2, 3].reduce((sum, c) => sum + (bones.has(ids.array[i * 4 + c]) ? weights.array[i * 4 + c] / 255 : 0), 0) > 0.7);
+    return fractions.map(f => {
+      const y = -M.measurements(body).fore * J.scale * f, intersections = [];
+      for (let i = 0; i < index.length; i += 3) {
+        const triangle = [index[i], index[i + 1], index[i + 2]]; if (!triangle.every(v => arm[v])) continue;
+        for (let e = 0; e < 3; e++) {
+          const a = vertices[triangle[e]], b = vertices[triangle[(e + 1) % 3]];
+          if ((a[1] < y) === (b[1] < y)) continue;
+          const t = (y - a[1]) / (b[1] - a[1]); intersections.push([a[0] + t * (b[0] - a[0]), a[2] + t * (b[2] - a[2])]);
+        }
+      }
+      intersections.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      const hull = [...halfHull(intersections), ...halfHull([...intersections].reverse())];
+      assert.ok(hull.length > 8);
+      return Math.abs(hull.reduce((sum, v, i) => { const next = hull[(i + 1) % hull.length]; return sum + v[0] * next[1] - v[1] * next[0]; }, 0)) / 2;
+    });
+  }
+  for (const body of Object.keys(M.BODY_TYPES)) for (const side of ['l', 'r']) {
+    const rest = sections(body, 0, side);
+    for (const twist of [-90, 75, 90]) sections(body, twist, side).forEach((area, i) => {
+      assert.ok(area / rest[i] > 0.92, `${body} ${side} at ${twist}: forearm ${fractions[i]} lost volume`);
+      assert.ok(area / rest[i] < 1.04, `${body} ${side} at ${twist}: forearm swelled`);
+    });
+  }
+});

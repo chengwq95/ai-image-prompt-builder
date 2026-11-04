@@ -213,15 +213,16 @@ test('props share the skin hand frame through body, arm and wrist rotations', ()
   }
 });
 
-test('finger tips contact the phone back and umbrella grip instead of floating away', () => {
+test('fingers wrap the phone with the thumb on the opposite face and contact the umbrella grip', () => {
   const localTips = prop => {
     const p = M.holdProp(M.normalizePose({}), prop), J = M.skeleton(p), F = M.propFrame(p, prop, J), R = F.matrix;
     const T = [R[0], R[3], R[6], R[1], R[4], R[7], R[2], R[5], R[8]], H = M.handRig(p, 'r', J);
     return ['thumb', 'index', 'middle', 'ring', 'pinky'].map(k => M.mul(M.mv(T, M.sub(H['r' + k + 'Tip'], F.position)), 1 / F.scale));
   };
   const phone = localTips('phone');
-  assert.ok(phone.slice(1).every(p => Math.abs(p[2] + 0.0045) < 0.013));
-  assert.ok(phone[0][2] > 0.0045 && Math.abs(phone[0][0]) < 0.045);
+  assert.ok(phone.slice(1).every(p => Math.abs(Math.abs(p[2]) - 0.0045) < 0.013));
+  const fingerSide = phone.slice(1).reduce((sum, p) => sum + p[2], 0);
+  assert.ok(phone[0][2] * fingerSide < 0 && Math.abs(phone[0][0]) < 0.045);
   for (const p of localTips('umbrella')) assert.ok(Math.abs(Math.hypot(p[0], p[2]) - 0.014) < 0.002);
 });
 
@@ -256,6 +257,28 @@ test('an arm that would cut through the torso is moved just clear of it', () => 
     assert.equal(M.armPenetration(p, 'r'), 0, `${body}: arm still inside the body`);
     assert.ok(p.rArm.a - -30 <= 80 && Math.abs(p.rArm.b - 10) <= 70);
   }
-  const relaxed = M.normalizePose({}), before = JSON.stringify(relaxed);
+  const relaxed = M.normalizePose({ lArm: { a: 75, c: 25 }, rArm: { a: 75, c: 25 } }), before = JSON.stringify(relaxed);
   M.resolveArms(relaxed); assert.equal(JSON.stringify(relaxed), before, 'a clear pose is left alone');
+});
+
+test('sitting switches the legs while preserving the current arms, props and placement', () => {
+  const original = M.holdProp(M.normalizePose({ ...M.PRESETS.find(p => p.id === 'run').pose, body: 'female', x: 0.4, z: -0.2 }), 'phone');
+  const p = M.setSeated(original, true), sitting = M.PRESETS.find(x => x.id === 'sit').pose;
+  assert.equal(p.seated, true); assert.deepEqual(p.lLeg, sitting.lLeg); assert.deepEqual(p.rLeg, sitting.rLeg);
+  assert.deepEqual(p.lArm, original.lArm); assert.deepEqual(p.rArm, original.rArm); assert.deepEqual(p.props, original.props);
+  assert.equal(p.body, 'female'); assert.equal(p.x, 0.4); assert.equal(p.z, -0.2);
+  const stand = M.setSeated(p, false); assert.equal(stand.seated, false); assert.deepEqual(stand.lLeg, M.BASE().lLeg);
+});
+
+test('small joint edits stop at the last clear angle without jumping other joints', () => {
+  const previous = M.resolveArms(M.normalizePose({ rArm: { a: -30, b: 10, c: 120 } }));
+  let requested = null;
+  for (const key of ['a', 'b', 'c', 'd']) for (const delta of [-10, 10]) {
+    const p = M.normalizePose(previous); p.rArm[key] += delta;
+    if (M.armPenetration(p, 'r') > 0 && !requested) requested = p;
+  }
+  assert.ok(requested, 'regression needs an edit into the body');
+  const before = { ...requested.rArm }; M.resolveArms(requested, { previous });
+  assert.equal(M.armPenetration(requested, 'r'), 0); assert.deepEqual(requested.lArm, previous.lArm);
+  for (const key of Object.keys(before)) assert.ok(requested.rArm[key] >= Math.min(before[key], previous.rArm[key]) - 1e-9 && requested.rArm[key] <= Math.max(before[key], previous.rArm[key]) + 1e-9, key);
 });

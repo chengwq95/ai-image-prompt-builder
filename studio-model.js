@@ -778,6 +778,42 @@ const CamPoseModel = (() => {
     }
     return deepest > 0.00001 ? deepest : 0;
   }
+  // "On the phone": the phone rests against the right ear with the fingers pointing up and the palm toward
+  // the cheek, the elbow down and in front, instead of the hand reaching across the face.
+  const PHONE_EAR = globalThis.PHONE_EAR || { phone: [-0.088, 0.005, 0.025], tilt: 35, upright: 8 };
+  const phoneCache = new Map();
+  function phoneToEar(p) {
+    // Solved once per figure / position / body; every redraw afterwards reuses it.
+    const key = JSON.stringify({ ...p, rArm: null, lArm: null, preset: null });
+    if (phoneCache.has(key)) { Object.assign(p.rArm, phoneCache.get(key)); return; }
+    const A = p.rArm;
+    // Fingers lie flatter along the back of the phone than in a hand-held grip, so they do not poke the cheek.
+    Object.assign(A, PHONE_EAR.fingers || { thumb: 15, index: 6, middle: 8, ring: 10, pinky: 12 });
+    const J0 = skeleton(p), side = mv(J0.headM, [-1, 0, 0]);
+    const target = () => chain(skeleton(p).headM, ry(PHONE_EAR.yaw ?? -15), rx(-PHONE_EAR.tilt), [0, 0, 1, 0, -1, 0, 1, 0, 0]);
+    const at = () => { const J = skeleton(p); return add(J.rWrist, mv(J.rHandM, mul(PROP_ATTACHMENTS.phone.position, J.handSize))); };
+    let goal = add(J0.head, mv(J0.headM, mul(PHONE_EAR.phone, J0.headSize)));
+    const score = q => {
+      Object.assign(A, q); matchHand(p, 'r', target());
+      const J = skeleton(p), fore = norm(sub(J.rWrist, J.rElbow)), up = dot(fore, mv(J.headM, [0, 1, 0]));
+      return Math.hypot(...sub(at(), goal)) * 1000 + Math.abs(q.a - 15) * 0.02 + Math.max(0, 8 - q.a) * 0.5 + Math.abs(q.d) * 0.01 + (1 - up) * PHONE_EAR.upright;
+    };
+    let best = null, cost = Infinity;
+    for (const a of [0, 15, 30, 45]) for (const b of [70, 85, 100, 115]) for (const c of [130, 140, 150]) for (const d of [-15, 0, 15, 30]) {
+      const q = { a, b, c, d }, v = score(q); if (v < cost) { cost = v; best = q; }
+    }
+    const refine = () => {
+      cost = score(best);
+      for (const step of [5, 2, 1]) for (let pass = 0; pass < 4; pass++) for (const k of ['a', 'b', 'c', 'd']) for (const dir of [-1, 1]) {
+        const q = { ...best, [k]: clamp(best[k] + dir * step, k === 'c' ? 0 : -35, k === 'c' ? 150 : 180) }, v = score(q); if (v < cost) { cost = v; best = q; }
+      }
+      score(best);
+    };
+    // Bring the phone as close to the cheek as the body allows: step outward until nothing intersects.
+    for (let i = 0; i < 12; i++) { refine(); if (armPenetration(p, 'r') === 0) break; goal = add(goal, mul(side, 0.004 * J0.headSize)); }
+    if (phoneCache.size > 40) phoneCache.clear();
+    phoneCache.set(key, { ...A });
+  }
   // Move an arm (or the prop in its hand) that would cut through the torso or legs the least way out:
   // raise it out to the side or forward, and bend or straighten the elbow if that is not enough.
   function resolveArms(p, { previous = null } = {}) {
@@ -790,6 +826,7 @@ const CamPoseModel = (() => {
         matchHand(p, side, chain(J.bodyM, ry(-sign * 90)));
       }
     }
+    if (p.preset === 'phone') phoneToEar(p);
     const sameFrame = previous && Object.keys(p).every(key => ['lArm', 'rArm', 'preset', 'gripVersion'].includes(key) || JSON.stringify(p[key]) === JSON.stringify(previous[key]));
     for (const side of ["l", "r", "l", "r"]) {
       if (armPenetration(p, side) <= 0) continue;

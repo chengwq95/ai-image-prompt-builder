@@ -25,3 +25,16 @@ for (const body of Object.keys(M.BODY_TYPES)) test(`actual mesh contact checks: 
     assert.ok(audit.floor >= -0.004 * M.BODY_TYPES[body].height, `${label}: foot below floor ${audit.floor}`);
   }
 });
+
+test('on the phone: the phone rests beside the right ear, not across the face or above the head', () => {
+  for (const body of Object.keys(M.BODY_TYPES)) {
+    const p = M.holdProp(M.normalizePose({ ...M.PRESETS.find(v => v.id === 'phone').pose, body, preset: 'phone', props: ['phone'] }), 'phone');
+    p.preset = 'phone'; M.resolveArms(p);
+    const J = M.skeleton(p), F = M.propFrame(p, 'phone', J), H = J.headM, T = [H[0], H[3], H[6], H[1], H[4], H[7], H[2], H[5], H[8]];
+    const local = v => M.mul(M.mv(T, M.sub(v, J.head)), 1 / J.headSize), c = local(F.position);
+    assert.ok(c[0] < -0.07 && c[0] > -0.14, `${body}: phone not beside the right side of the head (${c})`);
+    assert.ok(Math.abs(c[1]) < 0.06 && c[2] > -0.04 && c[2] < 0.08, `${body}: phone not at ear height (${c})`);
+    assert.ok(local(J.rWrist)[1] < 0, `${body}: wrist should be below the ear`);
+    assert.equal(M.armPenetration(p, 'r'), 0, `${body}: arm or phone intersects the body`);
+  }
+});

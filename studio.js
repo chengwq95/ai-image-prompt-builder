@@ -667,6 +667,8 @@ const CamPose = (() => {
       } else if (button.dataset.preset) {
         // Keep who it is, where they stand and what they hold; take the preset's joints.
         const old = cur(), next = M.normalizePose({ ...copy(PRESETS.find(p => p.id === button.dataset.preset).pose), preset: button.dataset.preset, body: old.body, props: old.props, x: old.x, z: old.z });
+        // Talking on the phone needs a phone in the hand (it replaces any other held prop).
+        if (next.preset === "phone" && !next.props.includes("phone")) next.props = [...next.props.filter(k => !M.PROPS[k].hand), "phone"];
         const held = next.props.find(k => M.PROPS[k].hand);
         if (held) Object.assign(next, M.holdProp(next, held));
         if (state.editing === "b" && state.second) { next.yaw = next.yaw || old.yaw; state.pose2 = next; } else state.pose = next;

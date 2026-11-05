@@ -374,7 +374,11 @@ const CamPoseModel = (() => {
   }
 
   /* ---------- physical camera: metres, one pose shared by the icon and preview ---------- */
-  const CAMERA = { minDistance: 0.2, maxDistance: 8, fov: 45, guideRadius: 1.1, floor: 0.06 };
+  const CAMERA = { minDistance: 0.2, maxDistance: 15, fov: 45, guideRadius: 1.1, floor: 0.06 };
+  // Lens focal length (full-frame equivalent). 0 = auto: the studio's own 45° view, no lens words.
+  const LENSES = [24, 35, 50, 85, 135];
+  const LENS_WORDS = { 24: ['24mm广角镜头', '24mm wide-angle lens'], 35: ['35mm镜头', '35mm lens'], 50: ['50mm标准镜头', '50mm lens'], 85: ['85mm人像镜头', '85mm portrait lens'], 135: ['135mm长焦镜头', '135mm telephoto lens'] };
+  const camFov = cam => cam && cam.lens ? 2 * Math.atan(12 / cam.lens) / D2R : CAMERA.fov;
   const camDir = c => norm(v(-Math.sin(c.az * D2R) * Math.cos(c.el * D2R), Math.sin(c.el * D2R), Math.cos(c.az * D2R) * Math.cos(c.el * D2R)));
   function cameraTarget(cam, J) {
     if (cam.focus === 'head') return add(J.head, mv(J.headM, mul([0, -0.01, 0.09], J.headSize || 1)));
@@ -389,7 +393,7 @@ const CamPoseModel = (() => {
   function constrainCamera(cam, J) { return constrainToTarget(cam, cameraTarget(normalizeCamera(cam), J)); }
   function shotCamera(cam, J) {
     const target = cameraTarget(normalizeCamera(cam), J), camera = constrainToTarget(cam, target);
-    return { target, pos: add(target, mul(camDir(camera), camera.distance)), fov: CAMERA.fov, camera };
+    return { target, pos: add(target, mul(camDir(camera), camera.distance)), fov: camFov(normalizeCamera(cam)), camera };
   }
   // Compatibility entry point; no hidden reframing or field-of-view changes.
   const framedCamera = (cam, J) => shotCamera(cam, J);
@@ -400,7 +404,7 @@ const CamPoseModel = (() => {
     return { min, max };
   }
   function fitCameraDistance(cam, J, aspect = 1, bounds = cameraBounds(J)) {
-    const target = cameraTarget(normalizeCamera(cam), J), vf = Math.tan(CAMERA.fov * D2R / 2), hf = vf * aspect;
+    const target = cameraTarget(normalizeCamera(cam), J), vf = Math.tan(camFov(normalizeCamera(cam)) * D2R / 2), hf = vf * aspect;
     let distance = 0.2;
     // At low angles a longer distance raises the floor limit; solve the final geometry together.
     for (let pass = 0; pass < 12; pass++) {
@@ -495,6 +499,7 @@ const CamPoseModel = (() => {
     const az = AZ[Math.round((((rel % 360) + 360) % 360) / 45) % 8][i];
     const words = [az, elWords(c.el)[i], shotWords(c, J, aspect)[i]];
     if (J2) { const two = pairWords(c, J, J2, aspect); if (two) words.push(two[i]); }
+    const lens = normalizeCamera(cam).lens; if (lens) words.push(LENS_WORDS[lens][i]);
     return words.join(lang === 'zh' ? ',' : ', ');
   }
   // With a second person: a two-shot, or an over-the-shoulder shot when they are much closer to the lens.
@@ -941,6 +946,25 @@ const CamPoseModel = (() => {
     return p;
   }
 
+  // Turn the neck and head (neck about a third, head the rest, within each joint's range) so the face
+  // points at a world-space target. Signs: +neckYaw turns toward -x, +headYaw toward +x; +pitch looks down.
+  function lookAt(pose, target) {
+    const p = pose, lim = k => { const c = [...PARTS.neck.controls, ...PARTS.head.controls].find(c => c.path === k); return [c.min, c.max]; };
+    const apply = (Y, P) => {
+      p.neckYaw = clamp(Y * 0.35, ...lim('neckYaw')); p.headYaw = clamp(-(Y - p.neckYaw), ...lim('headYaw'));
+      p.neckPitch = clamp(P * 0.4, ...lim('neckPitch')); p.headPitch = clamp(P - p.neckPitch, ...lim('headPitch'));
+    };
+    const err = (Y, P) => { apply(Y, P); const J = skeleton(p), d = norm(sub(target, J.head)); return 1 - dot(J.headForward, d); };
+    let best = [0, 0], e = err(0, 0);
+    for (let Y = -120; Y <= 120; Y += 10) for (let P = -60; P <= 70; P += 10) { const v = err(Y, P); if (v < e) { e = v; best = [Y, P]; } }
+    for (const step of [5, 2, 1]) for (let pass = 0; pass < 3; pass++) for (const [dy, dp] of [[step, 0], [-step, 0], [0, step], [0, -step]]) {
+      const v = err(best[0] + dy, best[1] + dp); if (v < e) { e = v; best = [best[0] + dy, best[1] + dp]; }
+    }
+    apply(...best);
+    for (const k of ['neckYaw', 'headYaw', 'neckPitch', 'headPitch']) p[k] = Math.round(p[k]);
+    return p;
+  }
+
   /* ---------- reaching: move a hand or foot to a point (inverse kinematics) ---------- */
   // Solves the limb's main angles (raise, forward, bend) so `joint` lands on `target`,
   // measured from the pelvis so standing / lifting never fights the solve.
@@ -1017,7 +1041,7 @@ const CamPoseModel = (() => {
     if (!raw || typeof raw !== 'object') raw = {};
     const old = clamp(finite(raw.dist, 1), 0.6, 1.4);
     const legacy = old <= 1 ? 0.65 + (old - 0.6) / 0.4 * 2.15 : 2.8 + (old - 1) / 0.4 * 4.2;
-    return { version: 2, az: wrap360(finite(raw.az, 45)), el: clamp(finite(raw.el, 10), -60, 85), distance: clamp(finite(raw.distance, legacy), CAMERA.minDistance, CAMERA.maxDistance), focus: ['head', 'chest', 'whole'].includes(raw.focus) ? raw.focus : 'chest' };
+    return { version: 2, az: wrap360(finite(raw.az, 45)), el: clamp(finite(raw.el, 10), -60, 85), distance: clamp(finite(raw.distance, legacy), CAMERA.minDistance, CAMERA.maxDistance), focus: ['head', 'chest', 'whole'].includes(raw.focus) ? raw.focus : 'chest', lens: LENSES.includes(+raw.lens) ? +raw.lens : 0 };
   }
 
   /** Everything a host needs from a saved studio value: camera, pose and light words. */
@@ -1035,5 +1059,5 @@ const CamPoseModel = (() => {
     return { camera: describeCamera(cam, lang, pose.yaw, J, aspect, J2), pose: poseText, light: describeLight(value.light, cam, lang) };
   }
 
-  return { attachRotation, setCollisionData, setSeated, PALM, resolveArms, armPenetration, bindPose, PROP_ATTACHMENTS, propFrame, migratePose, handRig, skinFrames, holdProp, GRIPS, FINGERS, modelDistance, spaceModels, mm, describeScene, BODY_TYPES, PROPS, reach, normalizeLight, lightDir, describeLight, LIGHT_PRESETS, D2R, clamp, v, add, sub, mul, dot, cross, norm, rx, ry, rz, mv, chain, BASE, P, PRESETS, B, measurements, skeleton, CAMERA, camDir, shotCamera, framedCamera, cameraTarget, cameraBounds, constrainCamera, minCameraElevation, fitCameraDistance, cameraControlPoint, dragCameraControl, makeView, describeCamera, describePose, T, CAM_PRESETS, PARTS, get, put, wrap360, normalizePose, normalizeCamera };
+  return { lookAt, LENSES, camFov, attachRotation, setCollisionData, setSeated, PALM, resolveArms, armPenetration, bindPose, PROP_ATTACHMENTS, propFrame, migratePose, handRig, skinFrames, holdProp, GRIPS, FINGERS, modelDistance, spaceModels, mm, describeScene, BODY_TYPES, PROPS, reach, normalizeLight, lightDir, describeLight, LIGHT_PRESETS, D2R, clamp, v, add, sub, mul, dot, cross, norm, rx, ry, rz, mv, chain, BASE, P, PRESETS, B, measurements, skeleton, CAMERA, camDir, shotCamera, framedCamera, cameraTarget, cameraBounds, constrainCamera, minCameraElevation, fitCameraDistance, cameraControlPoint, dragCameraControl, makeView, describeCamera, describePose, T, CAM_PRESETS, PARTS, get, put, wrap360, normalizePose, normalizeCamera };
 })();

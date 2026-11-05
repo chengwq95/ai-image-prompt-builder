@@ -17,22 +17,22 @@ const CamPose = (() => {
   const ui = {
     en: {
       editor: "Studio view · drag background to orbit", actual: "CAMERA VIEW", front: "Front", side: "Right", back: "Back", frame: "Fit scene",
-      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror this joint", flip: "Swap left / right", joints: "18 parts · 54 angle controls", pagePoses: "Poses", facing: "Facing", faceFront: "Front", faceRight: "Right side", faceBack: "Back", faceLeft: "Left side", turnLabel: "Turn the figure", turnHint: "Or drag the orange ring at the feet", pageFigure: "Body type", pageJoints: "Joints", mapLeft: "L", mapRight: "R",
+      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror this joint", flip: "Swap left / right", joints: "18 parts · 54 angle controls", pagePoses: "Poses", gaze: "Gaze", gazeCamera: "The camera", gazeOther: "The other person", gazePick: "A point I click", gazePicking: "Click in the 3D view…", gazeAhead: "Straight ahead", lens: "Lens", lensAuto: "Auto", facing: "Facing", faceFront: "Front", faceRight: "Right side", faceBack: "Back", faceLeft: "Left side", turnLabel: "Turn the figure", turnHint: "Or drag the dot on the orange ring at the feet; drag the ring itself to move the figure", pageFigure: "Body type", pageJoints: "Joints", mapLeft: "L", mapRight: "R",
       fine: "Select a joint or body surface. Drag to pose; use sliders or arrow keys for precise angles.",
       cameraHelp: "Yellow is the actual camera: drag it closer, through the pink reference arc. Green: orbit · pink: elevation. The target marker shows where the camera aims.",
       unsupported: "This browser could not start 3D. Enable WebGL or try another browser. Angle controls and prompt output still work.",
-      context: "3D paused. Restoring the graphics context…", restored: "3D restored", both: "Both sides", left: "Left to right", right: "Right to left", volume: "3D form", drawing: "Study lines", finish: "Mannequin finish", finish_clay: "Clay", finish_wood: "Wood", finish_skin: "Skin", focus: "Look at", headTarget: "Head", chestTarget: "Chest", wholeTarget: "Frame whole body", target: "Aim", distanceHint: "Actual camera distance in metres · 0.20–8.00 m", floorHint: "Lowest angle at this distance",
+      context: "3D paused. Restoring the graphics context…", restored: "3D restored", both: "Both sides", left: "Left to right", right: "Right to left", volume: "3D form", drawing: "Study lines", finish: "Mannequin finish", finish_clay: "Clay", finish_wood: "Wood", finish_skin: "Skin", focus: "Look at", headTarget: "Head", chestTarget: "Chest", wholeTarget: "Frame whole body", target: "Aim", distanceHint: "Actual camera distance in metres · 0.20–15.00 m", floorHint: "Lowest angle at this distance",
       light: "Light", lightHelp: "Drag the sun to move the key light. Words describe the light as seen from the camera.", lightAz: "Light direction", lightAzHint: "0° = from the camera · 90° = from the frame's left · 180° = from behind", lightEl: "Light height", lightElHint: "low = long shadows · high = top light", soft: "Soft light", hard: "Hard light", lightPresets: "Common lighting",
       body: "Body type", props: "Props", people: "Models", personA: "A", personB: "B", addPerson: "+ Model", removePerson: "Remove B", model: "Model", posX: "Position left / right", posZ: "Position front / back", spacing: "Distance between models", spacingHint: "Metres between body centres · moves A and B equally", regrip: "Reset grip",
       download: "Download camera view", downloaded: "Saved", ikHint: "Drag a wrist, hand or ankle: the whole arm or leg follows."
     },
     zh: {
       editor: "工作视图 · 拖动空白处旋转", actual: "实际镜头画面", front: "正面", side: "右侧", back: "背面", frame: "查看整个场景",
-      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制", pagePoses: "姿势", facing: "人物朝向", faceFront: "正面", faceRight: "右侧", faceBack: "背面", faceLeft: "左侧", turnLabel: "旋转人物", turnHint: "也可以拖动脚下的橙色圆圈", pageFigure: "体型", pageJoints: "关节", mapLeft: "左", mapRight: "右",
+      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制", pagePoses: "姿势", gaze: "视线", gazeCamera: "看镜头", gazeOther: "看对方", gazePick: "看我点的位置", gazePicking: "请在 3D 画面上点一下…", gazeAhead: "看正前方", lens: "镜头", lensAuto: "自动", facing: "人物朝向", faceFront: "正面", faceRight: "右侧", faceBack: "背面", faceLeft: "左侧", turnLabel: "旋转人物", turnHint: "也可以拖动脚下橙色圆圈上的圆点；拖动圆圈本身可以移动人物", pageFigure: "体型", pageJoints: "关节", mapLeft: "左", mapRight: "右",
       fine: "点选关节点或人物表面，拖动调整姿势；滑块和方向键可精确调角度。",
       cameraHelp: "黄色就是真实相机，可穿过粉色参考弧继续靠近。绿色调方位，粉色调仰俯；瞄准点标出实际朝向。",
       unsupported: "浏览器无法启动 3D，请启用 WebGL 或换一个浏览器。角度控制和提示词仍可使用。",
-      context: "3D 暂停，正在恢复图形显示…", restored: "3D 已恢复", both: "左右两侧", left: "左侧复制到右侧", right: "右侧复制到左侧", volume: "立体素体", drawing: "绘画线稿", finish: "素体材质", finish_clay: "陶土", finish_wood: "木质", finish_skin: "肤色", focus: "镜头瞄准", headTarget: "头部", chestTarget: "胸部", wholeTarget: "全身取景", target: "瞄准", distanceHint: "真实相机距离，单位为米 · 0.20–8.00 m", floorHint: "当前距离的最低角度",
+      context: "3D 暂停，正在恢复图形显示…", restored: "3D 已恢复", both: "左右两侧", left: "左侧复制到右侧", right: "右侧复制到左侧", volume: "立体素体", drawing: "绘画线稿", finish: "素体材质", finish_clay: "陶土", finish_wood: "木质", finish_skin: "肤色", focus: "镜头瞄准", headTarget: "头部", chestTarget: "胸部", wholeTarget: "全身取景", target: "瞄准", distanceHint: "真实相机距离，单位为米 · 0.20–15.00 m", floorHint: "当前距离的最低角度",
       light: "光线", lightHelp: "拖动太阳移动主光。描述按镜头看到的效果来写。", lightAz: "光的方向", lightAzHint: "0° = 从镜头方向 · 90° = 从画面左边 · 180° = 从背后", lightEl: "光的高度", lightElHint: "低 = 影子长 · 高 = 顶光", soft: "柔光", hard: "硬光", lightPresets: "常用光线",
       body: "体型", props: "道具", people: "素体", personA: "A", personB: "B", addPerson: "+ 素体", removePerson: "移除 B", model: "素体", posX: "位置 左右", posZ: "位置 前后", spacing: "两人间距", spacingHint: "身体中心之间的距离（米）· 同时移动 A、B", regrip: "重新握持",
       download: "下载镜头画面", downloaded: "已保存", ikHint: "拖动手腕、手或脚踝，整条手臂或腿会自动跟着弯。"
@@ -52,7 +52,7 @@ const CamPose = (() => {
     // The pose being edited (model A or B).
     const cur = () => (state.editing === "b" && state.second ? state.pose2 : state.pose);
     let view = { yaw: 25, pitch: 12, dist: 3.8 };
-    let presetGlide = 0;
+    let presetGlide = 0, ringPts = [], gazePick = false;
     let width = 0, height = 0, handles = [], dragging = null, scheduled = 0, lost = false, drawing = false;
     let cameraEditorFrame = null, controlCenter = [0, 1, 0];
     root.classList.add("cps");
@@ -549,8 +549,10 @@ const CamPose = (() => {
         {
           const c = turnCenter(EJ), r = 0.5 * EJ.scale, pts = [];
           for (let i = 0; i <= 64; i++) { const t = i / 64 * Math.PI * 2, q = project([c[0] + Math.cos(t) * r, 0.012, c[2] + Math.sin(t) * r]); if (q.z > -1 && q.z < 1) pts.push(q); }
+          ringPts = pts;
           ctx.beginPath(); pts.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y));
-          ctx.strokeStyle = dragging?.id === "turn" ? "rgba(255,188,120,.95)" : "rgba(255,188,120,.55)"; ctx.lineWidth = 2; ctx.stroke();
+          const busy = dragging?.id === "turn" || dragging?.id === "move";
+          ctx.strokeStyle = busy ? "rgba(255,188,120,.95)" : "rgba(255,188,120,.55)"; ctx.lineWidth = dragging?.id === "move" ? 3.5 : 2; ctx.stroke();
           const f = EJ.forward, tip = [c[0] + f[0] * r, 0.012, c[2] + f[2] * r], a = project([c[0] + f[0] * r * 0.72, 0.012, c[2] + f[2] * r * 0.72]), b = project(tip);
           ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.strokeStyle = "rgba(255,188,120,.9)"; ctx.lineWidth = 2; ctx.stroke();
           handle(tip, "turn", "#ffbc78", 7);
@@ -559,6 +561,20 @@ const CamPose = (() => {
         // Paint far handles first so the nearest overlapping joint remains selectable.
         joints.sort((a, b) => V(b.point).distanceTo(editorCamera.position) - V(a.point).distanceTo(editorCamera.position));
         for (const { part, point } of joints) handle(point, "part:" + part, part.startsWith("l") ? "#8edcce" : "#b4c6ef", part === state.part ? 5.5 : 4);
+        // While dragging, show the numbers being changed next to what is moving.
+        if (dragging) {
+          const pose = cur(), text = ui[lang], pill = (pt, label) => {
+            const q = project(pt); if (q.z < -1 || q.z > 1) return;
+            ctx.font = "12px system-ui"; const w = ctx.measureText(label).width, x = clamp(q.x + 14, 10, width - w - 20), y = clamp(q.y - 30, 6, height - 28);
+            ctx.fillStyle = "rgba(12,14,22,.82)"; ctx.beginPath(); ctx.roundRect(x - 7, y, w + 14, 21, 10); ctx.fill();
+            ctx.fillStyle = "#ffe2bf"; ctx.fillText(label, x, y + 15);
+          };
+          if (dragging.id.startsWith("part:")) {
+            const config = PARTS[state.part];
+            pill(EJ[config.joint], config[lang] + "  " + config.controls.slice(0, 3).map(c => `${c[lang]} ${Math.round(M.get(pose, c.path))}°`).join(" · "));
+          } else if (dragging.id === "turn") pill([turnCenter(EJ)[0], 0.012, turnCenter(EJ)[2]], `${text.turnLabel} ${Math.round(pose.yaw)}°`);
+          else if (dragging.id === "move") pill([turnCenter(EJ)[0], 0.012, turnCenter(EJ)[2]], `X ${(pose.x || 0).toFixed(2)} m · Z ${(pose.z || 0).toFixed(2)} m`);
+        }
       }
       helper.visible = false; grid.visible = false;
       for (const m of meshes) m.material = m.userData.original;
@@ -625,10 +641,10 @@ const CamPose = (() => {
       root.querySelector(".cps-out b").textContent = t.output;
       if (!renderer) status.textContent = text.unsupported;
       if (state.tab === "camera") {
-        panel.innerHTML = `<div class="cps-chips"><span>${t.camPresets}</span>${CAM_PRESETS.map((c, i) => `<button type="button" data-campreset="${i}" aria-pressed="${state.camPreset === i}">${c[lang]}</button>`).join("")}</div><div class="cps-focus" role="group" aria-label="${text.focus}"><span>${text.focus}</span>${['head', 'chest', 'whole'].map(f => `<button type="button" data-focus="${f}" aria-pressed="${state.cam.focus === f}">${text[f + 'Target']}</button>`).join('')}</div><div class="cps-sliders">
+        panel.innerHTML = `<div class="cps-chips"><span>${t.camPresets}</span>${CAM_PRESETS.map((c, i) => `<button type="button" data-campreset="${i}" aria-pressed="${state.camPreset === i}">${c[lang]}</button>`).join("")}</div><div class="cps-focus" role="group" aria-label="${text.focus}"><span>${text.focus}</span>${['head', 'chest', 'whole'].map(f => `<button type="button" data-focus="${f}" aria-pressed="${state.cam.focus === f}">${text[f + 'Target']}</button>`).join('')}</div><div class="cps-focus" role="group" aria-label="${text.lens}"><span>${text.lens}</span>${[0, ...M.LENSES].map(l => `<button type="button" data-lens="${l}" aria-pressed="${(state.cam.lens || 0) === l}">${l ? l + "mm" : text.lensAuto}</button>`).join("")}</div><div class="cps-sliders">
           ${slider("cam.az", t.az, 0, 359, M.wrap360(state.cam.az - state.pose.yaw), t.azHint)}
           ${slider("cam.el", t.el, -60, 85, state.cam.el, t.elHint + ' · ' + text.floorHint + ': ' + Math.ceil(M.minCameraElevation(state.cam.distance, M.cameraTarget(state.cam, M.skeleton(state.pose)))) + '°', 0.1)}
-          ${slider("cam.distance", t.dist, 0.2, 8, state.cam.distance, text.distanceHint, 0.01, "m")}</div>`;
+          ${slider("cam.distance", t.dist, 0.2, 15, state.cam.distance, text.distanceHint, 0.01, "m")}</div>`;
       } else if (state.tab === "light") {
         const rel = M.wrap360(state.light.az - state.cam.az);
         panel.innerHTML = `<div class="cps-chips"><span>${text.lightPresets}</span>${M.LIGHT_PRESETS.map((p, i) => `<button type="button" data-lightpreset="${i}" aria-pressed="${lightPresetOn(i)}">${p[lang]}</button>`).join("")}</div>
@@ -647,7 +663,8 @@ const CamPose = (() => {
         let body = "";
         const rel = M.wrap360(state.cam.az - pose.yaw);
         const facing = `<div class="cps-focus" role="group" aria-label="${text.facing}"><span>${text.facing}</span>${[[0, "faceFront"], [90, "faceRight"], [180, "faceBack"], [270, "faceLeft"]].map(([r, k]) => `<button type="button" data-facing="${r}" aria-pressed="${Math.min(Math.abs(rel - r), 360 - Math.abs(rel - r)) < 0.5}">${text[k]}</button>`).join("")}</div>
-          <div class="cps-sliders">${slider("pose.yaw", text.turnLabel, -180, 180, pose.yaw, text.turnHint)}</div>`;
+          <div class="cps-sliders">${slider("pose.yaw", text.turnLabel, -180, 180, pose.yaw, text.turnHint)}</div>
+          <div class="cps-focus" role="group" aria-label="${text.gaze}"><span>${text.gaze}</span><button type="button" data-gaze="camera">${text.gazeCamera}</button>${state.second ? `<button type="button" data-gaze="other">${text.gazeOther}</button>` : ""}<button type="button" data-gaze="pick" aria-pressed="${gazePick}">${gazePick ? text.gazePicking : text.gazePick}</button><button type="button" data-gaze="ahead">${text.gazeAhead}</button></div>`;
         if (page === "presets") body = `${facing}<div class="cps-chips">${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${pose.preset === p.id}">${p[lang]}</button>`).join("")}</div>
           <label class="cps-check"><input type="checkbox" data-seated ${pose.seated ? "checked" : ""}> ${t.seated}</label>${where}`;
         else if (page === "figure") body = bodies;
@@ -669,6 +686,7 @@ const CamPose = (() => {
       });
       panel.querySelectorAll('[data-focus]').forEach(b => b.setAttribute('aria-pressed', b.dataset.focus === state.cam.focus));
       panel.querySelectorAll("[data-preset]").forEach(b => b.setAttribute("aria-pressed", cur().preset === b.dataset.preset));
+      panel.querySelectorAll("[data-lens]").forEach(b => b.setAttribute("aria-pressed", (state.cam.lens || 0) === +b.dataset.lens));
       panel.querySelectorAll("[data-facing]").forEach(b => { const rel = M.wrap360(state.cam.az - cur().yaw), r = +b.dataset.facing; b.setAttribute("aria-pressed", Math.min(Math.abs(rel - r), 360 - Math.abs(rel - r)) < 0.5); });
       panel.querySelectorAll("[data-campreset]").forEach(b => b.setAttribute("aria-pressed", state.camPreset === +b.dataset.campreset));
       panel.querySelectorAll("[data-lightpreset]").forEach(b => b.setAttribute("aria-pressed", lightPresetOn(+b.dataset.lightpreset)));
@@ -753,6 +771,19 @@ const CamPose = (() => {
       } else if (button.dataset.second !== undefined) {
         state.second = button.dataset.second === "1"; state.editing = state.second ? "b" : "a";
         cameraEditorFrame = null; renderPanel(); render(); emit("pose");
+      } else if (button.dataset.gaze) {
+        const g = button.dataset.gaze, J = M.skeleton(cur());
+        if (g === "pick") { gazePick = !gazePick; renderPanel(); return; }
+        gazePick = false;
+        if (g === "ahead") Object.assign(cur(), { neckYaw: 0, neckPitch: 0, headYaw: 0, headPitch: 0 });
+        else if (g === "camera") M.lookAt(cur(), M.shotCamera(state.cam, M.skeleton(state.pose)).pos);
+        else if (g === "other" && state.second) M.lookAt(cur(), M.skeleton(state.editing === "b" ? state.pose : state.pose2).head);
+        changed("pose"); renderPanel();
+      } else if (button.dataset.lens !== undefined) {
+        // Keep the subject about the same size: a longer lens steps back, a wider one steps in.
+        const lens = +button.dataset.lens, before = M.camFov(state.cam), after = M.camFov({ lens });
+        const distance = clamp(state.cam.distance * Math.tan(before * D2R / 2) / Math.tan(after * D2R / 2) * (after < before ? 1.03 : 1), 0.2, 15);
+        state.cam = M.normalizeCamera({ ...state.cam, lens, distance }); cameraEditorFrame = null; changed("cam"); renderPanel();
       } else if (button.dataset.facing !== undefined) {
         // Turn the figure so the camera sees this side (front, right, back, left).
         cur().yaw = wrap180(state.cam.az - +button.dataset.facing); changed("pose", true); renderPanel();
@@ -783,6 +814,11 @@ const CamPose = (() => {
     function pick(p) {
       const h = [...handles].reverse().find(h => Math.hypot(h.x - p.x, h.y - p.y) <= h.radius); if (h) return h.id;
       if (state.tab !== "pose") return null;
+      // Grabbing the ring itself (not its dot) moves the figure across the floor.
+      for (let i = 1; i < ringPts.length; i++) {
+        const a = ringPts[i - 1], b = ringPts[i], vx = b.x - a.x, vy = b.y - a.y, t = clamp(((p.x - a.x) * vx + (p.y - a.y) * vy) / (vx * vx + vy * vy || 1), 0, 1);
+        if (Math.hypot(a.x + vx * t - p.x, a.y + vy * t - p.y) < 7) return "move";
+      }
       raycaster.setFromCamera({ x: p.x / width * 2 - 1, y: 1 - p.y / height * 2 }, editorCamera);
       const hit = raycaster.intersectObjects(meshes.filter(m => m.visible && (m.userData.figure === "a" || state.second)), false)[0];
       if (!hit) return null;
@@ -802,6 +838,15 @@ const CamPose = (() => {
     }
     canvas.addEventListener("pointerdown", e => {
       if (!renderer || lost || e.button !== 0 || dragging) return;
+      if (gazePick) {
+        // Look here: a point on a body, else on the floor, else straight out at the head's height.
+        const p = point(e); raycaster.setFromCamera({ x: p.x / width * 2 - 1, y: 1 - p.y / height * 2 }, editorCamera);
+        const hit = raycaster.intersectObjects(meshes.filter(m => m.visible), false)[0], J = figOf(state.editing).J || M.skeleton(cur());
+        const target = hit ? hit.point.toArray() : rayPoint(p, new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)) || rayPoint(p, new THREE.Plane(new THREE.Vector3(0, 0, 1), -J.head[2]));
+        gazePick = false; canvas.style.cursor = "default";
+        if (target) { M.lookAt(cur(), target); changed("pose"); }
+        renderPanel(); e.preventDefault(); return;
+      }
       const p = point(e); let id = pick(p);
       if (id?.startsWith("part:")) {
         const [part, fig] = id.slice(5).split("@");
@@ -810,6 +855,7 @@ const CamPose = (() => {
       }
       const h = handles.find(h => h.id === id);
       dragging = { id: id || "orbit", last: p, pointer: e.pointerId, offset: h ? { x: h.x - p.x, y: h.y - p.y } : { x: 0, y: 0 } };
+      if (id === "move") { const floorHit = rayPoint(p, new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)); dragging.move = floorHit ? { hit: floorHit, x: cur().x || 0, z: cur().z || 0 } : null; }
       const reach = id?.startsWith("part:") && REACH[state.part.slice(1)];
       if (reach && /^[lr]/.test(state.part)) {
         const J = figOf(state.editing).J || M.skeleton(cur()), joint = state.part[0] + reach[1];
@@ -844,7 +890,7 @@ const CamPose = (() => {
     }
     canvas.addEventListener("pointermove", e => {
       const p = point(e);
-      if (!dragging) { canvas.style.cursor = pick(p) ? "grab" : "default"; return; }
+      if (!dragging) { const id = gazePick ? null : pick(p); canvas.style.cursor = gazePick ? "crosshair" : id === "move" ? "move" : id ? "grab" : "default"; return; }
       if (e.pointerId !== dragging.pointer) return;
       const dx = p.x - dragging.last.x, dy = p.y - dragging.last.y; dragging.last = p;
       if (dragging.id === "orbit") { view.yaw -= dx * 0.4; view.pitch = clamp(view.pitch + dy * 0.3, -25, 80); render(); return; }
@@ -855,6 +901,12 @@ const CamPose = (() => {
           Object.assign(cur()[key], { a: solved[key].a, b: solved[key].b, c: solved[key].c });
           changed("pose");
         }
+        return;
+      }
+      if (dragging.id === "move") {
+        const hit = dragging.move && rayPoint(p, new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
+        if (hit) { const pose = cur(); pose.x = clamp(dragging.move.x + hit[0] - dragging.move.hit[0], -3, 3); pose.z = clamp(dragging.move.z + hit[2] - dragging.move.hit[2], -3, 3); changed("pose", true); }
+        else render();
         return;
       }
       if (dragging.id === "turn") {
@@ -885,7 +937,7 @@ const CamPose = (() => {
       const target = { x: p.x + dragging.offset.x, y: p.y + dragging.offset.y };
       state.cam[id] = M.dragCameraControl(state.cam, id, target, project, controlCenter); changed("cam");
     });
-    const end = e => { if (dragging && e.pointerId === dragging.pointer) { dragging = null; canvas.style.cursor = "default"; } };
+    const end = e => { if (dragging && e.pointerId === dragging.pointer) { dragging = null; canvas.style.cursor = "default"; render(); } };
     canvas.addEventListener("pointerup", end); canvas.addEventListener("pointercancel", end); canvas.addEventListener("lostpointercapture", end);
     canvas.addEventListener("wheel", e => { e.preventDefault(); view.dist = clamp(view.dist * (1 + Math.sign(e.deltaY) * 0.08), 1.7, 9); render(); }, { passive: false });
     canvas.addEventListener("webglcontextlost", e => { e.preventDefault(); lost = true; status.hidden = false; status.textContent = ui[lang].context; });

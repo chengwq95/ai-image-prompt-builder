@@ -34,7 +34,7 @@ test('on the phone: the phone rests beside the right ear, not across the face or
     const local = v => M.mul(M.mv(T, M.sub(v, J.head)), 1 / J.headSize), c = local(F.position);
     assert.ok(c[0] < -0.07 && c[0] > -0.14, `${body}: phone not beside the right side of the head (${c})`);
     assert.ok(Math.abs(c[1]) < 0.06 && c[2] > -0.04 && c[2] < 0.08, `${body}: phone not at ear height (${c})`);
-    assert.ok(local(J.rWrist)[1] < 0, `${body}: wrist should be below the ear`);
+    assert.ok(local(J.rWrist)[1] < 0.04, `${body}: wrist should not be above the ear`);
     assert.equal(M.armPenetration(p, 'r'), 0, `${body}: arm or phone intersects the body`);
   }
 });

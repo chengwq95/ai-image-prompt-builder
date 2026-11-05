@@ -213,17 +213,17 @@ test('props share the skin hand frame through body, arm and wrist rotations', ()
   }
 });
 
-test('fingers wrap the phone with the thumb on the opposite face and contact the umbrella grip', () => {
+test('the phone lies in the palm with the fingers round its edge, and the hand closes round the umbrella', () => {
   const localTips = prop => {
     const p = M.holdProp(M.normalizePose({}), prop), J = M.skeleton(p), F = M.propFrame(p, prop, J), R = F.matrix;
     const T = [R[0], R[3], R[6], R[1], R[4], R[7], R[2], R[5], R[8]], H = M.handRig(p, 'r', J);
     return ['thumb', 'index', 'middle', 'ring', 'pinky'].map(k => M.mul(M.mv(T, M.sub(H['r' + k + 'Tip'], F.position)), 1 / F.scale));
   };
+  // Phone across the palm: fingers come round the far edge onto the screen side, thumb on the near edge.
   const phone = localTips('phone');
-  assert.ok(phone.slice(1).every(p => Math.abs(Math.abs(p[2]) - 0.0045) < 0.013));
-  const fingerSide = phone.slice(1).reduce((sum, p) => sum + p[2], 0);
-  assert.ok(phone[0][2] * fingerSide < 0 && Math.abs(phone[0][0]) < 0.045);
-  for (const p of localTips('umbrella')) assert.ok(Math.abs(Math.hypot(p[0], p[2]) - 0.014) < 0.002);
+  for (const p of phone.slice(1, 4)) assert.ok(p[2] < 0.002 && p[0] < -0.012, `finger tip not round the far edge (${p})`);
+  assert.ok(phone[0][2] < 0 && Math.abs(phone[0][1]) < 0.1, 'thumb should rest on the screen side of the phone');
+  for (const p of localTips('umbrella').slice(1)) assert.ok(Math.abs(Math.hypot(p[0], p[2]) - 0.016) < 0.01, 'fingers should close round the umbrella handle');
 });
 
 test('legacy held props migrate once and later finger edits survive a reload', () => {

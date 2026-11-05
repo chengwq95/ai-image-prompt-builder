@@ -204,22 +204,32 @@ const CamPoseModel = (() => {
   }
   // Finger curls and attachment points solved against the measured hand so fingertips rest on the
   // phone / book back and wrap the cup and umbrella handle.
+  // Finger curls solved against the measured hand: the phone lies across the palm with the fingers
+  // wrapped round its far edge and the thumb on the near edge; the umbrella handle and the cup sit
+  // against the palm with the fingers closed round them.
   const GRIPS = {
-    phone: { curls: [46, 92, 96, 91, 80] },
-    cup: { curls: [54, 77, 85, 83, 79] },
-    umbrella: { curls: [42, 61, 65, 67, 59] },
+    phone: { curls: [34, 88, 92, 84, 60] },
+    cup: { curls: [46, 84, 80, 74, 66] },
+    umbrella: { curls: [40, 70, 80, 84, 70] },
     book: { curls: [32, 99, 99, 99, 95] }
   };
+  // Where each prop sits in the hand (hand frame: x toward the index finger, -y along the fingers,
+  // +z out of the palm; the palm surface is about 3 cm out). Each prop rests against the palm.
   const PROP_ATTACHMENTS = {
-    phone: { position: [0, -0.11, 0.052], angles: [180, 0, 0] },
-    book: { position: [0.050, -0.100, 0.050], angles: [0, 0, 0] },
-    cup: { position: [-0.015, -0.0675, 0.045], angles: [0, 30, 90] },
-    umbrella: { position: [0.015, -0.120, 0.060], angles: [0, 30, 90] }
+    // Phone: back against the palm, long side across the hand (top past the index finger), screen outward.
+    phone: { position: [0.03, -0.075, 0.036], matrix: [0, 1, 0, 1, 0, 0, 0, 0, -1] },
+    book: { position: [0.050, -0.100, 0.043], angles: [0, 0, 0] },
+    cup: { position: [0, -0.06, 0.07], angles: [0, 30, 90] },
+    umbrella: { position: [0.01, -0.1, 0.045], angles: [0, 30, 90] }
   };
+  // The prop's rotation in the hand frame: an explicit matrix, or x / y / z angles.
+  const attachRotation = a => a.matrix || chain(rx(a.angles[0]), ry(a.angles[1]), rz(a.angles[2]));
+  // On a call the phone runs up the palm instead: back in the palm, screen to the ear (palm side).
+  const PHONE_AT_EAR = { position: [0, -0.1, 0.035], matrix: [1, 0, 0, 0, -1, 0, 0, 0, -1] };
+  const attachmentFor = (p, prop) => prop === 'phone' && p && p.preset === 'phone' ? PHONE_AT_EAR : PROP_ATTACHMENTS[prop];
   function propFrame(p, prop, J = skeleton(p)) {
-    const attachment = PROP_ATTACHMENTS[prop]; if (!attachment) return null;
-    const [x, y, z] = attachment.angles;
-    return { position: add(J.rWrist, mv(J.rHandM, mul(attachment.position, J.handSize))), matrix: chain(J.rHandM, rx(x), ry(y), rz(z)), scale: J.handSize };
+    const attachment = attachmentFor(p, prop); if (!attachment) return null;
+    return { position: add(J.rWrist, mv(J.rHandM, mul(attachment.position, J.handSize))), matrix: chain(J.rHandM, attachRotation(attachment)), scale: J.handSize };
   }
   function matchHand(p, side, target) {
     const A = p[side + 'Arm'], sign = side === 'l' ? 1 : -1;
@@ -243,9 +253,9 @@ const CamPoseModel = (() => {
     cup: { at: [-0.15, -0.21, 0.27], up: true },
     umbrella: { at: [-0.19, -0.27, 0.22], up: true }
   };
-  function naturalHold(p, prop) {
-    const H = HOLDS[prop]; if (!H) return;
-    const A = p.rArm, J0 = skeleton(p), [x, y, z] = PROP_ATTACHMENTS[prop].angles, R = chain(rx(x), ry(y), rz(z));
+  function naturalHold(p, prop, override = null) {
+    const H = override ? { ...HOLDS[prop], ...override } : HOLDS[prop]; if (!H) return;
+    const A = p.rArm, J0 = skeleton(p), R = attachRotation(PROP_ATTACHMENTS[prop]);
     const Rt = [R[0], R[3], R[6], R[1], R[4], R[7], R[2], R[5], R[8]];
     const upWorld = mv(J0.ubM, [0, 1, 0]), B0 = measurements(p.body), reachScale = (B0.upper + B0.fore) / 0.57;
     let want = null, handTarget = null;
@@ -296,8 +306,8 @@ const CamPoseModel = (() => {
     const resting = A.a < 25 && A.b < 15 && A.c < 30;
     if (resting) Object.assign(A, { a: 10, b: 35, c: 95, d: 0, e: 0 });
     // Keep the arm's action, and solve a comfortable wrist orientation for this prop.
-    const J = skeleton(p), [x, y, z] = PROP_ATTACHMENTS[prop].angles;
-    const up = mv(chain(rx(x), ry(y), rz(z)), [0, 1, 0]);
+    const J = skeleton(p);
+    const up = mv(attachRotation(PROP_ATTACHMENTS[prop]), [0, 1, 0]);
     const foreBase = chain(J.rForeM, ry(-A.e));
     const score = q => {
       const R = chain(foreBase, ry(q[3]), rx(q[0]), rz(-q[1]), ry(q[2]));
@@ -319,7 +329,10 @@ const CamPoseModel = (() => {
     [A.wristPitch, A.wristYaw, A.wristRoll, A.e] = best; A.spread = 2;
     p.gripVersion = 1;
     ['thumb', 'index', 'middle', 'ring', 'pinky'].forEach((name, i) => { A[name] = grip.curls[i]; });
-    if (resting && !(prop === 'phone' && p.preset === 'phone')) naturalHold(p, prop);
+    if (prop === 'phone' && p.preset === 'lookphone') {
+      // Looking at the phone: held higher in front of the chest, screen turned up toward the eyes.
+      naturalHold(p, 'phone', { at: [-0.05, -0.04, 0.3], facing: [1, 0, 0, 0, 0.5, -0.866, 0, 0.866, 0.5], spins: [0, -30, 30, 90, -90] });
+    } else if (resting && !(prop === 'phone' && p.preset === 'phone')) naturalHold(p, prop);
     if (prop === 'phone' && p.preset === 'phone') {
       const head = skeleton(p), desired = chain(head.headM, ry(-90)), hand = chain(desired, rx(180));
       const centre = add(head.head, mv(head.headM, [-0.13 * head.headSize, -0.045 * head.headSize, 0.01 * head.headSize]));
@@ -836,7 +849,7 @@ const CamPoseModel = (() => {
   }
   // "On the phone": the phone rests against the right ear with the fingers pointing up and the palm toward
   // the cheek, the elbow down and in front, instead of the hand reaching across the face.
-  const PHONE_EAR = globalThis.PHONE_EAR || { phone: [-0.088, 0.005, 0.025], tilt: 35, upright: 8 };
+  const PHONE_EAR = globalThis.PHONE_EAR || { phone: [-0.088, 0.005, 0.025], tilt: 35, yaw: -15, upright: 8 };
   const phoneCache = new Map();
   function phoneToEar(p) {
     // Solved once per figure / position / body; every redraw afterwards reuses it.
@@ -846,8 +859,11 @@ const CamPoseModel = (() => {
     // Fingers lie flatter along the back of the phone than in a hand-held grip, so they do not poke the cheek.
     Object.assign(A, PHONE_EAR.fingers || { thumb: 15, index: 6, middle: 8, ring: 10, pinky: 12 });
     const J0 = skeleton(p), side = mv(J0.headM, [-1, 0, 0]);
+    // The phone's own orientation at the ear (screen to the cheek, running from ear toward the mouth);
+    // the hand orientation follows from how the phone sits in the hand.
+    // Hand frame columns: x = (0,0,1), y = (0,-1,0) fingers up, z = (1,0,0) palm (and screen) toward the head.
     const target = () => chain(skeleton(p).headM, ry(PHONE_EAR.yaw ?? -15), rx(-PHONE_EAR.tilt), [0, 0, 1, 0, -1, 0, 1, 0, 0]);
-    const at = () => { const J = skeleton(p); return add(J.rWrist, mv(J.rHandM, mul(PROP_ATTACHMENTS.phone.position, J.handSize))); };
+    const at = () => { const J = skeleton(p); return add(J.rWrist, mv(J.rHandM, mul(PHONE_AT_EAR.position, J.handSize))); };
     let goal = add(J0.head, mv(J0.headM, mul(PHONE_EAR.phone, J0.headSize)));
     const score = q => {
       Object.assign(A, q); matchHand(p, 'r', target());
@@ -1019,5 +1035,5 @@ const CamPoseModel = (() => {
     return { camera: describeCamera(cam, lang, pose.yaw, J, aspect, J2), pose: poseText, light: describeLight(value.light, cam, lang) };
   }
 
-  return { setCollisionData, setSeated, PALM, resolveArms, armPenetration, bindPose, PROP_ATTACHMENTS, propFrame, migratePose, handRig, skinFrames, holdProp, GRIPS, FINGERS, modelDistance, spaceModels, mm, describeScene, BODY_TYPES, PROPS, reach, normalizeLight, lightDir, describeLight, LIGHT_PRESETS, D2R, clamp, v, add, sub, mul, dot, cross, norm, rx, ry, rz, mv, chain, BASE, P, PRESETS, B, measurements, skeleton, CAMERA, camDir, shotCamera, framedCamera, cameraTarget, cameraBounds, constrainCamera, minCameraElevation, fitCameraDistance, cameraControlPoint, dragCameraControl, makeView, describeCamera, describePose, T, CAM_PRESETS, PARTS, get, put, wrap360, normalizePose, normalizeCamera };
+  return { attachRotation, setCollisionData, setSeated, PALM, resolveArms, armPenetration, bindPose, PROP_ATTACHMENTS, propFrame, migratePose, handRig, skinFrames, holdProp, GRIPS, FINGERS, modelDistance, spaceModels, mm, describeScene, BODY_TYPES, PROPS, reach, normalizeLight, lightDir, describeLight, LIGHT_PRESETS, D2R, clamp, v, add, sub, mul, dot, cross, norm, rx, ry, rz, mv, chain, BASE, P, PRESETS, B, measurements, skeleton, CAMERA, camDir, shotCamera, framedCamera, cameraTarget, cameraBounds, constrainCamera, minCameraElevation, fitCameraDistance, cameraControlPoint, dragCameraControl, makeView, describeCamera, describePose, T, CAM_PRESETS, PARTS, get, put, wrap360, normalizePose, normalizeCamera };
 })();

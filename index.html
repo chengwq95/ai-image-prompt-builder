@@ -482,6 +482,22 @@ body.vf-mini{padding-bottom:84px}
 .cps-joint-tools{display:flex;gap:6px;flex-wrap:wrap}
 .cps-joint-tools button{background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:5px 9px;cursor:pointer;font-size:12px;color:var(--text)}
 .cps-joint-tools button:disabled{opacity:.4;cursor:default}
+/* Compact segmented groups (gaze, facing) and a tidy preset grid, so the Poses page fits without scrolling. */
+.cps-seg{display:inline-flex;flex-wrap:nowrap;padding:2px;border:1px solid var(--line);border-radius:99px;background:var(--surface-2);min-width:0}
+.cps-seg button{border:none;background:transparent;border-radius:99px;padding:5px 10px;font-size:12px;color:var(--text);cursor:pointer;white-space:nowrap}
+.cps-seg button:hover{background:color-mix(in srgb,var(--text) 8%,transparent)}
+.cps-seg button[aria-pressed="true"]{background:var(--text);color:var(--on-text)}
+.cps-gaze{flex-wrap:nowrap}
+.cps-turn{gap:6px;padding:10px 12px;position:relative}
+.cps-turn .cps-seg{position:absolute;top:8px;left:10px;z-index:1}
+.cps-turn .cps-sl-top{min-height:32px;align-items:center}
+.cps-turn .cps-sl-top>span{visibility:hidden}
+.cps-right .cps-panel{gap:10px}
+.cps-right .cps-subtabs button{padding:6px}
+.cps-turn .cps-seg{justify-self:start}
+.cps-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.cps-presets .cps-stool{justify-content:center;font-size:12px;border:1px dashed var(--line);border-radius:99px;padding:4px 6px}
+.cps-presets button{padding:5px 6px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
 .cps-check{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
 .cps-check input{accent-color:var(--accent)}
 /* Narrow screens: one column in reading order. Wide screens: the stage stays pinned on the left
@@ -492,7 +508,7 @@ body.vf-mini{padding-bottom:84px}
   .cps{grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);align-items:start;gap:16px}
   .cps-left,.cps-right{display:grid;gap:12px;position:sticky;top:72px;min-width:0}
   .cps-top{order:0}
-  .cps-right{align-content:start;max-height:calc(100vh - 160px);overflow-y:auto;overscroll-behavior:contain;padding-right:4px;scrollbar-width:thin}
+  .cps-right{align-content:start;max-height:calc(100vh - 140px);overflow-y:auto;overscroll-behavior:contain;padding-right:4px;scrollbar-width:thin}
   .cps-stage{height:clamp(380px,calc(100vh - 260px),580px)}
   .cps-right .cps-sliders{grid-template-columns:1fr;gap:14px;padding:14px}
   .cps-right .cps-top{position:sticky;top:0;z-index:2;background:var(--surface);padding-bottom:4px}
@@ -709,10 +725,10 @@ body.vf-mini{padding-bottom:84px}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="vendor/three.min.js"></script>
-<script src="studio-model.js?v=bugfix-1"></script>
-<script src="studio-body-data.js?v=bugfix-1"></script>
-<script src="studio-surface.js?v=bugfix-1"></script>
-<script src="studio.js?v=bugfix-1"></script>
+<script src="studio-model.js?v=compact-1"></script>
+<script src="studio-body-data.js?v=compact-1"></script>
+<script src="studio-surface.js?v=compact-1"></script>
+<script src="studio.js?v=compact-1"></script>
 <script>
 /* ================= 数据 ================= */
 const CATS = ["time","subject","scene","style"];

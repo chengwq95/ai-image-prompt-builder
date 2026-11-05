@@ -17,7 +17,7 @@ const CamPose = (() => {
   const ui = {
     en: {
       editor: "Studio view · drag background to orbit", actual: "CAMERA VIEW", front: "Front", side: "Right", back: "Back", frame: "Fit scene",
-      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror this joint", flip: "Swap left / right", joints: "18 parts · 54 angle controls", pagePoses: "Poses", gaze: "Gaze", gazeCamera: "The camera", gazeOther: "The other person", gazePick: "Follow my pointer", gazePicking: "Press or drag in the 3D view…", gazeAhead: "Straight ahead", lens: "Lens", lensAuto: "Auto", facing: "Facing", faceFront: "Front", faceRight: "Right side", faceBack: "Back", faceLeft: "Left side", turnLabel: "Turn the figure", turnHint: "Or drag the dot on the orange ring at the feet; drag the ring itself to move the figure", pageFigure: "Body type", pageJoints: "Joints", mapLeft: "L", mapRight: "R",
+      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror this joint", flip: "Swap left / right", joints: "18 parts · 54 angle controls", pagePoses: "Poses", stool: "On a stool", gaze: "Gaze", gazeCamera: "Camera", gazeOther: "Other", gazePick: "Pointer", gazePicking: "Drag in 3D…", gazeAhead: "Ahead", lens: "Lens", lensAuto: "Auto", facing: "Facing", faceFront: "Front", faceRight: "Right side", faceBack: "Back", faceLeft: "Left side", turnLabel: "Turn the figure", turnHint: "Or drag the dot on the orange ring at the feet; drag the ring itself to move the figure", pageFigure: "Body type", pageJoints: "Joints", mapLeft: "L", mapRight: "R",
       fine: "Select a joint or body surface. Drag to pose; use sliders or arrow keys for precise angles.",
       cameraHelp: "Yellow is the actual camera: drag it closer, through the pink reference arc. Green: orbit · pink: elevation. The target marker shows where the camera aims.",
       unsupported: "This browser could not start 3D. Enable WebGL or try another browser. Angle controls and prompt output still work.",
@@ -28,7 +28,7 @@ const CamPose = (() => {
     },
     zh: {
       editor: "工作视图 · 拖动空白处旋转", actual: "实际镜头画面", front: "正面", side: "右侧", back: "背面", frame: "查看整个场景",
-      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制", pagePoses: "姿势", gaze: "视线", gazeCamera: "看镜头", gazeOther: "看对方", gazePick: "跟着我的鼠标", gazePicking: "在 3D 画面上按住拖动…", gazeAhead: "看正前方", lens: "镜头", lensAuto: "自动", facing: "人物朝向", faceFront: "正面", faceRight: "右侧", faceBack: "背面", faceLeft: "左侧", turnLabel: "旋转人物", turnHint: "也可以拖动脚下橙色圆圈上的圆点；拖动圆圈本身可以移动人物", pageFigure: "体型", pageJoints: "关节", mapLeft: "左", mapRight: "右",
+      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制", pagePoses: "姿势", stool: "坐凳子", gaze: "视线", gazeCamera: "看镜头", gazeOther: "看对方", gazePick: "跟着鼠标", gazePicking: "在画面上拖动…", gazeAhead: "正前方", lens: "镜头", lensAuto: "自动", facing: "人物朝向", faceFront: "正面", faceRight: "右侧", faceBack: "背面", faceLeft: "左侧", turnLabel: "旋转人物", turnHint: "也可以拖动脚下橙色圆圈上的圆点；拖动圆圈本身可以移动人物", pageFigure: "体型", pageJoints: "关节", mapLeft: "左", mapRight: "右",
       fine: "点选关节点或人物表面，拖动调整姿势；滑块和方向键可精确调角度。",
       cameraHelp: "黄色就是真实相机，可穿过粉色参考弧继续靠近。绿色调方位，粉色调仰俯；瞄准点标出实际朝向。",
       unsupported: "浏览器无法启动 3D，请启用 WebGL 或换一个浏览器。角度控制和提示词仍可使用。",
@@ -702,18 +702,18 @@ const CamPose = (() => {
         const subtabs = `<div class="cps-subtabs" role="tablist">${[["presets", text.pagePoses], ["figure", text.pageFigure], ["joints", text.pageJoints]].map(([k, label]) => `<button type="button" role="tab" data-subtab="${k}" aria-selected="${page === k}">${label}</button>`).join("")}</div>`;
         let body = "";
         const rel = M.wrap360(state.cam.az - pose.yaw);
-        const facing = `<div class="cps-focus" role="group" aria-label="${text.facing}"><span>${text.facing}</span>${[[0, "faceFront"], [90, "faceRight"], [180, "faceBack"], [270, "faceLeft"]].map(([r, k]) => `<button type="button" data-facing="${r}" aria-pressed="${Math.min(Math.abs(rel - r), 360 - Math.abs(rel - r)) < 0.5}">${text[k]}</button>`).join("")}</div>
-          <div class="cps-sliders">${slider("pose.yaw", text.turnLabel, -180, 180, pose.yaw, text.turnHint)}</div>`;
-        if (page === "presets") body = `${facing}<div class="cps-chips">${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${pose.preset === p.id}">${p[lang]}</button>`).join("")}</div>
-          <label class="cps-check"><input type="checkbox" data-seated ${pose.seated ? "checked" : ""}> ${t.seated}</label>${where}`;
-        else if (page === "figure") body = bodies;
+        // Facing buttons share the turn slider's box (one compact row), to keep the page short.
+        const facing = `<div class="cps-sliders cps-turn"><div class="cps-seg" role="group" aria-label="${text.facing}">${[[0, "faceFront"], [90, "faceRight"], [180, "faceBack"], [270, "faceLeft"]].map(([r, k]) => `<button type="button" data-facing="${r}" aria-pressed="${Math.min(Math.abs(rel - r), 360 - Math.abs(rel - r)) < 0.5}">${text[k]}</button>`).join("")}</div>${slider("pose.yaw", text.turnLabel, -180, 180, pose.yaw, text.turnHint)}</div>`;
+        if (page === "presets") body = `${facing}<div class="cps-chips cps-presets">${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${pose.preset === p.id}">${p[lang]}</button>`).join("")}<label class="cps-check cps-stool"><input type="checkbox" data-seated ${pose.seated ? "checked" : ""}> ${text.stool}</label></div>`;
+        // Placement sliders live with the body type (dragging the ring at the feet moves a figure too).
+        else if (page === "figure") body = `${bodies}${where}`;
         else body = `<div class="cps-joints"><div class="cps-map" role="group" aria-label="${text.selected}"><canvas width="192" height="384" aria-hidden="true"></canvas>${Object.entries(BODY_MAP).map(([k, [x, y]]) => `<button type="button" data-part="${k}" aria-pressed="${k === state.part}" title="${PARTS[k][lang]}" aria-label="${PARTS[k][lang]}" style="left:${x / 1.2}%;top:${y / 2.4}%"></button>`).join("")}
             <span class="cps-map-side" style="left:4%">${text.mapRight}</span><span class="cps-map-side" style="right:4%">${text.mapLeft}</span></div>
           <div class="cps-joint-edit"><div class="cps-joint-heading"><strong>${config[lang]}</strong><button type="button" data-reset-part>${text.resetPart}</button></div>
             <div class="cps-sliders">${config.controls.map(c => slider("pose." + c.path, c[lang], c.min, c.max, M.get(pose, c.path))).join("")}</div>
             <div class="cps-joint-tools"><button type="button" data-flip>${text.flip}</button><button type="button" data-mirror="${state.part.startsWith("l") ? "l" : "r"}" ${/^[lr]/.test(state.part) ? "" : "disabled"}>${text.mirror}</button></div></div></div>`;
         // Gaze sits with the model switch, above the pages, so it is visible (and still following) on every page.
-        const gazeRow = `<div class="cps-focus cps-gaze" role="group" aria-label="${text.gaze}"><span>${text.gaze}</span>${gazeButtons()}</div>`;
+        const gazeRow = `<div class="cps-focus cps-gaze" role="group" aria-label="${text.gaze}"><span>${text.gaze}</span><div class="cps-seg">${gazeButtons()}</div></div>`;
         panel.innerHTML = `${people}${gazeRow}${subtabs}${body}`;
       }
       output();
@@ -727,7 +727,7 @@ const CamPose = (() => {
       });
       panel.querySelectorAll('[data-focus]').forEach(b => b.setAttribute('aria-pressed', b.dataset.focus === state.cam.focus));
       panel.querySelectorAll("[data-preset]").forEach(b => b.setAttribute("aria-pressed", cur().preset === b.dataset.preset));
-      { const g = panel.querySelector("[data-gaze]")?.parentElement; if (g) { const span = g.querySelector("span"); g.innerHTML = ""; g.append(span); g.insertAdjacentHTML("beforeend", gazeButtons()); } }
+      { const g = panel.querySelector(".cps-gaze .cps-seg"); if (g) g.innerHTML = gazeButtons(); }
       panel.querySelectorAll("[data-lens]").forEach(b => b.setAttribute("aria-pressed", (state.cam.lens || 0) === +b.dataset.lens));
       panel.querySelectorAll("[data-facing]").forEach(b => { const rel = M.wrap360(state.cam.az - cur().yaw), r = +b.dataset.facing; b.setAttribute("aria-pressed", Math.min(Math.abs(rel - r), 360 - Math.abs(rel - r)) < 0.5); });
       panel.querySelectorAll("[data-campreset]").forEach(b => b.setAttribute("aria-pressed", state.camPreset === +b.dataset.campreset));

@@ -690,8 +690,7 @@ const CamPose = (() => {
         let body = "";
         const rel = M.wrap360(state.cam.az - pose.yaw);
         const facing = `<div class="cps-focus" role="group" aria-label="${text.facing}"><span>${text.facing}</span>${[[0, "faceFront"], [90, "faceRight"], [180, "faceBack"], [270, "faceLeft"]].map(([r, k]) => `<button type="button" data-facing="${r}" aria-pressed="${Math.min(Math.abs(rel - r), 360 - Math.abs(rel - r)) < 0.5}">${text[k]}</button>`).join("")}</div>
-          <div class="cps-sliders">${slider("pose.yaw", text.turnLabel, -180, 180, pose.yaw, text.turnHint)}</div>
-          <div class="cps-focus" role="group" aria-label="${text.gaze}"><span>${text.gaze}</span>${gazeButtons()}</div>`;
+          <div class="cps-sliders">${slider("pose.yaw", text.turnLabel, -180, 180, pose.yaw, text.turnHint)}</div>`;
         if (page === "presets") body = `${facing}<div class="cps-chips">${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${pose.preset === p.id}">${p[lang]}</button>`).join("")}</div>
           <label class="cps-check"><input type="checkbox" data-seated ${pose.seated ? "checked" : ""}> ${t.seated}</label>${where}`;
         else if (page === "figure") body = bodies;
@@ -700,7 +699,9 @@ const CamPose = (() => {
           <div class="cps-joint-edit"><div class="cps-joint-heading"><strong>${config[lang]}</strong><button type="button" data-reset-part>${text.resetPart}</button></div>
             <div class="cps-sliders">${config.controls.map(c => slider("pose." + c.path, c[lang], c.min, c.max, M.get(pose, c.path))).join("")}</div>
             <div class="cps-joint-tools"><button type="button" data-flip>${text.flip}</button><button type="button" data-mirror="${state.part.startsWith("l") ? "l" : "r"}" ${/^[lr]/.test(state.part) ? "" : "disabled"}>${text.mirror}</button></div></div></div>`;
-        panel.innerHTML = `${people}${subtabs}${body}`;
+        // Gaze sits with the model switch, above the pages, so it is visible (and still following) on every page.
+        const gazeRow = `<div class="cps-focus cps-gaze" role="group" aria-label="${text.gaze}"><span>${text.gaze}</span>${gazeButtons()}</div>`;
+        panel.innerHTML = `${people}${gazeRow}${subtabs}${body}`;
       }
       output();
     }

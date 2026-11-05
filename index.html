@@ -22,7 +22,7 @@ try { const th = localStorage.getItem("vpb.theme"); if (th === "light" || th ===
   --line-strong:#D6D1C6;
   --text:#1B1A18;
   --muted:#6E6A62;
-  --faint:#9C978D;
+  --faint:#847F75;
   --accent:#D52B1E;
   --accent-ink:#FFFFFF;
   --on-text:#FFFFFF;
@@ -40,7 +40,7 @@ try { const th = localStorage.getItem("vpb.theme"); if (th === "light" || th ===
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#0D0E11;--surface:#15171B;--surface-2:#1A1D22;--line:#262931;--line-strong:#343844;
-    --text:#ECEAE5;--muted:#9B9890;--faint:#6E6B65;--accent:#F0584C;--on-text:#0D0E11;
+    --text:#ECEAE5;--muted:#A4A199;--faint:#858279;--accent:#F0584C;--on-text:#0D0E11;
     --c-time:#F0B45E;--c-subject:#6CD0E0;--c-scene:#7FD6A0;--c-style:#B89CFF;
     --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px -16px rgba(0,0,0,.6);
     color-scheme:dark;
@@ -48,7 +48,7 @@ try { const th = localStorage.getItem("vpb.theme"); if (th === "light" || th ===
 }
 :root[data-theme="dark"]{
   --bg:#0D0E11;--surface:#15171B;--surface-2:#1A1D22;--line:#262931;--line-strong:#343844;
-  --text:#ECEAE5;--muted:#9B9890;--faint:#6E6B65;--accent:#F0584C;--on-text:#0D0E11;
+  --text:#ECEAE5;--muted:#A4A199;--faint:#858279;--accent:#F0584C;--on-text:#0D0E11;
   --c-time:#F0B45E;--c-subject:#6CD0E0;--c-scene:#7FD6A0;--c-style:#B89CFF;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px -16px rgba(0,0,0,.6);
   color-scheme:dark;
@@ -421,7 +421,7 @@ body.vf-mini{padding-bottom:84px}
 .cps-main{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
 .cps-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .cps-view-tools{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;color:var(--muted);font-size:11px}
-.cps-view-tools>div{display:flex;gap:4px;flex-wrap:wrap;pointer-events:auto}
+.cps-view-tools>div{display:flex;gap:4px;flex-wrap:nowrap;pointer-events:auto}
 .cps-view-tools button{border:1px solid var(--line);background:var(--surface-2);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);cursor:pointer}
 .cps-view-tools button:hover{border-color:var(--muted)}
 .cps-view-tools button[aria-pressed="true"]{background:#dae1ed;color:#192333;border-color:#dae1ed}
@@ -495,7 +495,7 @@ body.vf-mini{padding-bottom:84px}
   .cps-stage{height:clamp(380px,calc(100vh - 260px),580px)}
   .cps-right .cps-sliders{grid-template-columns:1fr;gap:14px;padding:14px}
   .cps-right .cps-top{position:sticky;top:0;z-index:2;background:var(--surface);padding-bottom:4px}
-  .cps-view-tools{flex-wrap:nowrap;gap:8px}.cps-view-tools>.cps-editor-label{display:none}.cps-view-tools .cps-download{white-space:nowrap}
+  .cps-view-tools{flex-wrap:wrap;gap:8px}.cps-view-tools>.cps-editor-label{display:none}.cps-view-tools .cps-download{white-space:nowrap}
 }
 @media(max-width:640px){.cps-stage{height:410px}.cps-sliders{grid-template-columns:1fr;gap:14px}.cps-view-tools>span{flex-basis:100%}.cps-view-tools button{padding:4px 6px}.cps-help{font-size:10.5px}.cps-joint-heading{align-items:flex-start;flex-wrap:wrap}}
 .studio-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:40px}
@@ -504,6 +504,36 @@ body.vf-mini{padding-bottom:84px}
 .use-toggle input{accent-color:var(--accent)}
 .use-toggle:has(input:checked){border-color:var(--accent)}
 @media(max-width:640px){.studio-card{padding:12px}}
+
+/* ---------- polish: one button language, quieter hints, light / dark studio ---------- */
+.cps-view-tools button,.cps-focus button,.cps-joint-heading button,.cps-joint-tools button,.cps-panel button[data-regrip]{border-radius:99px}
+.cps-view-tools button{background:var(--surface);padding:5px 11px;font-size:11.5px}
+.cps-view-tools button[aria-pressed="true"],.cps-focus button[aria-pressed="true"]{background:var(--text);color:var(--on-text);border-color:var(--text)}
+.cps-view-tools .cps-render-modes{display:inline-flex;flex-wrap:nowrap;white-space:nowrap;gap:0;padding:2px;border:1px solid var(--line);border-radius:99px;background:var(--surface-2)}
+.cps-view-tools .cps-render-modes button{border:none;background:transparent;padding:4px 10px}
+.cps-view-tools .cps-render-modes button[aria-pressed="true"]{background:var(--text);color:var(--on-text)}
+/* Hints appear when they are useful: over the stage while pointing at it (and briefly on first view);
+   slider notes while that slider is in use. */
+.cps-help{opacity:0;transition:opacity .35s}
+.cps-stage:hover .cps-help,.cps-stage.fresh .cps-help{opacity:1}
+.cps[data-studio="light"] .cps-preview-body{background:#e7e4df}
+.cps[data-studio="light"] .cps-help{color:rgba(28,30,38,.62)}
+.cps-sl small{display:none}
+.cps-sl:focus-within small{display:block}
+/* Gentle motion when switching tabs and pages. */
+.cps-panel>*{animation:cpsIn .22s ease both}
+@keyframes cpsIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.cps-panel>*{animation:none}}
+.cps-share{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px}
+.cps-share>span{color:var(--muted);margin-right:3px}
+.cps-share button{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 11px;font-size:12px;color:var(--text);cursor:pointer}
+.cps-share button:hover{border-color:var(--line-strong)}
+.cps-share .cps-saved{display:inline-flex;align-items:center;gap:2px}
+.cps-share .cps-saved button:last-child{padding:5px 8px;color:var(--faint)}
+#studioHead{scroll-margin-top:76px}
+.hero-3d{display:inline-flex;align-items:center;gap:8px;margin-top:18px;padding:8px 14px 8px 10px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--text);text-decoration:none;font-size:13px;box-shadow:var(--shadow)}
+.hero-3d b{font-size:10.5px;letter-spacing:.08em;padding:3px 7px;border-radius:99px;background:var(--text);color:var(--on-text)}
+.hero-3d:hover{border-color:var(--line-strong)}
 </style>
 </head>
 <body>
@@ -546,6 +576,7 @@ body.vf-mini{padding-bottom:84px}
     <button type="button" class="f-block" data-cat="style" data-jump="style"><i style="background:var(--c-style)"></i><span data-cat-name="style"></span></button>
   </div>
   <p class="formula-note" data-i18n-html="formulaNote"></p>
+  <a class="hero-3d" href="#studioHead"><b>3D</b><span data-i18n="hero3d"></span></a>
 </section>
 
 <main class="wrap">
@@ -603,6 +634,7 @@ body.vf-mini{padding-bottom:84px}
       <label class="use-toggle"><input type="checkbox" id="useLight"> <span data-i18n="useLight"></span></label>
     </div>
     <div id="studio"></div>
+    <div class="cps-share" id="sceneBar"><span data-i18n="scenes"></span><button type="button" id="sceneSave" data-i18n="sceneSave"></button><button type="button" id="sceneLink" data-i18n="sceneLink"></button><span id="sceneList" style="display:contents"></span></div>
   </section>
 
   <div class="sub-label" data-i18n="dgLabel"></div>
@@ -675,10 +707,10 @@ body.vf-mini{padding-bottom:84px}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="vendor/three.min.js"></script>
-<script src="studio-model.js?v=phone-ear-1"></script>
-<script src="studio-body-data.js?v=phone-ear-1"></script>
-<script src="studio-surface.js?v=phone-ear-1"></script>
-<script src="studio.js?v=phone-ear-1"></script>
+<script src="studio-model.js?v=studio-finish-1"></script>
+<script src="studio-body-data.js?v=studio-finish-1"></script>
+<script src="studio-surface.js?v=studio-finish-1"></script>
+<script src="studio.js?v=studio-finish-1"></script>
 <script>
 /* ================= 数据 ================= */
 const CATS = ["time","subject","scene","style"];
@@ -849,6 +881,8 @@ const I18N = {
     presetsLabel:"Templates · pick the one closest to what you want",
     random:"Random idea",
     builderTitle:"Pick your keywords", builderSub:"Click to add, click again to remove",
+    scenes:"Scenes", sceneSave:"Save this scene", sceneLink:"Copy share link", sceneCopied:"Link copied", sceneInUrl:"Link is in the address bar", sceneName:"Scene", sceneDelete:"Delete",
+    hero3d:"Pose a 3D mannequin and set the camera — the prompt writes itself →",
     studioTitle:"3D camera & pose", studioSub:"Drag to set the exact angle and pose — no more hunting for words",
     studioUse:"Add to prompt:", useCam:"Camera angle", usePose:"Pose", useLight:"Lighting",
     by3d:"Replaced by the 3D camera angle (turn it off to use this word)",
@@ -895,6 +929,8 @@ const I18N = {
     presetsLabel:"示例模板 · 挑一个和你想画的最像的",
     random:"随机灵感",
     builderTitle:"挑选关键词", builderSub:"点击加入,再点一次取消",
+    scenes:"场景", sceneSave:"保存当前场景", sceneLink:"复制分享链接", sceneCopied:"链接已复制", sceneInUrl:"链接已在地址栏", sceneName:"场景", sceneDelete:"删除",
+    hero3d:"摆好 3D 素体、调好镜头，提示词自动写好 →",
     studioTitle:"3D 镜头与姿势", studioSub:"拖一拖就能定好角度和姿势,不用再想怎么描述",
     studioUse:"加入提示词:", useCam:"镜头角度", usePose:"姿势", useLight:"光线",
     by3d:"已由 3D 镜头角度取代(关掉 3D 镜头即可使用这个词)",
@@ -945,6 +981,13 @@ try {
 // The 3D studio always opens on its defaults (camera, pose, light, one model, nothing added to the
 // prompt); only the picked keywords above are remembered between visits.
 let cp = { cam:null, pose:null, pose2:null, second:false, light:null, useCam:false, usePose:false, useLight:false };
+// A shared link (#scene=…) opens exactly the scene it was copied from.
+const encodeScene = v => btoa(unescape(encodeURIComponent(JSON.stringify(v)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const decodeScene = t => JSON.parse(decodeURIComponent(escape(atob(t.replace(/-/g, "+").replace(/_/g, "/")))));
+try {
+  const m = location.hash.match(/^#scene=([\w-]+)/);
+  if (m) { const v = decodeScene(m[1]); Object.assign(cp, { cam: v.cam || null, pose: v.pose || null, pose2: v.pose2 || null, second: v.second === true, light: v.light || null, useCam: !!v.useCam, usePose: !!v.usePose, useLight: !!v.useLight }); }
+} catch(e) {}
 function saveState() { try { localStorage.setItem(LS_STATE, JSON.stringify({ ...state, cp })); } catch(e) {} }
 
 const studio = CamPose.create(document.getElementById("studio"), {
@@ -969,6 +1012,36 @@ document.getElementById("useCam").addEventListener("change", e => { cp.useCam = 
 document.getElementById("usePose").addEventListener("change", e => { cp.usePose = e.target.checked; render(); });
 document.getElementById("useLight").addEventListener("change", e => { cp.useLight = e.target.checked; render(); });
 syncUse();
+// Saved scenes (kept in this browser) and a copyable share link.
+const LS_SCENES = "promptlab.scenes";
+let scenes = [];
+try { scenes = JSON.parse(localStorage.getItem(LS_SCENES)) || []; } catch(e) { scenes = []; }
+const sceneValue = () => ({ ...studio.value(), useCam: cp.useCam, usePose: cp.usePose, useLight: cp.useLight });
+function loadScene(v) {
+  studio.set(v); Object.assign(cp, studio.value(), { useCam: !!v.useCam, usePose: !!v.usePose, useLight: !!v.useLight }); syncUse(); render();
+}
+function renderScenes() {
+  const list = document.getElementById("sceneList"); list.replaceChildren();
+  scenes.forEach((sc, i) => {
+    const wrap = document.createElement("span"); wrap.className = "cps-saved";
+    const open = document.createElement("button"); open.type = "button"; open.textContent = sc.name; open.addEventListener("click", () => loadScene(sc.value));
+    const del = document.createElement("button"); del.type = "button"; del.textContent = "×"; del.setAttribute("aria-label", t("sceneDelete") + " " + sc.name);
+    del.addEventListener("click", () => { scenes.splice(i, 1); try { localStorage.setItem(LS_SCENES, JSON.stringify(scenes)); } catch(e) {} renderScenes(); });
+    wrap.append(open, del); list.append(wrap);
+  });
+}
+document.getElementById("sceneSave").addEventListener("click", () => {
+  const n = scenes.length ? Math.max(...scenes.map(sc => sc.n || 0)) + 1 : 1;
+  scenes.push({ n, name: t("sceneName") + " " + n, value: sceneValue() }); if (scenes.length > 8) scenes.shift();
+  try { localStorage.setItem(LS_SCENES, JSON.stringify(scenes)); } catch(e) {}
+  renderScenes();
+});
+document.getElementById("sceneLink").addEventListener("click", async e => {
+  const url = location.href.split("#")[0] + "#scene=" + encodeScene(sceneValue()), btn = e.currentTarget;
+  try { await navigator.clipboard.writeText(url); btn.textContent = t("sceneCopied"); } catch(err) { history.replaceState(null, "", url); btn.textContent = t("sceneInUrl"); }
+  setTimeout(() => { btn.textContent = t("sceneLink"); }, 1800);
+});
+renderScenes();
 // 打开 3D 镜头时,它取代「景别」和「拍摄角度」里选的词,免得提示词自相矛盾
 const CAMERA_WORDS = new Set(DATA.style.groups[0].dims.filter(d => d.label[0] === "景别" || d.label[0] === "拍摄角度").flatMap(d => d.chips.map(c => c[0])));
 const LIGHT_WORDS = new Set(DATA.style.groups[0].dims.filter(d => d.label[0] === "光源").flatMap(d => d.chips.map(c => c[0])));
@@ -1223,6 +1296,8 @@ document.querySelectorAll("[data-lang-btn]").forEach(b => b.addEventListener("cl
 const vf = document.querySelector(".viewfinder");
 let vfPref = "open", vfAuto = false, vfOverride = false;
 try { if (localStorage.getItem("promptlab.vfMini") === "1") vfPref = "mini"; } catch(e) {}
+// Reserve exactly the viewfinder's height under the page, so there is no empty band below the footer.
+try { new ResizeObserver(() => { document.body.style.paddingBottom = (vf.offsetHeight + 24) + "px"; }).observe(vf); } catch(e) {}
 function syncVf() {
   const mini = vfOverride ? vfPref === "mini" : (vfAuto || vfPref === "mini");
   vf.classList.toggle("mini", mini);

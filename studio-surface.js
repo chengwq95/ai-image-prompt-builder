@@ -20,6 +20,13 @@ const StudioSurface = (() => {
       geometry.setAttribute('skinWeight', new THREE.Uint8BufferAttribute(weights, 4, true));
       geometry.setIndex(new THREE.BufferAttribute(index, 1));
       geometry.computeVertexNormals(); geometry.computeBoundingBox(); geometry.computeBoundingSphere();
+      // Soft wood grain as vertex shading, used only by the wood finish (other finishes ignore it).
+      const P = geometry.getAttribute('position').array, grain = new Float32Array(P.length);
+      for (let i = 0; i < P.length; i += 3) {
+        const x = P[i], y = P[i + 1], z = P[i + 2], g = 0.5 + 0.5 * Math.sin(y * 420 + 14 * Math.sin(x * 31 + z * 29) + 6 * Math.sin(y * 11 + x * 5));
+        grain[i] = grain[i + 1] = grain[i + 2] = 0.9 + 0.1 * g;
+      }
+      geometry.setAttribute('color', new THREE.BufferAttribute(grain, 3));
       variants.set(type, geometry); return geometry;
     }
     const bones = data.bones.map(name => { const bone = new THREE.Bone(); bone.name = name; rig.add(bone); return bone; });

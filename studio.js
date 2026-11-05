@@ -21,7 +21,7 @@ const CamPose = (() => {
       fine: "Select a joint or body surface. Drag to pose; use sliders or arrow keys for precise angles.",
       cameraHelp: "Yellow is the actual camera: drag it closer, through the pink reference arc. Green: orbit · pink: elevation. The target marker shows where the camera aims.",
       unsupported: "This browser could not start 3D. Enable WebGL or try another browser. Angle controls and prompt output still work.",
-      context: "3D paused. Restoring the graphics context…", restored: "3D restored", both: "Both sides", left: "Left to right", right: "Right to left", volume: "3D form", drawing: "Study lines", focus: "Look at", headTarget: "Head", chestTarget: "Chest", wholeTarget: "Frame whole body", target: "Aim", distanceHint: "Actual camera distance in metres · 0.20–8.00 m", floorHint: "Lowest angle at this distance",
+      context: "3D paused. Restoring the graphics context…", restored: "3D restored", both: "Both sides", left: "Left to right", right: "Right to left", volume: "3D form", drawing: "Study lines", finish: "Mannequin finish", finish_clay: "Clay", finish_wood: "Wood", finish_skin: "Skin", focus: "Look at", headTarget: "Head", chestTarget: "Chest", wholeTarget: "Frame whole body", target: "Aim", distanceHint: "Actual camera distance in metres · 0.20–8.00 m", floorHint: "Lowest angle at this distance",
       light: "Light", lightHelp: "Drag the sun to move the key light. Words describe the light as seen from the camera.", lightAz: "Light direction", lightAzHint: "0° = from the camera · 90° = from the frame's left · 180° = from behind", lightEl: "Light height", lightElHint: "low = long shadows · high = top light", soft: "Soft light", hard: "Hard light", lightPresets: "Common lighting",
       body: "Body type", props: "Props", people: "Models", personA: "A", personB: "B", addPerson: "+ Model", removePerson: "Remove B", model: "Model", posX: "Position left / right", posZ: "Position front / back", spacing: "Distance between models", spacingHint: "Metres between body centres · moves A and B equally", regrip: "Reset grip",
       download: "Download camera view", downloaded: "Saved", ikHint: "Drag a wrist, hand or ankle: the whole arm or leg follows."
@@ -32,7 +32,7 @@ const CamPose = (() => {
       fine: "点选关节点或人物表面，拖动调整姿势；滑块和方向键可精确调角度。",
       cameraHelp: "黄色就是真实相机，可穿过粉色参考弧继续靠近。绿色调方位，粉色调仰俯；瞄准点标出实际朝向。",
       unsupported: "浏览器无法启动 3D，请启用 WebGL 或换一个浏览器。角度控制和提示词仍可使用。",
-      context: "3D 暂停，正在恢复图形显示…", restored: "3D 已恢复", both: "左右两侧", left: "左侧复制到右侧", right: "右侧复制到左侧", volume: "立体素体", drawing: "绘画线稿", focus: "镜头瞄准", headTarget: "头部", chestTarget: "胸部", wholeTarget: "全身取景", target: "瞄准", distanceHint: "真实相机距离，单位为米 · 0.20–8.00 m", floorHint: "当前距离的最低角度",
+      context: "3D 暂停，正在恢复图形显示…", restored: "3D 已恢复", both: "左右两侧", left: "左侧复制到右侧", right: "右侧复制到左侧", volume: "立体素体", drawing: "绘画线稿", finish: "素体材质", finish_clay: "陶土", finish_wood: "木质", finish_skin: "肤色", focus: "镜头瞄准", headTarget: "头部", chestTarget: "胸部", wholeTarget: "全身取景", target: "瞄准", distanceHint: "真实相机距离，单位为米 · 0.20–8.00 m", floorHint: "当前距离的最低角度",
       light: "光线", lightHelp: "拖动太阳移动主光。描述按镜头看到的效果来写。", lightAz: "光的方向", lightAzHint: "0° = 从镜头方向 · 90° = 从画面左边 · 180° = 从背后", lightEl: "光的高度", lightElHint: "低 = 影子长 · 高 = 顶光", soft: "柔光", hard: "硬光", lightPresets: "常用光线",
       body: "体型", props: "道具", people: "素体", personA: "A", personB: "B", addPerson: "+ 素体", removePerson: "移除 B", model: "素体", posX: "位置 左右", posZ: "位置 前后", spacing: "两人间距", spacingHint: "身体中心之间的距离（米）· 同时移动 A、B", regrip: "重新握持",
       download: "下载镜头画面", downloaded: "已保存", ikHint: "拖动手腕、手或脚踝，整条手臂或腿会自动跟着弯。"
@@ -50,6 +50,7 @@ const CamPose = (() => {
     // The pose being edited (model A or B).
     const cur = () => (state.editing === "b" && state.second ? state.pose2 : state.pose);
     let view = { yaw: 25, pitch: 12, dist: 3.8 };
+    let presetGlide = 0;
     let width = 0, height = 0, handles = [], dragging = null, scheduled = 0, lost = false, drawing = false;
     let cameraEditorFrame = null, controlCenter = [0, 1, 0];
     root.classList.add("cps");
@@ -57,8 +58,8 @@ const CamPose = (() => {
       <div class="cps-left">
         <div class="cps-view-tools"><span class="cps-editor-label"></span><div>
           <button type="button" data-view="front"></button><button type="button" data-view="side"></button><button type="button" data-view="back"></button><button type="button" data-view="frame"></button>
-        </div><div class="cps-render-modes"><button type="button" data-mode="volume" aria-pressed="true"></button><button type="button" data-mode="drawing" aria-pressed="false"></button></div><button type="button" class="cps-download" data-download></button></div>
-      <div class="cps-stage">
+        </div><div class="cps-render-modes"><button type="button" data-mode="volume" aria-pressed="true"></button><button type="button" data-mode="drawing" aria-pressed="false"></button></div><div class="cps-render-modes cps-finishes" role="group"><button type="button" data-finish="clay"></button><button type="button" data-finish="wood"></button><button type="button" data-finish="skin"></button></div><button type="button" class="cps-download" data-download></button></div>
+      <div class="cps-stage fresh">
         <canvas class="cps-main" aria-label="Interactive 3D pose studio"></canvas><canvas class="cps-overlay" aria-hidden="true"></canvas>
         <div class="cps-status" role="status" hidden></div><div class="cps-help"></div>
       </div>
@@ -110,6 +111,16 @@ const CamPose = (() => {
     // All figures live in `cast`; `rig` is the main figure (A). A second person (B) is optional.
     const cast = new THREE.Group(); scene.add(cast);
     const skin = new THREE.MeshStandardMaterial({ color: 0xc6b6a2, roughness: 0.65, metalness: 0 });
+    // Mannequin finishes: matte clay (default), warm wood with a soft grain, or realistic skin tone.
+    // Model B keeps a slightly different tone in each finish so the two people stay easy to tell apart.
+    const FINISH = {
+      clay: { a: 0xcdc8c0, b: 0xb3bcc8, roughness: 0.9, grain: false },
+      wood: { a: 0xd9a46e, b: 0xa88a74, roughness: 0.55, grain: true },
+      skin: { a: 0xc6b6a2, b: 0xa9b3c2, roughness: 0.65, grain: false }
+    };
+    let finish = "clay";
+    try { const saved = localStorage.getItem("promptlab.finish"); if (FINISH[saved]) finish = saved; } catch (e) {}
+    const pageDark = () => (document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark";
     const selected = new THREE.MeshStandardMaterial({ color: 0xe0b6a1, roughness: 0.6, emissive: 0x572513, emissiveIntensity: 0.15 });
     const skin2 = new THREE.MeshStandardMaterial({ color: 0xa9b3c2, roughness: 0.65, metalness: 0 });
     const propMat = new THREE.MeshStandardMaterial({ color: 0x596271, metalness: 0.3, roughness: 0.6 });
@@ -431,12 +442,16 @@ const CamPose = (() => {
       scheduled = 0;
       if (!renderer || lost || !width || !height) return;
       updateBodyMap();
-      const background = drawing ? 0xebe9e3 : 0x141823;
+      // Light studio in day mode, dark studio at night; study lines always on paper.
+      const light = drawing || !pageDark(), F = FINISH[finish];
+      root.dataset.studio = light ? "light" : "dark";
+      const background = drawing ? 0xebe9e3 : light ? 0xe7e4df : 0x141823;
       scene.background.setHex(background); scene.fog.color.setHex(background);
-      grid.material.opacity = drawing ? 0.16 : 0.65;
-      floor.material.color.setHex(drawing ? 0xd9d6cd : 0x161a25);
-      skin.color.setHex(drawing ? 0xf2f0e8 : 0xc6b6a2);
-      skin2.color.setHex(drawing ? 0xe4e8ee : 0xa9b3c2);
+      grid.material.opacity = drawing ? 0.16 : light ? 0.22 : 0.65;
+      floor.material.color.setHex(drawing ? 0xd9d6cd : light ? 0xdcd8d1 : 0x161a25);
+      skin.color.setHex(drawing ? 0xf2f0e8 : F.a);
+      skin2.color.setHex(drawing ? 0xe4e8ee : F.b);
+      for (const m of [skin, skin2]) { const grain = F.grain && !drawing; if (m.vertexColors !== grain) { m.vertexColors = grain; m.needsUpdate = true; } m.roughness = drawing ? 0.65 : F.roughness; }
       outlines.forEach(m => { m.visible = drawing; });
       // The old construction lines were sized for the procedural head and torso; on the anatomical
       // mesh they float off the surface (a stray line above the head), so they stay hidden.
@@ -575,7 +590,7 @@ const CamPose = (() => {
     function changed(kind, keepPreset = false) { if (kind === "pose" && !keepPreset) cur().preset = null; state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose)); sync(); output(); render(); emit(kind); }
     const angle = x => `${Math.round(x)}°`;
     function slider(path, label, min, max, val, hint = "", step = 1, unit = "°") {
-      return `<label class="cps-sl"><span class="cps-sl-top"><span>${label}</span><output>${unit === "m" ? val.toFixed(2) + " m" : unit ? angle(val) : val.toFixed(2)}</output></span>
+      return `<label class="cps-sl"${hint ? ` title="${String(hint).replace(/<[^>]*>/g, "").replace(/"/g, "&quot;")}"` : ""}><span class="cps-sl-top"><span>${label}</span><output>${unit === "m" ? val.toFixed(2) + " m" : unit ? angle(val) : val.toFixed(2)}</output></span>
         <input aria-label="${label}" type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-angle="${path}">${hint ? `<small>${hint}</small>` : ""}</label>`;
     }
     function renderPanel() {
@@ -584,6 +599,8 @@ const CamPose = (() => {
       root.querySelector("[data-reset]").textContent = t.reset;
       root.querySelector(".cps-editor-label").textContent = text.editor;
       root.querySelectorAll("[data-view]").forEach(b => { b.textContent = text[b.dataset.view]; });
+      root.querySelector(".cps-finishes").setAttribute("aria-label", text.finish);
+      root.querySelectorAll("[data-finish]").forEach(b => { b.textContent = text["finish_" + b.dataset.finish]; b.setAttribute("aria-pressed", b.dataset.finish === finish); });
       root.querySelectorAll("[data-mode]").forEach(b => { b.textContent = text[b.dataset.mode]; b.setAttribute("aria-pressed", drawing === (b.dataset.mode === "drawing")); });
       root.querySelector(".cps-inset-label").textContent = text.actual;
       root.querySelector(".cps-help").textContent = state.tab === "camera" ? text.cameraHelp : state.tab === "light" ? text.lightHelp : text.fine + " " + text.ikHint;
@@ -649,6 +666,9 @@ const CamPose = (() => {
       } else if (button.dataset.view) {
         const name = button.dataset.view;
         view = { yaw: state.pose.yaw + ({ front: 0, side: 90, back: 180, frame: 25 }[name]), pitch: name === "frame" ? 12 : 0, dist: 3.8 }; cameraEditorFrame = null; render();
+      } else if (button.dataset.finish) {
+        finish = button.dataset.finish; try { localStorage.setItem("promptlab.finish", finish); } catch (e) {}
+        root.querySelectorAll("[data-finish]").forEach(b => b.setAttribute("aria-pressed", b === button)); render();
       } else if (button.dataset.mode) {
         drawing = button.dataset.mode === "drawing";
         root.dataset.render = drawing ? "drawing" : "volume";
@@ -671,8 +691,20 @@ const CamPose = (() => {
         if (next.preset === "phone" && !next.props.includes("phone")) next.props = [...next.props.filter(k => !M.PROPS[k].hand), "phone"];
         const held = next.props.find(k => M.PROPS[k].hand);
         if (held) Object.assign(next, M.holdProp(next, held));
-        if (state.editing === "b" && state.second) { next.yaw = next.yaw || old.yaw; state.pose2 = next; } else state.pose = next;
-        renderPanel(); render(); emit("pose");
+        const editingB = state.editing === "b" && state.second;
+        if (editingB) next.yaw = next.yaw || old.yaw;
+        // Glide from the old pose to the new one (the end pose is resolved first so it does not snap).
+        const end = copy(next); M.resolveArms(end);
+        const from = copy(old), put = p => { if (editingB) state.pose2 = p; else state.pose = p; };
+        const lerp = (a, b, t) => typeof b === "number" && typeof a === "number" ? a + (b - a) * t : b && typeof b === "object" && !Array.isArray(b) ? Object.fromEntries(Object.keys(b).map(k => [k, lerp(a ? a[k] : undefined, b[k], t)])) : b;
+        const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches, started = performance.now(), duration = reduce || from.seated !== next.seated || from.body !== next.body ? 0 : 280;
+        cancelAnimationFrame(presetGlide);
+        const step = now => {
+          const t = duration ? Math.min(1, (now - started) / duration) : 1, e = t * (2 - t);
+          if (t < 1) { const frame = lerp(from, end, e); frame.preset = null; frame.props = next.props; put(frame); render(); presetGlide = requestAnimationFrame(step); }
+          else { put(next); renderPanel(); render(); emit("pose"); }
+        };
+        presetGlide = requestAnimationFrame(step);
       } else if (button.dataset.part) selectPart(button.dataset.part);
       else if (button.hasAttribute("data-reset-part")) {
         const base = M.BASE(); for (const c of PARTS[state.part].controls) M.put(cur(), c.path, M.get(base, c.path)); changed("pose");
@@ -834,6 +866,12 @@ const CamPose = (() => {
     canvas.addEventListener("webglcontextrestored", () => { lost = false; status.hidden = true; render(); });
     preview.addEventListener('toggle', render);
     state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose));
+    // Follow the page's day / night theme.
+    const themeWatch = new MutationObserver(() => render()); themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    const darkMedia = matchMedia("(prefers-color-scheme: dark)"), onScheme = () => render(); darkMedia.addEventListener?.("change", onScheme);
+    // The stage's how-to line shows for a few seconds at first, then only while pointing at the stage.
+    const stageEl = root.querySelector(".cps-stage"), unfresh = () => stageEl.classList.remove("fresh");
+    setTimeout(unfresh, 7000); stageEl.addEventListener("pointerdown", unfresh, { once: true });
     const ro = new ResizeObserver(size); ro.observe(canvas); size(); renderPanel();
     return {
       value, set(val = {}) {
@@ -845,7 +883,7 @@ const CamPose = (() => {
       snapshot: exportShot,
       setLang(l) { lang = l; renderPanel(); render(); }, setRatio(r) { ratio = r; size(); }, refresh() { size(); output(); },
       describe(l) { return scene3(l); },
-      destroy() { ro.disconnect(); cancelAnimationFrame(scheduled); const geometries = new Set(), materials = new Set(); scene.traverse(o => { if (o.geometry) geometries.add(o.geometry); if (o.material) materials.add(o.material); }); geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); figA.continuous.dispose(); figB.continuous.dispose(); mapSurface?.dispose(); mapTarget?.dispose(); mapMaterial?.dispose(); bodyMapCache.clear(); skin.dispose(); skin2.dispose(); selected.dispose(); renderer?.dispose(); root.replaceChildren(); }
+      destroy() { ro.disconnect(); themeWatch.disconnect(); darkMedia.removeEventListener?.("change", onScheme); cancelAnimationFrame(scheduled); const geometries = new Set(), materials = new Set(); scene.traverse(o => { if (o.geometry) geometries.add(o.geometry); if (o.material) materials.add(o.material); }); geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); figA.continuous.dispose(); figB.continuous.dispose(); mapSurface?.dispose(); mapTarget?.dispose(); mapMaterial?.dispose(); bodyMapCache.clear(); skin.dispose(); skin2.dispose(); selected.dispose(); renderer?.dispose(); root.replaceChildren(); }
     };
   }
   return { create, describeCamera: M.describeCamera, describePose: M.describePose, describeScene: M.describeScene, PRESETS };

@@ -87,6 +87,42 @@ async function main() {
     const z = M.norm(M.cross(x, y)); x = M.cross(y, z);
     return [x[0], y[0], z[0], x[1], y[1], z[1], x[2], y[2], z[2]];
   };
+  // A neutral drawing mannequin: no nipples and no genital detail. Each nipple is pressed onto a smooth
+  // quadric fitted through the skin around it (the chest or breast keeps its form); the groin is smoothed
+  // strongly enough to flatten genital shapes into a plain mannequin surface.
+  function neutralDetails(points, J) {
+    const out = points.map(p => [...p]), q = v => M.mul(M.sub(v, J.pelvis), 1 / J.scale), back = (l, axis) => J.pelvis[axis] + l * J.scale;
+    for (const side of [1, -1]) {
+      let tip = -1, best = -Infinity;
+      out.forEach((v, i) => { const l = q(v); if (side * l[0] > 0.03 && side * l[0] < 0.16 && l[1] > 0.18 && l[1] < 0.42 && l[2] > best) { best = l[2]; tip = i; } });
+      if (tip < 0) continue;
+      const c = q(out[tip]), ring = [], inner = [];
+      out.forEach((v, i) => { const l = q(v), r = Math.hypot(l[0] - c[0], l[1] - c[1]); if (l[2] < c[2] - 0.05) return; if (r > 0.014 && r < 0.026) ring.push(l); else if (r <= 0.014) inner.push([i, l, r]); });
+      const A = Array.from({ length: 6 }, () => new Array(6).fill(0)), b = new Array(6).fill(0);
+      for (const l of ring) { const x = l[0] - c[0], y = l[1] - c[1], f = [1, x, y, x * x, y * y, x * y]; for (let r = 0; r < 6; r++) { b[r] += f[r] * l[2]; for (let k = 0; k < 6; k++) A[r][k] += f[r] * f[k]; } }
+      for (let r = 0; r < 6; r++) A[r][r] += 1e-9;
+      for (let i = 0; i < 6; i++) {
+        let m = i; for (let r = i + 1; r < 6; r++) if (Math.abs(A[r][i]) > Math.abs(A[m][i])) m = r;
+        [A[i], A[m]] = [A[m], A[i]]; [b[i], b[m]] = [b[m], b[i]];
+        for (let r = 0; r < 6; r++) if (r !== i) { const t = A[r][i] / A[i][i]; for (let k = i; k < 6; k++) A[r][k] -= t * A[i][k]; b[r] -= t * b[i]; }
+      }
+      const co = b.map((v, i) => v / A[i][i]);
+      for (const [i, l, r] of inner) {
+        const x = l[0] - c[0], y = l[1] - c[1], z = co[0] + co[1] * x + co[2] * y + co[3] * x * x + co[4] * y * y + co[5] * x * y;
+        const t = M.clamp((0.014 - r) / 0.005, 0, 1), w = t * t * (3 - 2 * t);
+        out[i][2] = back(l[2] + (Math.min(l[2], z) - l[2]) * w, 2);
+      }
+    }
+    const gauss = (x, width) => Math.exp(-((x / width) ** 2));
+    const mask = out.map(v => { const l = q(v); return M.clamp(gauss(l[0], 0.07) * gauss(l[1] + 0.12, 0.085) * M.clamp((l[2] + 0.005) / 0.05, 0, 1) * 1.4, 0, 1); });
+    let smooth = out;
+    for (let pass = 0; pass < 45; pass++) smooth = smooth.map((point, i) => {
+      const weight = mask[i] * 0.6; if (weight < 0.003) return point;
+      const mean = average([...adjacent[i]].map(n => smooth[n]));
+      return point.map((v, a) => v + (mean[a] - v) * weight);
+    });
+    return smooth;
+  }
   const shapes = {};
   for (const body of Object.keys(M.BODY_TYPES)) {
     const points = raw.map(v => [...v]);
@@ -189,7 +225,7 @@ async function main() {
       const mean = average([...adjacent[i]].map(n => smooth[n]));
       return point.map((v, a) => v + (mean[a] - v) * weight);
     });
-    shapes[body] = smooth;
+    shapes[body] = neutralDetails(smooth, J);
   }
   // Subdivide the anatomical edge loops once, retaining the artist-authored skin weights.
   const edges = [], lookup = new Map(), vertexFaces = used.map(() => []), vertexEdges = used.map(() => []);

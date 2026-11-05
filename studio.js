@@ -17,7 +17,7 @@ const CamPose = (() => {
   const ui = {
     en: {
       editor: "Studio view · drag background to orbit", actual: "CAMERA VIEW", front: "Front", side: "Right", back: "Back", frame: "Fit scene",
-      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror this joint", flip: "Swap left / right", joints: "18 parts · 54 angle controls", pagePoses: "Poses", pageFigure: "Body & props", pageJoints: "Joints", mapLeft: "L", mapRight: "R",
+      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror this joint", flip: "Swap left / right", joints: "18 parts · 54 angle controls", pagePoses: "Poses", pageFigure: "Body type", pageJoints: "Joints", mapLeft: "L", mapRight: "R",
       fine: "Select a joint or body surface. Drag to pose; use sliders or arrow keys for precise angles.",
       cameraHelp: "Yellow is the actual camera: drag it closer, through the pink reference arc. Green: orbit · pink: elevation. The target marker shows where the camera aims.",
       unsupported: "This browser could not start 3D. Enable WebGL or try another browser. Angle controls and prompt output still work.",
@@ -28,7 +28,7 @@ const CamPose = (() => {
     },
     zh: {
       editor: "工作视图 · 拖动空白处旋转", actual: "实际镜头画面", front: "正面", side: "右侧", back: "背面", frame: "查看整个场景",
-      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制", pagePoses: "姿势", pageFigure: "体型与道具", pageJoints: "关节", mapLeft: "左", mapRight: "右",
+      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制", pagePoses: "姿势", pageFigure: "体型", pageJoints: "关节", mapLeft: "左", mapRight: "右",
       fine: "点选关节点或人物表面，拖动调整姿势；滑块和方向键可精确调角度。",
       cameraHelp: "黄色就是真实相机，可穿过粉色参考弧继续靠近。绿色调方位，粉色调仰俯；瞄准点标出实际朝向。",
       unsupported: "浏览器无法启动 3D，请启用 WebGL 或换一个浏览器。角度控制和提示词仍可使用。",
@@ -41,10 +41,12 @@ const CamPose = (() => {
 
   function create(root, opts = {}) {
     let lang = opts.lang || "en", ratio = opts.ratio || "1:1";
+    // Props were removed from the studio: any pose that arrives with them (old links, saved scenes) drops them.
+    const loadPose = raw => { const p = M.migratePose(raw); p.props = []; return p; };
     const defaultPose2 = () => M.normalizePose({ preset: "stand", x: 0.85, z: 0.15, yaw: 60 });
     let state = {
-      tab: "camera", cam: M.normalizeCamera(opts.value?.cam), pose: M.migratePose(opts.value?.pose || { preset: "stand" }), part: "rArm",
-      pose2: opts.value?.pose2 ? M.migratePose(opts.value.pose2) : defaultPose2(), second: opts.value?.second === true,
+      tab: "camera", cam: M.normalizeCamera(opts.value?.cam), pose: loadPose(opts.value?.pose || { preset: "stand" }), part: "rArm",
+      pose2: opts.value?.pose2 ? loadPose(opts.value.pose2) : defaultPose2(), second: opts.value?.second === true,
       light: M.normalizeLight(opts.value?.light), editing: "a"
     };
     // The pose being edited (model A or B).
@@ -626,15 +628,14 @@ const CamPose = (() => {
           <button type="button" data-edit="a" aria-label="${text.model} A" aria-pressed="${state.editing === "a" || !state.second}">${text.personA}</button>
           ${state.second ? `<button type="button" data-edit="b" aria-label="${text.model} B" aria-pressed="${state.editing === "b"}">${text.personB}</button><button type="button" data-second="0">${text.removePerson}</button>` : `<button type="button" data-second="1">${text.addPerson}</button>`}</div>`;
         const bodies = `<div class="cps-focus" role="group" aria-label="${text.body}"><span>${text.body}</span>${Object.entries(M.BODY_TYPES).map(([k, b]) => `<button type="button" data-body="${k}" aria-pressed="${pose.body === k}">${b[lang]}</button>`).join("")}</div>`;
-        const props = `<div class="cps-focus" role="group" aria-label="${text.props}"><span>${text.props}</span>${Object.entries(M.PROPS).map(([k, b]) => `<button type="button" data-prop="${k}" aria-pressed="${pose.props.includes(k)}">${b[lang]}</button>`).join("")}</div>`;
         const where = state.second ? `<div class="cps-sliders">${slider("pair.distance", text.spacing, 0.2, 4, M.modelDistance(state.pose, state.pose2), text.spacingHint, 0.01, "m")}${slider("pose.x", text.posX, -3, 3, pose.x, "", 0.01, "m")}${slider("pose.z", text.posZ, -3, 3, pose.z, "", 0.01, "m")}</div>` : "";
-        // Three short pages instead of one long panel: poses, figure & props, joints (with a body map).
+        // Three short pages instead of one long panel: poses, body type, joints (with a body map).
         const page = state.poseTab || "presets";
         const subtabs = `<div class="cps-subtabs" role="tablist">${[["presets", text.pagePoses], ["figure", text.pageFigure], ["joints", text.pageJoints]].map(([k, label]) => `<button type="button" role="tab" data-subtab="${k}" aria-selected="${page === k}">${label}</button>`).join("")}</div>`;
         let body = "";
         if (page === "presets") body = `<div class="cps-chips">${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${pose.preset === p.id}">${p[lang]}</button>`).join("")}</div>
           <label class="cps-check"><input type="checkbox" data-seated ${pose.seated ? "checked" : ""}> ${t.seated}</label>${where}`;
-        else if (page === "figure") body = `${bodies}${props}${pose.props.some(k => M.PROPS[k].hand) ? `<button type="button" data-regrip>${text.regrip}</button>` : ""}`;
+        else if (page === "figure") body = bodies;
         else body = `<div class="cps-joints"><div class="cps-map" role="group" aria-label="${text.selected}"><canvas width="192" height="384" aria-hidden="true"></canvas>${Object.entries(BODY_MAP).map(([k, [x, y]]) => `<button type="button" data-part="${k}" aria-pressed="${k === state.part}" title="${PARTS[k][lang]}" aria-label="${PARTS[k][lang]}" style="left:${x / 1.2}%;top:${y / 2.4}%"></button>`).join("")}
             <span class="cps-map-side" style="left:4%">${text.mapRight}</span><span class="cps-map-side" style="right:4%">${text.mapLeft}</span></div>
           <div class="cps-joint-edit"><div class="cps-joint-heading"><strong>${config[lang]}</strong><button type="button" data-reset-part>${text.resetPart}</button></div>
@@ -696,11 +697,7 @@ const CamPose = (() => {
         cameraEditorFrame = null; changed("cam", true); state.camPreset = +button.dataset.campreset; renderPanel();
       } else if (button.dataset.preset) {
         // Keep who it is, where they stand and what they hold; take the preset's joints.
-        const old = cur(), next = M.normalizePose({ ...copy(PRESETS.find(p => p.id === button.dataset.preset).pose), preset: button.dataset.preset, body: old.body, props: old.props, x: old.x, z: old.z });
-        // Talking on the phone needs a phone in the hand (it replaces any other held prop).
-        if (next.preset === "phone" && !next.props.includes("phone")) next.props = [...next.props.filter(k => !M.PROPS[k].hand), "phone"];
-        const held = next.props.find(k => M.PROPS[k].hand);
-        if (held) Object.assign(next, M.holdProp(next, held));
+        const old = cur(), next = M.normalizePose({ ...copy(PRESETS.find(p => p.id === button.dataset.preset).pose), preset: button.dataset.preset, body: old.body, props: [], x: old.x, z: old.z });
         const editingB = state.editing === "b" && state.second;
         if (editingB) next.yaw = next.yaw || old.yaw;
         // Glide from the old pose to the new one (the end pose is resolved first so it does not snap).
@@ -742,15 +739,6 @@ const CamPose = (() => {
         cameraEditorFrame = null; renderPanel(); render(); emit("pose");
       } else if (button.dataset.body) {
         cur().body = button.dataset.body; cameraEditorFrame = null; renderPanel(); render(); emit("pose");
-      } else if (button.hasAttribute("data-regrip")) {
-        const pose = cur(), held = pose.props.find(k => M.PROPS[k].hand);
-        if (held) Object.assign(pose, M.holdProp(pose, held));
-        renderPanel(); render(); emit("pose");
-      } else if (button.dataset.prop) {
-        const pose = cur(), k = button.dataset.prop, on = !pose.props.includes(k);
-        pose.props = on ? [...pose.props, k] : pose.props.filter(x => x !== k);
-        if (on && M.PROPS[k].hand) Object.assign(pose, M.holdProp(pose, k));
-        renderPanel(); render(); emit("pose");
       }
     });
     root.addEventListener("input", e => {
@@ -885,8 +873,8 @@ const CamPose = (() => {
     const ro = new ResizeObserver(size); ro.observe(canvas); size(); renderPanel();
     return {
       value, set(val = {}) {
-        state.cam = M.normalizeCamera(val.cam); state.pose = M.migratePose(val.pose);
-        state.pose2 = val.pose2 ? M.migratePose(val.pose2) : defaultPose2(); state.second = val.second === true; state.light = M.normalizeLight(val.light);
+        state.cam = M.normalizeCamera(val.cam); state.pose = loadPose(val.pose);
+        state.pose2 = val.pose2 ? loadPose(val.pose2) : defaultPose2(); state.second = val.second === true; state.light = M.normalizeLight(val.light);
         if (!state.second) state.editing = "a";
         state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose)); cameraEditorFrame = null; renderPanel(); render();
       },

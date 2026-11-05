@@ -948,7 +948,7 @@ const CamPoseModel = (() => {
 
   // Turn the neck and head (neck about a third, head the rest, within each joint's range) so the face
   // points at a world-space target. Signs: +neckYaw turns toward -x, +headYaw toward +x; +pitch looks down.
-  function lookAt(pose, target) {
+  function lookAt(pose, target, { quick = false } = {}) {
     const p = pose, lim = k => { const c = [...PARTS.neck.controls, ...PARTS.head.controls].find(c => c.path === k); return [c.min, c.max]; };
     // A comfortable range: about 75° to either side and 35° up or down; past that the eyes would do the rest.
     const apply = (Y, P) => {
@@ -958,9 +958,11 @@ const CamPoseModel = (() => {
       p.neckTilt = 0; p.headTilt = 0;
     };
     const err = (Y, P) => { apply(Y, P); const J = skeleton(p), d = norm(sub(target, J.head)); return 1 - dot(J.headForward, d); };
-    let best = [0, 0], e = err(0, 0);
-    for (let Y = -75; Y <= 75; Y += 5) for (let P = -35; P <= 35; P += 5) { const v = err(Y, P); if (v < e) { e = v; best = [Y, P]; } }
-    for (const step of [5, 2, 1]) for (let pass = 0; pass < 3; pass++) for (const [dy, dp] of [[step, 0], [-step, 0], [0, step], [0, -step]]) {
+    // While following the pointer, continue from where the head already points (no full search).
+    const start = [clamp(p.neckYaw - p.headYaw, -75, 75), clamp(p.neckPitch + p.headPitch, -35, 35)];
+    let best = quick ? start : [0, 0], e = err(...best);
+    if (!quick) for (let Y = -75; Y <= 75; Y += 5) for (let P = -35; P <= 35; P += 5) { const v = err(Y, P); if (v < e) { e = v; best = [Y, P]; } }
+    for (const step of quick ? [16, 8, 4, 2, 1] : [5, 2, 1]) for (let pass = 0; pass < 3; pass++) for (const [dy, dp] of [[step, 0], [-step, 0], [0, step], [0, -step]]) {
       const Y = clamp(best[0] + dy, -75, 75), P = clamp(best[1] + dp, -35, 35), v = err(Y, P); if (v < e) { e = v; best = [Y, P]; }
     }
     apply(...best);

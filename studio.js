@@ -17,7 +17,7 @@ const CamPose = (() => {
   const ui = {
     en: {
       editor: "Studio view · drag background to orbit", actual: "CAMERA VIEW", front: "Front", side: "Right", back: "Back", frame: "Fit scene",
-      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror this joint", flip: "Swap left / right", joints: "18 parts · 54 angle controls", pagePoses: "Poses", gaze: "Gaze", gazeCamera: "The camera", gazeOther: "The other person", gazePick: "A point I click", gazePicking: "Click in the 3D view…", gazeAhead: "Straight ahead", lens: "Lens", lensAuto: "Auto", facing: "Facing", faceFront: "Front", faceRight: "Right side", faceBack: "Back", faceLeft: "Left side", turnLabel: "Turn the figure", turnHint: "Or drag the dot on the orange ring at the feet; drag the ring itself to move the figure", pageFigure: "Body type", pageJoints: "Joints", mapLeft: "L", mapRight: "R",
+      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror this joint", flip: "Swap left / right", joints: "18 parts · 54 angle controls", pagePoses: "Poses", gaze: "Gaze", gazeCamera: "The camera", gazeOther: "The other person", gazePick: "Follow my pointer", gazePicking: "Press or drag in the 3D view…", gazeAhead: "Straight ahead", lens: "Lens", lensAuto: "Auto", facing: "Facing", faceFront: "Front", faceRight: "Right side", faceBack: "Back", faceLeft: "Left side", turnLabel: "Turn the figure", turnHint: "Or drag the dot on the orange ring at the feet; drag the ring itself to move the figure", pageFigure: "Body type", pageJoints: "Joints", mapLeft: "L", mapRight: "R",
       fine: "Select a joint or body surface. Drag to pose; use sliders or arrow keys for precise angles.",
       cameraHelp: "Yellow is the actual camera: drag it closer, through the pink reference arc. Green: orbit · pink: elevation. The target marker shows where the camera aims.",
       unsupported: "This browser could not start 3D. Enable WebGL or try another browser. Angle controls and prompt output still work.",
@@ -28,7 +28,7 @@ const CamPose = (() => {
     },
     zh: {
       editor: "工作视图 · 拖动空白处旋转", actual: "实际镜头画面", front: "正面", side: "右侧", back: "背面", frame: "查看整个场景",
-      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制", pagePoses: "姿势", gaze: "视线", gazeCamera: "看镜头", gazeOther: "看对方", gazePick: "看我点的位置", gazePicking: "请在 3D 画面上点一下…", gazeAhead: "看正前方", lens: "镜头", lensAuto: "自动", facing: "人物朝向", faceFront: "正面", faceRight: "右侧", faceBack: "背面", faceLeft: "左侧", turnLabel: "旋转人物", turnHint: "也可以拖动脚下橙色圆圈上的圆点；拖动圆圈本身可以移动人物", pageFigure: "体型", pageJoints: "关节", mapLeft: "左", mapRight: "右",
+      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制", pagePoses: "姿势", gaze: "视线", gazeCamera: "看镜头", gazeOther: "看对方", gazePick: "跟着我的鼠标", gazePicking: "在 3D 画面上按住拖动…", gazeAhead: "看正前方", lens: "镜头", lensAuto: "自动", facing: "人物朝向", faceFront: "正面", faceRight: "右侧", faceBack: "背面", faceLeft: "左侧", turnLabel: "旋转人物", turnHint: "也可以拖动脚下橙色圆圈上的圆点；拖动圆圈本身可以移动人物", pageFigure: "体型", pageJoints: "关节", mapLeft: "左", mapRight: "右",
       fine: "点选关节点或人物表面，拖动调整姿势；滑块和方向键可精确调角度。",
       cameraHelp: "黄色就是真实相机，可穿过粉色参考弧继续靠近。绿色调方位，粉色调仰俯；瞄准点标出实际朝向。",
       unsupported: "浏览器无法启动 3D，请启用 WebGL 或换一个浏览器。角度控制和提示词仍可使用。",
@@ -261,14 +261,14 @@ const CamPose = (() => {
       return [["camera", text.gazeCamera], ...(state.second ? [["other", text.gazeOther]] : []), ["pick", gazePick ? text.gazePicking : text.gazePick], ["ahead", text.gazeAhead]]
         .map(([k, label]) => `<button type="button" data-gaze="${k}" aria-pressed="${!!on(k)}">${label}</button>`).join("");
     }
+    const gazeKey = (pose, target) => { const { neckYaw, headYaw, neckPitch, headPitch, neckTilt, headTilt, preset, ...rest } = pose; return JSON.stringify([target.map(v => Math.round(v * 200)), rest]); };
     function aimGaze() {
       for (const id of state.second ? ["a", "b"] : ["a"]) {
         const mode = gaze[id]; if (!mode || mode === "ahead") continue;
         const pose = id === "b" ? state.pose2 : state.pose, other = id === "b" ? state.pose : state.pose2;
         const target = mode === "camera" ? M.shotCamera(state.cam, M.skeleton(state.pose)).pos : mode === "other" ? (state.second ? M.skeleton(other).head : null) : mode.point;
         if (!target) continue;
-        const { neckYaw, headYaw, neckPitch, headPitch, neckTilt, headTilt, ...rest } = pose;
-        const key = JSON.stringify([target.map(v => Math.round(v * 200)), rest]);
+        const key = gazeKey(pose, target);
         if (key === gazeCache[id]) continue;
         const before = [pose.neckYaw, pose.headYaw, pose.neckPitch, pose.headPitch].join();
         M.lookAt(pose, target); gazeCache[id] = key;
@@ -856,6 +856,20 @@ const CamPose = (() => {
     }
     // Hand, finger-tip and ankle handles move the whole limb (inverse kinematics).
     const REACH = { Hand: ["Arm", "Wrist"], Fingers: ["Arm", "Hand"], Foot: ["Leg", "Ankle"] };
+    // Look at what is under the pointer: the other figure's body, else the floor, else a point in the air
+    // in front of the face.
+    function gazeAt(p, quick) {
+      raycaster.setFromCamera({ x: p.x / width * 2 - 1, y: 1 - p.y / height * 2 }, editorCamera);
+      const id = state.editing === "b" && state.second ? "b" : "a", J = figOf(id).J || M.skeleton(cur());
+      const hit = raycaster.intersectObjects(meshes.filter(m => m.visible && (m.userData.figure || "a") !== id), false)[0];
+      const facing = new THREE.Vector3(); editorCamera.getWorldDirection(facing);
+      const wall = new THREE.Plane().setFromNormalAndCoplanarPoint(facing, V(add(J.head, mul(J.forward, 1.2))));
+      const floorHit = rayPoint(p, new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
+      const target = hit ? hit.point.toArray() : floorHit && Math.hypot(floorHit[0] - J.head[0], floorHit[2] - J.head[2]) < 12 ? floorHit : rayPoint(p, wall);
+      if (!target) return;
+      const pose = cur(); gaze[id] = { point: target }; M.lookAt(pose, target, { quick }); pose.preset = null;
+      gazeCache[id] = gazeKey(pose, target); changed("pose", true);
+    }
     function rayPoint(p, plane) {
       raycaster.setFromCamera({ x: p.x / width * 2 - 1, y: 1 - p.y / height * 2 }, editorCamera);
       const hit = new THREE.Vector3(); return raycaster.ray.intersectPlane(plane, hit) ? hit.toArray() : null;
@@ -863,18 +877,9 @@ const CamPose = (() => {
     canvas.addEventListener("pointerdown", e => {
       if (!renderer || lost || e.button !== 0 || dragging) return;
       if (gazePick) {
-        // Look here: a point on a body, else on the floor, else straight out at the head's height.
-        const p = point(e); raycaster.setFromCamera({ x: p.x / width * 2 - 1, y: 1 - p.y / height * 2 }, editorCamera);
-        const id = state.editing === "b" && state.second ? "b" : "a", J = figOf(id).J || M.skeleton(cur());
-        // The other figure's body counts; one's own body does not.
-        const hit = raycaster.intersectObjects(meshes.filter(m => m.visible && (m.userData.figure || "a") !== id), false)[0];
-        const facing = new THREE.Vector3(); editorCamera.getWorldDirection(facing);
-        const wall = new THREE.Plane().setFromNormalAndCoplanarPoint(facing, V(add(J.head, mul(J.headForward, 1.2))));
-        const floorHit = rayPoint(p, new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
-        const target = hit ? hit.point.toArray() : floorHit && Math.hypot(floorHit[0] - J.head[0], floorHit[2] - J.head[2]) < 12 ? floorHit : rayPoint(p, wall);
-        gazePick = false; canvas.style.cursor = "default";
-        if (target) { gaze[id] = { point: target }; gazeCache[id] = ""; changed("pose", true); }
-        renderPanel(); e.preventDefault(); return;
+        // Press and drag: the head follows the pointer until release; the mode stays on for more.
+        const p = point(e); dragging = { id: "gaze", pointer: e.pointerId, last: p };
+        canvas.setPointerCapture(e.pointerId); gazeAt(p, false); e.preventDefault(); return;
       }
       const p = point(e); let id = pick(p);
       if (id?.startsWith("part:")) {
@@ -922,6 +927,7 @@ const CamPose = (() => {
       if (!dragging) { const id = gazePick ? null : pick(p); canvas.style.cursor = gazePick ? "crosshair" : id === "move" ? "move" : id ? "grab" : "default"; return; }
       if (e.pointerId !== dragging.pointer) return;
       const dx = p.x - dragging.last.x, dy = p.y - dragging.last.y; dragging.last = p;
+      if (dragging.id === "gaze") { gazeAt(p, true); return; }
       if (dragging.id === "orbit") { view.yaw -= dx * 0.4; view.pitch = clamp(view.pitch + dy * 0.3, -25, 80); render(); return; }
       if (dragging.ik) {
         const target = rayPoint(p, dragging.ik.plane);
@@ -966,7 +972,7 @@ const CamPose = (() => {
       const target = { x: p.x + dragging.offset.x, y: p.y + dragging.offset.y };
       state.cam[id] = M.dragCameraControl(state.cam, id, target, project, controlCenter); changed("cam");
     });
-    const end = e => { if (dragging && e.pointerId === dragging.pointer) { dragging = null; canvas.style.cursor = "default"; render(); } };
+    const end = e => { if (dragging && e.pointerId === dragging.pointer) { const wasGaze = dragging.id === "gaze"; dragging = null; canvas.style.cursor = gazePick ? "crosshair" : "default"; if (wasGaze) renderPanel(); render(); } };
     canvas.addEventListener("pointerup", end); canvas.addEventListener("pointercancel", end); canvas.addEventListener("lostpointercapture", end);
     canvas.addEventListener("wheel", e => { e.preventDefault(); view.dist = clamp(view.dist * (1 + Math.sign(e.deltaY) * 0.08), 1.7, 9); render(); }, { passive: false });
     canvas.addEventListener("webglcontextlost", e => { e.preventDefault(); lost = true; status.hidden = false; status.textContent = ui[lang].context; });

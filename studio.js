@@ -587,13 +587,16 @@ const CamPose = (() => {
       const d = scene3(l);
       root.querySelector(".cps-out-text").textContent = state.tab === "camera" ? d.camera : state.tab === "light" ? d.light : d.pose;
     }
-    function changed(kind, keepPreset = false) { if (kind === "pose" && !keepPreset) cur().preset = null; state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose)); sync(); output(); render(); emit(kind); }
+    function changed(kind, keepPreset = false) { if (kind === "pose" && !keepPreset) cur().preset = null; if (kind === "cam" && !keepPreset) state.camPreset = null; state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose)); sync(); output(); render(); emit(kind); }
     const angle = x => `${Math.round(x)}°`;
     function slider(path, label, min, max, val, hint = "", step = 1, unit = "°") {
       return `<label class="cps-sl"${hint ? ` title="${String(hint).replace(/<[^>]*>/g, "").replace(/"/g, "&quot;")}"` : ""}><span class="cps-sl-top"><span>${label}</span><output>${unit === "m" ? val.toFixed(2) + " m" : unit ? angle(val) : val.toFixed(2)}</output></span>
         <input aria-label="${label}" type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-angle="${path}">${hint ? `<small>${hint}</small>` : ""}</label>`;
     }
+    let lastPanelView = "";
     function renderPanel() {
+      const view = state.tab + "/" + (state.poseTab || "presets");
+      if (view !== lastPanelView) { lastPanelView = view; panel.classList.remove("cps-enter"); void panel.offsetWidth; panel.classList.add("cps-enter"); }
       const t = T[lang], text = ui[lang];
       root.querySelectorAll("[data-tab]").forEach(b => { b.textContent = t[b.dataset.tab] || text[b.dataset.tab]; b.setAttribute("aria-selected", b.dataset.tab === state.tab); b.tabIndex = b.dataset.tab === state.tab ? 0 : -1; });
       root.querySelector("[data-reset]").textContent = t.reset;
@@ -608,13 +611,13 @@ const CamPose = (() => {
       root.querySelector(".cps-out b").textContent = t.output;
       if (!renderer) status.textContent = text.unsupported;
       if (state.tab === "camera") {
-        panel.innerHTML = `<div class="cps-chips"><span>${t.camPresets}</span>${CAM_PRESETS.map((c, i) => `<button type="button" data-campreset="${i}">${c[lang]}</button>`).join("")}</div><div class="cps-focus" role="group" aria-label="${text.focus}"><span>${text.focus}</span>${['head', 'chest', 'whole'].map(f => `<button type="button" data-focus="${f}" aria-pressed="${state.cam.focus === f}">${text[f + 'Target']}</button>`).join('')}</div><div class="cps-sliders">
+        panel.innerHTML = `<div class="cps-chips"><span>${t.camPresets}</span>${CAM_PRESETS.map((c, i) => `<button type="button" data-campreset="${i}" aria-pressed="${state.camPreset === i}">${c[lang]}</button>`).join("")}</div><div class="cps-focus" role="group" aria-label="${text.focus}"><span>${text.focus}</span>${['head', 'chest', 'whole'].map(f => `<button type="button" data-focus="${f}" aria-pressed="${state.cam.focus === f}">${text[f + 'Target']}</button>`).join('')}</div><div class="cps-sliders">
           ${slider("cam.az", t.az, 0, 359, M.wrap360(state.cam.az - state.pose.yaw), t.azHint)}
           ${slider("cam.el", t.el, -60, 85, state.cam.el, t.elHint + ' · ' + text.floorHint + ': ' + Math.ceil(M.minCameraElevation(state.cam.distance, M.cameraTarget(state.cam, M.skeleton(state.pose)))) + '°', 0.1)}
           ${slider("cam.distance", t.dist, 0.2, 8, state.cam.distance, text.distanceHint, 0.01, "m")}</div>`;
       } else if (state.tab === "light") {
         const rel = M.wrap360(state.light.az - state.cam.az);
-        panel.innerHTML = `<div class="cps-chips"><span>${text.lightPresets}</span>${M.LIGHT_PRESETS.map((p, i) => `<button type="button" data-lightpreset="${i}">${p[lang]}</button>`).join("")}</div>
+        panel.innerHTML = `<div class="cps-chips"><span>${text.lightPresets}</span>${M.LIGHT_PRESETS.map((p, i) => `<button type="button" data-lightpreset="${i}" aria-pressed="${lightPresetOn(i)}">${p[lang]}</button>`).join("")}</div>
           <div class="cps-focus" role="group"><span>${text.light}</span><button type="button" data-soft="1" aria-pressed="${state.light.soft}">${text.soft}</button><button type="button" data-soft="0" aria-pressed="${!state.light.soft}">${text.hard}</button></div>
           <div class="cps-sliders">${slider("light.az", text.lightAz, 0, 359, rel, text.lightAzHint)}${slider("light.el", text.lightEl, -20, 89, state.light.el, text.lightElHint)}</div>`;
       } else {
@@ -650,7 +653,14 @@ const CamPose = (() => {
       });
       panel.querySelectorAll('[data-focus]').forEach(b => b.setAttribute('aria-pressed', b.dataset.focus === state.cam.focus));
       panel.querySelectorAll("[data-preset]").forEach(b => b.setAttribute("aria-pressed", cur().preset === b.dataset.preset));
+      panel.querySelectorAll("[data-campreset]").forEach(b => b.setAttribute("aria-pressed", state.camPreset === +b.dataset.campreset));
+      panel.querySelectorAll("[data-lightpreset]").forEach(b => b.setAttribute("aria-pressed", lightPresetOn(+b.dataset.lightpreset)));
       panel.querySelectorAll('[data-seated]').forEach(input => { input.checked = cur().seated; });
+    }
+    // A light preset counts as selected while the light still sits exactly where it put it.
+    function lightPresetOn(i) {
+      const p = M.LIGHT_PRESETS[i], rel = M.wrap360(state.light.az - state.cam.az), d = Math.abs(rel - M.wrap360(p.rel));
+      return Math.min(d, 360 - d) < 0.5 && Math.abs(state.light.el - p.el) < 0.5;
     }
     function selectPart(part) { state.part = part; state.poseTab = "joints"; renderPanel(); render(); }
     root.addEventListener("click", e => {
@@ -683,7 +693,7 @@ const CamPose = (() => {
       } else if (button.dataset.campreset !== undefined) {
         const p = CAM_PRESETS[+button.dataset.campreset]; state.cam = M.normalizeCamera({ ...p.c, az: M.wrap360(p.c.az + state.pose.yaw) });
         if (p.fit) { const J = updateFigure(), box = figureBounds(), rect = insetRect(); state.cam.distance = M.fitCameraDistance(state.cam, J, rect.width / rect.height, { min: box.min.toArray(), max: box.max.toArray() }); }
-        cameraEditorFrame = null; changed("cam"); renderPanel();
+        cameraEditorFrame = null; changed("cam", true); state.camPreset = +button.dataset.campreset; renderPanel();
       } else if (button.dataset.preset) {
         // Keep who it is, where they stand and what they hold; take the preset's joints.
         const old = cur(), next = M.normalizePose({ ...copy(PRESETS.find(p => p.id === button.dataset.preset).pose), preset: button.dataset.preset, body: old.body, props: old.props, x: old.x, z: old.z });

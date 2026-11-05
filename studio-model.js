@@ -613,7 +613,7 @@ const CamPoseModel = (() => {
       dragCam: "Drag the colored handles: green = azimuth, pink = elevation, orange = distance. Drag empty space to orbit the view.", dragPose: "Click a dot on the figure to pick a body part, then drag it; drag empty space to orbit the view.",
       parts: { body: "Body", head: "Head", lArm: "Left arm", rArm: "Right arm", lLeg: "Left leg", rLeg: "Right leg" },
       sliders: { yaw: "Turn", lean: "Lean fwd / back", side: "Side bend", headYaw: "Turn head", headPitch: "Look up / down", headTilt: "Tilt head", a: "Raise to side", b: "Raise forward", c: "Bend elbow", d: "Twist inward", legA: "Lift forward", legB: "Spread out", legC: "Bend knee" },
-      seated: "Sitting (adds a stool)", presets: "Common poses", camPresets: "Common angles", output: "Prompt" }
+      seated: "Sitting (adds a stool)", presets: "Common poses", camPresets: "Angles", output: "Prompt" }
   };
   const CAM_PRESETS = [
     { zh: '正面平视', en: 'Front, eye level', c: { az: 0, el: 0, distance: 2.8, focus: 'chest' } },

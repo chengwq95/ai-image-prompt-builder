@@ -17,18 +17,18 @@ const CamPose = (() => {
   const ui = {
     en: {
       editor: "Studio view · drag background to orbit", actual: "CAMERA VIEW", front: "Front", side: "Right", back: "Back", frame: "Fit scene",
-      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror this joint", flip: "Swap left / right", joints: "18 parts · 54 angle controls", pagePoses: "Poses", stool: "On a stool", gaze: "Gaze", gazeCamera: "Camera", gazeOther: "Other", gazePick: "Pointer", gazePicking: "Drag in 3D…", gazeAhead: "Ahead", lens: "Lens", lensAuto: "Auto", facing: "Facing", faceFront: "Front", faceRight: "Right side", faceBack: "Back", faceLeft: "Left side", turnLabel: "Turn the figure", turnHint: "Or drag the dot on the orange ring at the feet; drag the ring itself to move the figure", pageFigure: "Body type", pageJoints: "Joints", mapLeft: "L", mapRight: "R",
+      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror joint", flip: "Swap sides", joints: "18 parts · 54 angle controls", pagePoses: "Poses", stool: "On a stool", gaze: "Gaze", gazeCamera: "Camera", gazeOther: "Other", gazePick: "Pointer", gazePicking: "Drag in 3D…", gazeAhead: "Ahead", lens: "Lens (mm)", lensAuto: "Auto", facing: "Facing", faceFront: "Front", faceRight: "Right side", faceBack: "Back", faceLeft: "Left side", turnLabel: "Turn the figure", turnHint: "Or drag the dot on the orange ring at the feet; drag the ring itself to move the figure", pageFigure: "Body type", pageJoints: "Joints", mapLeft: "L", mapRight: "R",
       fine: "Select a joint or body surface. Drag to pose; use sliders or arrow keys for precise angles.",
       cameraHelp: "Yellow is the actual camera: drag it closer, through the pink reference arc. Green: orbit · pink: elevation. The target marker shows where the camera aims.",
       unsupported: "This browser could not start 3D. Enable WebGL or try another browser. Angle controls and prompt output still work.",
-      context: "3D paused. Restoring the graphics context…", restored: "3D restored", both: "Both sides", left: "Left to right", right: "Right to left", volume: "3D form", drawing: "Study lines", finish: "Mannequin finish", finish_clay: "Clay", finish_wood: "Wood", finish_skin: "Skin", focus: "Look at", headTarget: "Head", chestTarget: "Chest", wholeTarget: "Frame whole body", target: "Aim", distanceHint: "Actual camera distance in metres · 0.20–15.00 m", floorHint: "Lowest angle at this distance",
-      light: "Light", lightHelp: "Drag the sun to move the key light. Words describe the light as seen from the camera.", lightAz: "Light direction", lightAzHint: "0° = from the camera · 90° = from the frame's left · 180° = from behind", lightEl: "Light height", lightElHint: "low = long shadows · high = top light", soft: "Soft light", hard: "Hard light", lightPresets: "Common lighting",
+      context: "3D paused. Restoring the graphics context…", restored: "3D restored", both: "Both sides", left: "Left to right", right: "Right to left", volume: "3D form", drawing: "Study lines", finish: "Mannequin finish", finish_clay: "Clay", finish_wood: "Wood", finish_skin: "Skin", focus: "Look at", headTarget: "Head", chestTarget: "Chest", wholeTarget: "Whole body", target: "Aim", distanceHint: "Actual camera distance in metres · 0.20–15.00 m", floorHint: "Lowest angle at this distance",
+      light: "Light", lightHelp: "Drag the sun to move the key light. Words describe the light as seen from the camera.", lightAz: "Light direction", lightAzHint: "0° = from the camera · 90° = from the frame's left · 180° = from behind", lightEl: "Light height", lightElHint: "low = long shadows · high = top light", soft: "Soft light", hard: "Hard light", lightPresets: "Lighting",
       body: "Body type", props: "Props", people: "Models", personA: "A", personB: "B", addPerson: "+ Model", removePerson: "Remove B", model: "Model", posX: "Position left / right", posZ: "Position front / back", spacing: "Distance between models", spacingHint: "Metres between body centres · moves A and B equally", regrip: "Reset grip",
       download: "Download camera view", downloaded: "Saved", ikHint: "Drag a wrist, hand or ankle: the whole arm or leg follows."
     },
     zh: {
       editor: "工作视图 · 拖动空白处旋转", actual: "实际镜头画面", front: "正面", side: "右侧", back: "背面", frame: "查看整个场景",
-      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制", pagePoses: "姿势", stool: "坐凳子", gaze: "视线", gazeCamera: "看镜头", gazeOther: "看对方", gazePick: "跟着鼠标", gazePicking: "在画面上拖动…", gazeAhead: "正前方", lens: "镜头", lensAuto: "自动", facing: "人物朝向", faceFront: "正面", faceRight: "右侧", faceBack: "背面", faceLeft: "左侧", turnLabel: "旋转人物", turnHint: "也可以拖动脚下橙色圆圈上的圆点；拖动圆圈本身可以移动人物", pageFigure: "体型", pageJoints: "关节", mapLeft: "左", mapRight: "右",
+      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制", pagePoses: "姿势", stool: "坐凳子", gaze: "视线", gazeCamera: "看镜头", gazeOther: "看对方", gazePick: "跟着鼠标", gazePicking: "在画面上拖动…", gazeAhead: "正前方", lens: "镜头 (mm)", lensAuto: "自动", facing: "人物朝向", faceFront: "正面", faceRight: "右侧", faceBack: "背面", faceLeft: "左侧", turnLabel: "旋转人物", turnHint: "也可以拖动脚下橙色圆圈上的圆点；拖动圆圈本身可以移动人物", pageFigure: "体型", pageJoints: "关节", mapLeft: "左", mapRight: "右",
       fine: "点选关节点或人物表面，拖动调整姿势；滑块和方向键可精确调角度。",
       cameraHelp: "黄色就是真实相机，可穿过粉色参考弧继续靠近。绿色调方位，粉色调仰俯；瞄准点标出实际朝向。",
       unsupported: "浏览器无法启动 3D，请启用 WebGL 或换一个浏览器。角度控制和提示词仍可使用。",
@@ -681,14 +681,14 @@ const CamPose = (() => {
       root.querySelector(".cps-out b").textContent = t.output;
       if (!renderer) status.textContent = text.unsupported;
       if (state.tab === "camera") {
-        panel.innerHTML = `<div class="cps-chips"><span>${t.camPresets}</span>${CAM_PRESETS.map((c, i) => `<button type="button" data-campreset="${i}" aria-pressed="${state.camPreset === i}">${c[lang]}</button>`).join("")}</div><div class="cps-focus" role="group" aria-label="${text.focus}"><span>${text.focus}</span>${['head', 'chest', 'whole'].map(f => `<button type="button" data-focus="${f}" aria-pressed="${state.cam.focus === f}">${text[f + 'Target']}</button>`).join('')}</div><div class="cps-focus" role="group" aria-label="${text.lens}"><span>${text.lens}</span>${[0, ...M.LENSES].map(l => `<button type="button" data-lens="${l}" aria-pressed="${(state.cam.lens || 0) === l}">${l ? l + "mm" : text.lensAuto}</button>`).join("")}</div><div class="cps-sliders">
+        panel.innerHTML = `<div class="cps-chips"><span>${t.camPresets}</span>${CAM_PRESETS.map((c, i) => `<button type="button" data-campreset="${i}" aria-pressed="${state.camPreset === i}">${c[lang]}</button>`).join("")}</div><div class="cps-focus" role="group" aria-label="${text.focus}"><span>${text.focus}</span><div class="cps-seg">${['head', 'chest', 'whole'].map(f => `<button type="button" data-focus="${f}" aria-pressed="${state.cam.focus === f}">${text[f + 'Target']}</button>`).join('')}</div></div><div class="cps-focus cps-lens" role="group" aria-label="${text.lens}"><span>${text.lens}</span><div class="cps-seg">${[0, ...M.LENSES].map(l => `<button type="button" data-lens="${l}" aria-pressed="${(state.cam.lens || 0) === l}" title="${l ? l + " mm" : text.lensAuto}">${l || text.lensAuto}</button>`).join("")}</div></div><div class="cps-sliders">
           ${slider("cam.az", t.az, 0, 359, M.wrap360(state.cam.az - state.pose.yaw), t.azHint)}
           ${slider("cam.el", t.el, -60, 85, state.cam.el, t.elHint + ' · ' + text.floorHint + ': ' + Math.ceil(M.minCameraElevation(state.cam.distance, M.cameraTarget(state.cam, M.skeleton(state.pose)))) + '°', 0.1)}
           ${slider("cam.distance", t.dist, 0.2, 15, state.cam.distance, text.distanceHint, 0.01, "m")}</div>`;
       } else if (state.tab === "light") {
         const rel = M.wrap360(state.light.az - state.cam.az);
         panel.innerHTML = `<div class="cps-chips"><span>${text.lightPresets}</span>${M.LIGHT_PRESETS.map((p, i) => `<button type="button" data-lightpreset="${i}" aria-pressed="${lightPresetOn(i)}">${p[lang]}</button>`).join("")}</div>
-          <div class="cps-focus" role="group"><span>${text.light}</span><button type="button" data-soft="1" aria-pressed="${state.light.soft}">${text.soft}</button><button type="button" data-soft="0" aria-pressed="${!state.light.soft}">${text.hard}</button></div>
+          <div class="cps-focus" role="group"><span>${text.light}</span><div class="cps-seg"><button type="button" data-soft="1" aria-pressed="${state.light.soft}">${text.soft}</button><button type="button" data-soft="0" aria-pressed="${!state.light.soft}">${text.hard}</button></div></div>
           <div class="cps-sliders">${slider("light.az", text.lightAz, 0, 359, rel, text.lightAzHint)}${slider("light.el", text.lightEl, -20, 89, state.light.el, text.lightElHint)}</div>`;
       } else {
         const config = PARTS[state.part], pose = cur();
@@ -716,6 +716,12 @@ const CamPose = (() => {
         const gazeRow = `<div class="cps-focus cps-gaze" role="group" aria-label="${text.gaze}"><span>${text.gaze}</span><div class="cps-seg">${gazeButtons()}</div></div>`;
         panel.innerHTML = `${people}${gazeRow}${subtabs}${body}`;
       }
+      // Lay every labelled option row out as label column + options, so rows align on every page.
+      panel.querySelectorAll(".cps-focus, .cps-chips").forEach(row => {
+        const label = row.querySelector(":scope > span"); if (!label || row.querySelector(":scope > .cps-opts")) return;
+        const opts = document.createElement("div"); opts.className = "cps-opts";
+        [...row.childNodes].filter(n => n !== label).forEach(n => opts.append(n)); row.append(opts); row.classList.add("cps-row");
+      });
       output();
     }
     function sync() {

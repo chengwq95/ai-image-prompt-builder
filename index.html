@@ -552,6 +552,63 @@ body.vf-mini{padding-bottom:84px}
 .hero-3d{display:inline-flex;align-items:center;gap:8px;margin-top:18px;padding:8px 14px 8px 10px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--text);text-decoration:none;font-size:13px;box-shadow:var(--shadow)}
 .hero-3d b{font-size:10.5px;letter-spacing:.08em;padding:3px 7px;border-radius:99px;background:var(--text);color:var(--on-text)}
 .hero-3d:hover{border-color:var(--line-strong)}
+
+/* ================= 3D studio design system =================
+   One control size, one selected state, one label column, one spacing rhythm. */
+:root{--ctl:30px;--ctl-fs:12.5px}
+.cps{--label:86px}
+/* Rows: a fixed label column and wrapping options, aligned on every page. */
+.cps .cps-row{display:grid;grid-template-columns:var(--label) minmax(0,1fr);gap:8px;align-items:start}
+.cps .cps-row>span{margin:0;font-size:12px;line-height:var(--ctl);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cps .cps-opts{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+/* Buttons: every option, tool and action in the studio shares one shape. */
+.cps .cps-opts>button,.cps .cps-presets>button,.cps .cps-joint-tools button,.cps .cps-joint-heading button,.cps .cps-reset,.cps .cps-view-tools>div:not(.cps-render-modes)>button,.cps .cps-view-tools .cps-download,#sceneBar button{
+  height:var(--ctl);padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  border:1px solid var(--line);border-radius:99px;background:var(--surface);color:var(--text);
+  font-size:var(--ctl-fs);font-weight:500;line-height:1;white-space:nowrap;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.cps .cps-opts>button:hover,.cps .cps-presets>button:hover,.cps .cps-joint-tools button:hover,.cps .cps-joint-heading button:hover,.cps .cps-reset:hover,.cps .cps-view-tools>div>button:hover,#sceneBar button:hover{border-color:var(--line-strong)}
+.cps .cps-opts>button[aria-pressed="true"],.cps .cps-presets>button[aria-pressed="true"],.cps .cps-view-tools>div>button[aria-pressed="true"]{background:var(--text);color:var(--on-text);border-color:var(--text)}
+.cps .cps-joint-tools button:disabled,.cps .cps-joint-heading button:disabled{opacity:.4;cursor:default}
+.cps .cps-view-tools .cps-download{background:var(--text);color:var(--on-text);border-color:var(--text);font-weight:600}
+/* Segmented groups (render mode, finish, gaze, facing): same outer height as a button. */
+.cps .cps-seg,.cps .cps-view-tools .cps-render-modes{height:var(--ctl);box-sizing:border-box;display:inline-flex;align-items:center;gap:0;padding:2px;border:1px solid var(--line);border-radius:99px;background:var(--surface-2)}
+.cps .cps-seg button,.cps .cps-view-tools .cps-render-modes button{height:calc(var(--ctl) - 6px);padding:0 11px;border:none;border-radius:99px;background:transparent;color:var(--text);font-size:12px;line-height:1;white-space:nowrap;cursor:pointer}
+.cps .cps-seg button[aria-pressed="true"],.cps .cps-view-tools .cps-render-modes button[aria-pressed="true"]{background:var(--text);color:var(--on-text)}
+/* Tabs and pages. */
+.cps .cps-tabs button{height:32px;padding:0 16px}
+.cps .cps-subtabs{border-radius:99px;padding:3px}
+.cps .cps-subtabs button{height:28px;padding:0 6px;border-radius:99px}
+/* Panel rhythm: 14px between blocks; the header (models + gaze) is set off by one rule. */
+.cps .cps-panel{gap:14px}
+.cps .cps-people{padding:0;border:0}
+.cps .cps-gaze{padding-bottom:14px;border-bottom:1px solid var(--line)}
+/* Slider boxes. */
+.cps .cps-sliders{padding:14px;gap:14px;border-radius:14px}
+.cps .cps-turn{padding:12px 14px;gap:8px}
+.cps .cps-turn .cps-seg{top:12px;left:14px}
+.cps .cps-turn .cps-sl-top{min-height:var(--ctl)}
+/* Pose presets: an even grid of the same buttons. */
+.cps .cps-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.cps .cps-presets>button{padding:0 8px;overflow:hidden;text-overflow:ellipsis}
+.cps .cps-presets .cps-stool{height:var(--ctl);box-sizing:border-box;justify-content:center;gap:6px;margin:0;border:1px dashed var(--line-strong);border-radius:99px;font-size:var(--ctl-fs);color:var(--muted)}
+/* Joints page. */
+.cps .cps-joint-heading strong{font-size:13.5px;font-weight:600}
+.cps .cps-joint-edit{gap:12px}
+/* Prompt box and scene bar: breathing room inside the card. */
+.cps .cps-out{padding:12px 16px;border-radius:14px}
+#sceneBar{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);gap:8px}
+#sceneBar>span{font-size:12px;color:var(--muted);margin-right:4px}
+#sceneBar .cps-saved{display:inline-flex;align-items:center;height:var(--ctl);box-sizing:border-box;border:1px solid var(--line);border-radius:99px;background:var(--surface);overflow:hidden}
+#sceneBar .cps-saved button{height:100%;border:0;border-radius:0;background:transparent}
+#sceneBar .cps-saved button:first-child{padding:0 6px 0 12px}
+#sceneBar .cps-saved button:last-child{padding:0 10px 0 6px;color:var(--faint);font-size:14px}
+#sceneBar .cps-saved button:last-child:hover{color:var(--text)}
+#sceneBar .cps-saved:hover{border-color:var(--line-strong)}
+.studio-card{padding:20px 20px 22px}
+.cps .cps-opts:has(> [data-campreset]){display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.cps .cps-opts:has(> [data-lightpreset]){display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.cps .cps-opts:has(> [data-campreset])>button,.cps .cps-opts:has(> [data-lightpreset])>button{padding:0 8px;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:640px){.studio-card{padding:14px 14px 16px}.cps{--label:64px}}
 </style>
 </head>
 <body>
@@ -725,10 +782,10 @@ body.vf-mini{padding-bottom:84px}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="vendor/three.min.js"></script>
-<script src="studio-model.js?v=compact-1"></script>
-<script src="studio-body-data.js?v=compact-1"></script>
-<script src="studio-surface.js?v=compact-1"></script>
-<script src="studio.js?v=compact-1"></script>
+<script src="studio-model.js?v=design-2"></script>
+<script src="studio-body-data.js?v=design-2"></script>
+<script src="studio-surface.js?v=design-2"></script>
+<script src="studio.js?v=design-2"></script>
 <script>
 /* ================= 数据 ================= */
 const CATS = ["time","subject","scene","style"];

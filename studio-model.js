@@ -234,12 +234,67 @@ const CamPoseModel = (() => {
     }
     Object.assign(A, best);
   }
+  // How people hold each prop when the arm was simply resting: where the prop sits in front of the
+  // body (upper-body frame from the chest, metres at scale 1, right hand on -x) and which way it faces.
+  // Phone and book are tipped toward the eyes (screen / cover facing the face); cup and umbrella upright.
+  const HOLDS = {
+    phone: { at: [-0.07, -0.12, 0.31], facing: [1, 0, 0, 0, 0.7071, -0.7071, 0, 0.7071, 0.7071] },
+    book: { at: [-0.04, -0.2, 0.33], facing: [1, 0, 0, 0, 0.7071, -0.7071, 0, 0.7071, 0.7071], spins: [0, -30, 30, -60, 60, -90, 90] },
+    cup: { at: [-0.15, -0.21, 0.27], up: true },
+    umbrella: { at: [-0.19, -0.27, 0.22], up: true }
+  };
+  function naturalHold(p, prop) {
+    const H = HOLDS[prop]; if (!H) return;
+    const A = p.rArm, J0 = skeleton(p), [x, y, z] = PROP_ATTACHMENTS[prop].angles, R = chain(rx(x), ry(y), rz(z));
+    const Rt = [R[0], R[3], R[6], R[1], R[4], R[7], R[2], R[5], R[8]];
+    const upWorld = mv(J0.ubM, [0, 1, 0]), B0 = measurements(p.body), reachScale = (B0.upper + B0.fore) / 0.57;
+    let want = null, handTarget = null;
+    // Where it sits scales with arm length, so a child does not hold things at a straight arm.
+    const at = [H.at[0], H.at[1], H.at[2] * reachScale];
+    let goal = add(J0.chest, mv(J0.ubM, mul(at, J0.scale)));
+    const orient = () => {
+      if (handTarget) { matchHand(p, 'r', handTarget); return; }
+      // Upright props: try a few wrist turns and keep the one that stands the prop up best.
+      let best = null, err = Infinity;
+      for (const turn of [-90, -45, 0, 45, 90, 180]) {
+        const h = chain(J0.ubM, ry(turn), Rt); matchHand(p, 'r', h);
+        const F = propFrame(p, prop), e = 1 - dot([F.matrix[1], F.matrix[4], F.matrix[7]], upWorld);
+        if (e < err) { err = e; best = { ...A }; }
+      }
+      Object.assign(A, best);
+    };
+    const score = q => {
+      Object.assign(A, q); orient();
+      const F = propFrame(p, prop), miss = Math.hypot(...sub(F.position, goal)) / J0.scale;
+      const facing = want ? F.matrix.reduce((sum, v, i) => sum + (v - want[i]) ** 2, 0) : 1 - dot([F.matrix[1], F.matrix[4], F.matrix[7]], upWorld);
+      return miss * 1000 + facing * 40 + Math.abs(q.a - 12) * 0.03 + Math.abs(q.d) * 0.01;
+    };
+    let best = null, cost = Infinity, bestSpin = 0;
+    // A book may turn a little in its own plane if that lets the wrist hold it more naturally.
+    for (const spin of H.spins || [0]) {
+      if (H.facing) { want = chain(J0.ubM, H.facing, rz(spin)); handTarget = chain(want, Rt); }
+      for (const a of [0, 15, 30]) for (const b of [20, 40, 60, 80]) for (const c of [70, 90, 110, 130]) for (const d of [-20, 0, 20, 40]) {
+        const q = { a, b, c, d }, v = score(q) + Math.abs(spin) * 0.15; if (v < cost) { cost = v; best = q; bestSpin = spin; }
+      }
+    }
+    if (H.facing) { want = chain(J0.ubM, H.facing, rz(bestSpin)); handTarget = chain(want, Rt); }
+    const refine = () => {
+      cost = score(best);
+      for (const step of [6, 3, 1]) for (let pass = 0; pass < 3; pass++) for (const k of ['a', 'b', 'c', 'd']) for (const dir of [-1, 1]) {
+        const q = { ...best, [k]: clamp(best[k] + dir * step, k === 'c' ? 0 : -35, k === 'c' ? 150 : 180) }, v = score(q); if (v < cost) { cost = v; best = q; }
+      }
+      score(best);
+    };
+    // Move the prop forward a little at a time until neither hand nor prop touches the body.
+    for (let i = 0; i < 8; i++) { refine(); if (armPenetration(p, 'r') === 0) break; goal = add(goal, mul(mv(J0.ubM, [0, 0, 1]), 0.015 * J0.scale)); }
+  }
   function holdProp(pose, prop) {
     const p = normalizePose(pose), grip = GRIPS[prop];
     if (!grip) return p;
     p.props = [...p.props.filter(k => !PROPS[k].hand), prop];
     const A = p.rArm;
-    if (A.a < 25 && A.b < 15 && A.c < 30) Object.assign(A, { a: 10, b: 35, c: 95, d: 0, e: 0 });
+    const resting = A.a < 25 && A.b < 15 && A.c < 30;
+    if (resting) Object.assign(A, { a: 10, b: 35, c: 95, d: 0, e: 0 });
     // Keep the arm's action, and solve a comfortable wrist orientation for this prop.
     const J = skeleton(p), [x, y, z] = PROP_ATTACHMENTS[prop].angles;
     const up = mv(chain(rx(x), ry(y), rz(z)), [0, 1, 0]);
@@ -264,6 +319,7 @@ const CamPoseModel = (() => {
     [A.wristPitch, A.wristYaw, A.wristRoll, A.e] = best; A.spread = 2;
     p.gripVersion = 1;
     ['thumb', 'index', 'middle', 'ring', 'pinky'].forEach((name, i) => { A[name] = grip.curls[i]; });
+    if (resting && !(prop === 'phone' && p.preset === 'phone')) naturalHold(p, prop);
     if (prop === 'phone' && p.preset === 'phone') {
       const head = skeleton(p), desired = chain(head.headM, ry(-90)), hand = chain(desired, rx(180));
       const centre = add(head.head, mv(head.headM, [-0.13 * head.headSize, -0.045 * head.headSize, 0.01 * head.headSize]));

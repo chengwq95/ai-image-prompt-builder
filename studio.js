@@ -420,6 +420,19 @@ const CamPose = (() => {
         const points = Object.fromEntries(Object.entries(PARTS).map(([name, part]) => {
           const q = V(J[part.joint]).project(mapCamera); return [name, [(q.x + 1) * 50, (1 - q.y) * 50]];
         }));
+        // Some joints nearly coincide on the map (neck / chest, pelvis / hips, wrist / fingers). Push
+        // the dots apart until each 24 px button is clear of the others (map is about 118 x 236 px).
+        const px = [1.18, 2.36], gap = 23, names = Object.keys(points);
+        for (let it = 0; it < 60; it++) {
+          let moved = false;
+          for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) {
+            const a = points[names[i]], b = points[names[j]], dx = (b[0] - a[0]) * px[0], dy = (b[1] - a[1]) * px[1], d = Math.hypot(dx, dy);
+            if (d >= gap) continue;
+            const ux = d > 0.01 ? dx / d : 0, uy = d > 0.01 ? dy / d : 1, push = (gap - d) / 2 + 0.2;
+            a[0] -= ux * push / px[0]; a[1] -= uy * push / px[1]; b[0] += ux * push / px[0]; b[1] += uy * push / px[1]; moved = true;
+          }
+          if (!moved) break;
+        }
         bodyMapCache.set(type, { image, points });
       }
       const { image, points } = bodyMapCache.get(type);
@@ -729,7 +742,7 @@ const CamPose = (() => {
     function selectPart(part) { state.part = part; state.poseTab = "joints"; renderPanel(); render(); }
     root.addEventListener("click", e => {
       const button = e.target.closest("button"); if (!button) return;
-      if (button.dataset.tab) { state.tab = button.dataset.tab; cameraEditorFrame = null; renderPanel(); render(); }
+      if (button.dataset.tab) { state.tab = button.dataset.tab; if (state.tab !== "pose") gazePick = false; cameraEditorFrame = null; renderPanel(); render(); }
       else if (button.dataset.subtab) { state.poseTab = button.dataset.subtab; renderPanel(); render(); }
       else if (button.hasAttribute("data-reset")) {
         if (state.tab === "camera") state.cam = M.normalizeCamera({ az: M.wrap360(state.pose.yaw + 45), el: 10, distance: 2.8, focus: "chest" });
@@ -755,7 +768,10 @@ const CamPose = (() => {
         }
         cameraEditorFrame = null; changed('cam'); renderPanel();
       } else if (button.dataset.campreset !== undefined) {
-        const p = CAM_PRESETS[+button.dataset.campreset]; state.cam = M.normalizeCamera({ ...p.c, az: M.wrap360(p.c.az + state.pose.yaw) });
+        // Keep the chosen lens: the preset's distance is for the default view, so scale it to frame the same.
+        const p = CAM_PRESETS[+button.dataset.campreset], lens = state.cam.lens || 0;
+        const scale = lens ? Math.tan(M.camFov({}) * D2R / 2) / Math.tan(M.camFov({ lens }) * D2R / 2) * 1.03 : 1;
+        state.cam = M.normalizeCamera({ ...p.c, lens, distance: clamp(p.c.distance * scale, 0.2, 15), az: M.wrap360(p.c.az + state.pose.yaw) });
         if (p.fit) { const J = updateFigure(), box = figureBounds(), rect = insetRect(); state.cam.distance = M.fitCameraDistance(state.cam, J, rect.width / rect.height, { min: box.min.toArray(), max: box.max.toArray() }); }
         cameraEditorFrame = null; changed("cam", true); state.camPreset = +button.dataset.campreset; renderPanel();
       } else if (button.dataset.preset) {
@@ -835,7 +851,7 @@ const CamPose = (() => {
     root.querySelector(".cps-tabs").addEventListener("keydown", e => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
       const tabs = ["camera", "pose", "light"], i = tabs.indexOf(state.tab);
-      e.preventDefault(); state.tab = e.key === "Home" ? "camera" : e.key === "End" ? "light" : tabs[(i + (e.key === "ArrowLeft" ? 2 : 1)) % 3]; cameraEditorFrame = null;
+      e.preventDefault(); state.tab = e.key === "Home" ? "camera" : e.key === "End" ? "light" : tabs[(i + (e.key === "ArrowLeft" ? 2 : 1)) % 3]; if (state.tab !== "pose") gazePick = false; cameraEditorFrame = null;
       renderPanel(); root.querySelector(`[data-tab="${state.tab}"]`).focus(); render();
     });
     const point = e => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
@@ -880,7 +896,7 @@ const CamPose = (() => {
     }
     canvas.addEventListener("pointerdown", e => {
       if (!renderer || lost || e.button !== 0 || dragging) return;
-      if (gazePick) {
+      if (gazePick && state.tab === "pose") {
         // Press and drag: the head follows the pointer until release; the mode stays on for more.
         const p = point(e); dragging = { id: "gaze", pointer: e.pointerId, last: p };
         canvas.setPointerCapture(e.pointerId); gazeAt(p, false); e.preventDefault(); return;
@@ -928,7 +944,7 @@ const CamPose = (() => {
     }
     canvas.addEventListener("pointermove", e => {
       const p = point(e);
-      if (!dragging) { const id = gazePick ? null : pick(p); canvas.style.cursor = gazePick ? "crosshair" : id === "move" ? "move" : id ? "grab" : "default"; return; }
+      if (!dragging) { const picking = gazePick && state.tab === "pose", id = picking ? null : pick(p); canvas.style.cursor = picking ? "crosshair" : id === "move" ? "move" : id ? "grab" : "default"; return; }
       if (e.pointerId !== dragging.pointer) return;
       const dx = p.x - dragging.last.x, dy = p.y - dragging.last.y; dragging.last = p;
       if (dragging.id === "gaze") { gazeAt(p, true); return; }

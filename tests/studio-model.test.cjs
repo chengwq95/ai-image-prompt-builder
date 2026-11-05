@@ -282,3 +282,23 @@ test('small joint edits stop at the last clear angle without jumping other joint
   assert.equal(M.armPenetration(requested, 'r'), 0); assert.deepEqual(requested.lArm, previous.lArm);
   for (const key of Object.keys(before)) assert.ok(requested.rArm[key] >= Math.min(before[key], previous.rArm[key]) - 1e-9 && requested.rArm[key] <= Math.max(before[key], previous.rArm[key]) + 1e-9, key);
 });
+
+test('gaze points the face at a target and stays in a natural range', () => {
+  for (const target of [[1, 1.6, 2], [-1, 1.6, 2], [0, 0, 1], [0, 3, 1], [0, 1.6, -3]]) {
+    const p = M.lookAt(M.normalizePose({}), target), J = M.skeleton(p);
+    assert.ok(Math.abs(p.neckYaw - p.headYaw) <= 75.5 && Math.abs(p.neckPitch + p.headPitch) <= 35.5, `gaze too far for ${target}`);
+    assert.equal(p.neckTilt, 0); assert.equal(p.headTilt, 0);
+    const reachable = target[2] > 0 && Math.abs(target[1] - J.head[1]) < 1;
+    if (reachable) assert.ok(M.dot(J.headForward, M.norm(M.sub(target, J.head))) > 0.95, `not facing ${target}`);
+    // Too steep (the floor right in front, or far overhead): the head stops at the comfortable limit.
+    else if (target[2] > 0) assert.ok(Math.abs(Math.abs(p.neckPitch + p.headPitch) - 35) <= 1, `should stop at the pitch limit for ${target}`);
+  }
+});
+
+test('lens choice narrows the view and names the lens in the prompt', () => {
+  assert.equal(M.normalizeCamera({ lens: 85 }).lens, 85);
+  assert.equal(M.normalizeCamera({ lens: 77 }).lens, 0);
+  assert.ok(M.camFov({ lens: 135 }) < M.camFov({ lens: 50 }) && M.camFov({ lens: 50 }) < M.camFov({ lens: 24 }));
+  assert.match(M.describeCamera({ az: 0, el: 0, distance: 8, lens: 85 }, 'en'), /85mm portrait lens/);
+  assert.doesNotMatch(M.describeCamera({ az: 0, el: 0, distance: 3 }, 'en'), /mm/);
+});

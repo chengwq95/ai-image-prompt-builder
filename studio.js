@@ -523,7 +523,7 @@ const CamPose = (() => {
       if (preview.open) {
         helper.visible = false; grid.visible = false;
         for (const m of meshes) m.material = m.userData.original;
-        renderer.setScissorTest(false); renderer.setViewport(0, 0, previewWidth, previewHeight); renderer.render(scene, shot);
+        fogFor(state.cam.distance); renderer.setScissorTest(false); renderer.setViewport(0, 0, previewWidth, previewHeight); renderer.render(scene, shot);
         const dpr = renderer.getPixelRatio();
         previewCtx.drawImage(canvas, 0, (height - previewHeight) * dpr, previewWidth * dpr, previewHeight * dpr, 0, 0, inset.width, inset.height);
       }
@@ -538,7 +538,7 @@ const CamPose = (() => {
       }
       for (const m of meshes) m.material = state.tab === "pose" && m.userData.figure === state.editing && m.userData.part === state.part && (m.userData.original === skin || m.userData.original === skin2) ? selected : m.userData.original;
       grid.visible = true;
-      renderer.setScissorTest(false); renderer.setViewport(0, 0, width, height); renderer.render(scene, editorCamera);
+      fogFor(editorDistance); renderer.setScissorTest(false); renderer.setViewport(0, 0, width, height); renderer.render(scene, editorCamera);
       ctx.clearRect(0, 0, width, height); handles = [];
       if (state.tab === "camera") {
         handle(controlPoint('az'), "az", "#43dbb3", 8);
@@ -604,6 +604,9 @@ const CamPose = (() => {
       for (const m of meshes) m.material = m.userData.original;
     }
     function render() { if (!scheduled) scheduled = requestAnimationFrame(renderNow); }
+    // The fog fades the distant floor; it starts behind the figure for whichever camera is drawing,
+    // so a far-away telephoto camera (or the editor framing it) never fogs the figure out.
+    const fogFor = distance => { scene.fog.near = Math.max(6, distance + 2); scene.fog.far = Math.max(22, distance + 16); };
     const turnCenter = J => [J.pelvis[0], 0, J.pelvis[2]];
     const wrap180 = d => ((d + 180) % 360 + 360) % 360 - 180;
     /** Renders the actual camera view at full size and returns a PNG data URL. */
@@ -615,7 +618,7 @@ const CamPose = (() => {
       for (const m of meshes) m.material = m.userData.original;
       renderer.setPixelRatio(1); renderer.setSize(W, H, false); renderer.setScissorTest(false); renderer.setViewport(0, 0, W, H);
       shot.aspect = W / H; shot.fov = spec.fov; shot.position.copy(V(spec.pos)); shot.lookAt(V(spec.target)); shot.updateProjectionMatrix();
-      renderer.render(scene, shot);
+      fogFor(state.cam.distance); renderer.render(scene, shot);
       const url = canvas.toDataURL("image/png");
       renderer.setPixelRatio(prevRatio); renderer.setSize(width, height, false); render();
       return url;

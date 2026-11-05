@@ -53,6 +53,8 @@ const CamPose = (() => {
     const cur = () => (state.editing === "b" && state.second ? state.pose2 : state.pose);
     let view = { yaw: 25, pitch: 12, dist: 3.8 };
     let presetGlide = 0, ringPts = [], gazePick = false;
+    // Where each figure is looking: null (free), "camera", "other", "ahead" or { point } — camera / other keep following.
+    const gaze = { a: null, b: null }, gazeCache = { a: "", b: "" };
     let width = 0, height = 0, handles = [], dragging = null, scheduled = 0, lost = false, drawing = false;
     let cameraEditorFrame = null, controlCenter = [0, 1, 0];
     root.classList.add("cps");
@@ -253,7 +255,29 @@ const CamPose = (() => {
       if (fig.poseKey !== requested) { sync(); output(); }
       return J;
     }
+    function gazeButtons() {
+      const text = ui[lang], mode = gaze[state.editing === "b" && state.second ? "b" : "a"];
+      const on = k => k === "pick" ? gazePick || (mode && typeof mode === "object") : mode === k;
+      return [["camera", text.gazeCamera], ...(state.second ? [["other", text.gazeOther]] : []), ["pick", gazePick ? text.gazePicking : text.gazePick], ["ahead", text.gazeAhead]]
+        .map(([k, label]) => `<button type="button" data-gaze="${k}" aria-pressed="${!!on(k)}">${label}</button>`).join("");
+    }
+    function aimGaze() {
+      for (const id of state.second ? ["a", "b"] : ["a"]) {
+        const mode = gaze[id]; if (!mode || mode === "ahead") continue;
+        const pose = id === "b" ? state.pose2 : state.pose, other = id === "b" ? state.pose : state.pose2;
+        const target = mode === "camera" ? M.shotCamera(state.cam, M.skeleton(state.pose)).pos : mode === "other" ? (state.second ? M.skeleton(other).head : null) : mode.point;
+        if (!target) continue;
+        const { neckYaw, headYaw, neckPitch, headPitch, neckTilt, headTilt, ...rest } = pose;
+        const key = JSON.stringify([target.map(v => Math.round(v * 200)), rest]);
+        if (key === gazeCache[id]) continue;
+        const before = [pose.neckYaw, pose.headYaw, pose.neckPitch, pose.headPitch].join();
+        M.lookAt(pose, target); gazeCache[id] = key;
+        // The head now differs from the preset, so describe the actual pose.
+        if ([pose.neckYaw, pose.headYaw, pose.neckPitch, pose.headPitch].join() !== before) pose.preset = null;
+      }
+    }
     function updateFigure() {
+      aimGaze();
       const J = poseFigure(figA, state.pose, state.second ? [M.skeleton(state.pose2)] : []);
       if (state.second) { if (figB.rig.parent !== cast) cast.add(figB.rig); poseFigure(figB, state.pose2, [J]); }
       else if (figB.rig.parent === cast) cast.remove(figB.rig);
@@ -617,7 +641,7 @@ const CamPose = (() => {
       const d = scene3(l);
       root.querySelector(".cps-out-text").textContent = state.tab === "camera" ? d.camera : state.tab === "light" ? d.light : d.pose;
     }
-    function changed(kind, keepPreset = false) { if (kind === "pose" && !keepPreset) cur().preset = null; if (kind === "cam" && !keepPreset) state.camPreset = null; state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose)); sync(); output(); render(); emit(kind); }
+    function changed(kind, keepPreset = false) { if (kind === "pose" && !keepPreset) cur().preset = null; aimGaze(); if (kind === "cam" && !keepPreset) state.camPreset = null; state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose)); sync(); output(); render(); emit(kind); }
     const angle = x => `${Math.round(x)}°`;
     function slider(path, label, min, max, val, hint = "", step = 1, unit = "°") {
       return `<label class="cps-sl"${hint ? ` title="${String(hint).replace(/<[^>]*>/g, "").replace(/"/g, "&quot;")}"` : ""}><span class="cps-sl-top"><span>${label}</span><output>${unit === "m" ? val.toFixed(2) + " m" : unit ? angle(val) : val.toFixed(2)}</output></span>
@@ -664,7 +688,7 @@ const CamPose = (() => {
         const rel = M.wrap360(state.cam.az - pose.yaw);
         const facing = `<div class="cps-focus" role="group" aria-label="${text.facing}"><span>${text.facing}</span>${[[0, "faceFront"], [90, "faceRight"], [180, "faceBack"], [270, "faceLeft"]].map(([r, k]) => `<button type="button" data-facing="${r}" aria-pressed="${Math.min(Math.abs(rel - r), 360 - Math.abs(rel - r)) < 0.5}">${text[k]}</button>`).join("")}</div>
           <div class="cps-sliders">${slider("pose.yaw", text.turnLabel, -180, 180, pose.yaw, text.turnHint)}</div>
-          <div class="cps-focus" role="group" aria-label="${text.gaze}"><span>${text.gaze}</span><button type="button" data-gaze="camera">${text.gazeCamera}</button>${state.second ? `<button type="button" data-gaze="other">${text.gazeOther}</button>` : ""}<button type="button" data-gaze="pick" aria-pressed="${gazePick}">${gazePick ? text.gazePicking : text.gazePick}</button><button type="button" data-gaze="ahead">${text.gazeAhead}</button></div>`;
+          <div class="cps-focus" role="group" aria-label="${text.gaze}"><span>${text.gaze}</span>${gazeButtons()}</div>`;
         if (page === "presets") body = `${facing}<div class="cps-chips">${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${pose.preset === p.id}">${p[lang]}</button>`).join("")}</div>
           <label class="cps-check"><input type="checkbox" data-seated ${pose.seated ? "checked" : ""}> ${t.seated}</label>${where}`;
         else if (page === "figure") body = bodies;
@@ -686,6 +710,7 @@ const CamPose = (() => {
       });
       panel.querySelectorAll('[data-focus]').forEach(b => b.setAttribute('aria-pressed', b.dataset.focus === state.cam.focus));
       panel.querySelectorAll("[data-preset]").forEach(b => b.setAttribute("aria-pressed", cur().preset === b.dataset.preset));
+      { const g = panel.querySelector("[data-gaze]")?.parentElement; if (g) { const span = g.querySelector("span"); g.innerHTML = ""; g.append(span); g.insertAdjacentHTML("beforeend", gazeButtons()); } }
       panel.querySelectorAll("[data-lens]").forEach(b => b.setAttribute("aria-pressed", (state.cam.lens || 0) === +b.dataset.lens));
       panel.querySelectorAll("[data-facing]").forEach(b => { const rel = M.wrap360(state.cam.az - cur().yaw), r = +b.dataset.facing; b.setAttribute("aria-pressed", Math.min(Math.abs(rel - r), 360 - Math.abs(rel - r)) < 0.5); });
       panel.querySelectorAll("[data-campreset]").forEach(b => b.setAttribute("aria-pressed", state.camPreset === +b.dataset.campreset));
@@ -732,7 +757,7 @@ const CamPose = (() => {
       } else if (button.dataset.preset) {
         // Keep who it is, where they stand and what they hold; take the preset's joints.
         const old = cur(), next = M.normalizePose({ ...copy(PRESETS.find(p => p.id === button.dataset.preset).pose), preset: button.dataset.preset, body: old.body, props: [], x: old.x, z: old.z });
-        const editingB = state.editing === "b" && state.second;
+        const editingB = state.editing === "b" && state.second; gaze[editingB ? "b" : "a"] = null;
         if (editingB) next.yaw = next.yaw || old.yaw;
         // Glide from the old pose to the new one (the end pose is resolved first so it does not snap).
         const end = copy(next); M.resolveArms(end);
@@ -772,13 +797,12 @@ const CamPose = (() => {
         state.second = button.dataset.second === "1"; state.editing = state.second ? "b" : "a";
         cameraEditorFrame = null; renderPanel(); render(); emit("pose");
       } else if (button.dataset.gaze) {
-        const g = button.dataset.gaze, J = M.skeleton(cur());
+        const g = button.dataset.gaze, id = state.editing === "b" && state.second ? "b" : "a";
         if (g === "pick") { gazePick = !gazePick; renderPanel(); return; }
-        gazePick = false;
-        if (g === "ahead") Object.assign(cur(), { neckYaw: 0, neckPitch: 0, headYaw: 0, headPitch: 0 });
-        else if (g === "camera") M.lookAt(cur(), M.shotCamera(state.cam, M.skeleton(state.pose)).pos);
-        else if (g === "other" && state.second) M.lookAt(cur(), M.skeleton(state.editing === "b" ? state.pose : state.pose2).head);
-        changed("pose"); renderPanel();
+        gazePick = false; gazeCache[id] = "";
+        if (g === "ahead") { gaze[id] = "ahead"; Object.assign(cur(), { neckYaw: 0, neckPitch: 0, neckTilt: 0, headYaw: 0, headPitch: 0, headTilt: 0 }); }
+        else gaze[id] = g;
+        changed("pose", true); renderPanel();
       } else if (button.dataset.lens !== undefined) {
         // Keep the subject about the same size: a longer lens steps back, a wider one steps in.
         const lens = +button.dataset.lens, before = M.camFov(state.cam), after = M.camFov({ lens });
@@ -800,7 +824,7 @@ const CamPose = (() => {
         }
         if (path.startsWith("cam.")) state.cam[path.slice(4)] = path === "cam.az" ? M.wrap360(+e.target.value + state.pose.yaw) : +e.target.value;
         else if (path.startsWith("light.")) state.light[path.slice(6)] = path === "light.az" ? M.wrap360(+e.target.value + state.cam.az) : +e.target.value;
-        else M.put(cur(), path.slice(5), +e.target.value);
+        else { M.put(cur(), path.slice(5), +e.target.value); if (/^pose\.(neck|head)/.test(path)) gaze[state.editing === "b" && state.second ? "b" : "a"] = null; }
         changed(path.startsWith("cam.") ? "cam" : path.startsWith("light.") ? "light" : "pose", path === "pose.x" || path === "pose.z");
       } else if (e.target.hasAttribute("data-seated")) { Object.assign(cur(), M.setSeated(cur(), e.target.checked)); changed("pose"); }
     });
@@ -841,10 +865,15 @@ const CamPose = (() => {
       if (gazePick) {
         // Look here: a point on a body, else on the floor, else straight out at the head's height.
         const p = point(e); raycaster.setFromCamera({ x: p.x / width * 2 - 1, y: 1 - p.y / height * 2 }, editorCamera);
-        const hit = raycaster.intersectObjects(meshes.filter(m => m.visible), false)[0], J = figOf(state.editing).J || M.skeleton(cur());
-        const target = hit ? hit.point.toArray() : rayPoint(p, new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)) || rayPoint(p, new THREE.Plane(new THREE.Vector3(0, 0, 1), -J.head[2]));
+        const id = state.editing === "b" && state.second ? "b" : "a", J = figOf(id).J || M.skeleton(cur());
+        // The other figure's body counts; one's own body does not.
+        const hit = raycaster.intersectObjects(meshes.filter(m => m.visible && (m.userData.figure || "a") !== id), false)[0];
+        const facing = new THREE.Vector3(); editorCamera.getWorldDirection(facing);
+        const wall = new THREE.Plane().setFromNormalAndCoplanarPoint(facing, V(add(J.head, mul(J.headForward, 1.2))));
+        const floorHit = rayPoint(p, new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
+        const target = hit ? hit.point.toArray() : floorHit && Math.hypot(floorHit[0] - J.head[0], floorHit[2] - J.head[2]) < 12 ? floorHit : rayPoint(p, wall);
         gazePick = false; canvas.style.cursor = "default";
-        if (target) { M.lookAt(cur(), target); changed("pose"); }
+        if (target) { gaze[id] = { point: target }; gazeCache[id] = ""; changed("pose", true); }
         renderPanel(); e.preventDefault(); return;
       }
       const p = point(e); let id = pick(p);
@@ -918,7 +947,7 @@ const CamPose = (() => {
         }
         return;
       }
-      if (dragging.id.startsWith("part:")) { nudge(state.part, dx, dy); changed("pose"); return; }
+      if (dragging.id.startsWith("part:")) { if (["neck", "head"].includes(state.part)) gaze[state.editing === "b" && state.second ? "b" : "a"] = null; nudge(state.part, dx, dy); changed("pose"); return; }
       if (dragging.id === "sun") {
         // Move the sun to the nearby az / el whose screen position is closest to the pointer.
         const J = figA.J, base = { ...state.light };
@@ -953,7 +982,7 @@ const CamPose = (() => {
     const ro = new ResizeObserver(size); ro.observe(canvas); size(); renderPanel();
     return {
       value, set(val = {}) {
-        state.cam = M.normalizeCamera(val.cam); state.pose = loadPose(val.pose);
+        gaze.a = gaze.b = null; gazeCache.a = gazeCache.b = ""; state.cam = M.normalizeCamera(val.cam); state.pose = loadPose(val.pose);
         state.pose2 = val.pose2 ? loadPose(val.pose2) : defaultPose2(); state.second = val.second === true; state.light = M.normalizeLight(val.light);
         if (!state.second) state.editing = "a";
         state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose)); cameraEditorFrame = null; renderPanel(); render();

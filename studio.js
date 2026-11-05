@@ -17,7 +17,7 @@ const CamPose = (() => {
   const ui = {
     en: {
       editor: "Studio view · drag background to orbit", actual: "CAMERA VIEW", front: "Front", side: "Right", back: "Back", frame: "Fit scene",
-      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror this joint", flip: "Swap left / right", joints: "18 parts · 54 angle controls", pagePoses: "Poses", pageFigure: "Body type", pageJoints: "Joints", mapLeft: "L", mapRight: "R",
+      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror this joint", flip: "Swap left / right", joints: "18 parts · 54 angle controls", pagePoses: "Poses", facing: "Facing", faceFront: "Front", faceRight: "Right side", faceBack: "Back", faceLeft: "Left side", turnLabel: "Turn the figure", turnHint: "Or drag the orange ring at the feet", pageFigure: "Body type", pageJoints: "Joints", mapLeft: "L", mapRight: "R",
       fine: "Select a joint or body surface. Drag to pose; use sliders or arrow keys for precise angles.",
       cameraHelp: "Yellow is the actual camera: drag it closer, through the pink reference arc. Green: orbit · pink: elevation. The target marker shows where the camera aims.",
       unsupported: "This browser could not start 3D. Enable WebGL or try another browser. Angle controls and prompt output still work.",
@@ -28,7 +28,7 @@ const CamPose = (() => {
     },
     zh: {
       editor: "工作视图 · 拖动空白处旋转", actual: "实际镜头画面", front: "正面", side: "右侧", back: "背面", frame: "查看整个场景",
-      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制", pagePoses: "姿势", pageFigure: "体型", pageJoints: "关节", mapLeft: "左", mapRight: "右",
+      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制", pagePoses: "姿势", facing: "人物朝向", faceFront: "正面", faceRight: "右侧", faceBack: "背面", faceLeft: "左侧", turnLabel: "旋转人物", turnHint: "也可以拖动脚下的橙色圆圈", pageFigure: "体型", pageJoints: "关节", mapLeft: "左", mapRight: "右",
       fine: "点选关节点或人物表面，拖动调整姿势；滑块和方向键可精确调角度。",
       cameraHelp: "黄色就是真实相机，可穿过粉色参考弧继续靠近。绿色调方位，粉色调仰俯；瞄准点标出实际朝向。",
       unsupported: "浏览器无法启动 3D，请启用 WebGL 或换一个浏览器。角度控制和提示词仍可使用。",
@@ -545,6 +545,16 @@ const CamPose = (() => {
           ctx.fillText(fig.id.toUpperCase(), q.x, q.y + 2); ctx.textAlign = 'start';
         }
         const EJ = figOf(state.editing).J || J;
+        // A turn ring at the feet of the figure being edited: drag its dot to rotate the whole figure.
+        {
+          const c = turnCenter(EJ), r = 0.5 * EJ.scale, pts = [];
+          for (let i = 0; i <= 64; i++) { const t = i / 64 * Math.PI * 2, q = project([c[0] + Math.cos(t) * r, 0.012, c[2] + Math.sin(t) * r]); if (q.z > -1 && q.z < 1) pts.push(q); }
+          ctx.beginPath(); pts.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y));
+          ctx.strokeStyle = dragging?.id === "turn" ? "rgba(255,188,120,.95)" : "rgba(255,188,120,.55)"; ctx.lineWidth = 2; ctx.stroke();
+          const f = EJ.forward, tip = [c[0] + f[0] * r, 0.012, c[2] + f[2] * r], a = project([c[0] + f[0] * r * 0.72, 0.012, c[2] + f[2] * r * 0.72]), b = project(tip);
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.strokeStyle = "rgba(255,188,120,.9)"; ctx.lineWidth = 2; ctx.stroke();
+          handle(tip, "turn", "#ffbc78", 7);
+        }
         const joints = Object.entries(PARTS).map(([part, config]) => ({ part, point: EJ[config.joint] }));
         // Paint far handles first so the nearest overlapping joint remains selectable.
         joints.sort((a, b) => V(b.point).distanceTo(editorCamera.position) - V(a.point).distanceTo(editorCamera.position));
@@ -554,6 +564,8 @@ const CamPose = (() => {
       for (const m of meshes) m.material = m.userData.original;
     }
     function render() { if (!scheduled) scheduled = requestAnimationFrame(renderNow); }
+    const turnCenter = J => [J.pelvis[0], 0, J.pelvis[2]];
+    const wrap180 = d => ((d + 180) % 360 + 360) % 360 - 180;
     /** Renders the actual camera view at full size and returns a PNG data URL. */
     function exportShot(longSide = 1600) {
       if (!renderer) return null;
@@ -633,7 +645,10 @@ const CamPose = (() => {
         const page = state.poseTab || "presets";
         const subtabs = `<div class="cps-subtabs" role="tablist">${[["presets", text.pagePoses], ["figure", text.pageFigure], ["joints", text.pageJoints]].map(([k, label]) => `<button type="button" role="tab" data-subtab="${k}" aria-selected="${page === k}">${label}</button>`).join("")}</div>`;
         let body = "";
-        if (page === "presets") body = `<div class="cps-chips">${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${pose.preset === p.id}">${p[lang]}</button>`).join("")}</div>
+        const rel = M.wrap360(state.cam.az - pose.yaw);
+        const facing = `<div class="cps-focus" role="group" aria-label="${text.facing}"><span>${text.facing}</span>${[[0, "faceFront"], [90, "faceRight"], [180, "faceBack"], [270, "faceLeft"]].map(([r, k]) => `<button type="button" data-facing="${r}" aria-pressed="${Math.min(Math.abs(rel - r), 360 - Math.abs(rel - r)) < 0.5}">${text[k]}</button>`).join("")}</div>
+          <div class="cps-sliders">${slider("pose.yaw", text.turnLabel, -180, 180, pose.yaw, text.turnHint)}</div>`;
+        if (page === "presets") body = `${facing}<div class="cps-chips">${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${pose.preset === p.id}">${p[lang]}</button>`).join("")}</div>
           <label class="cps-check"><input type="checkbox" data-seated ${pose.seated ? "checked" : ""}> ${t.seated}</label>${where}`;
         else if (page === "figure") body = bodies;
         else body = `<div class="cps-joints"><div class="cps-map" role="group" aria-label="${text.selected}"><canvas width="192" height="384" aria-hidden="true"></canvas>${Object.entries(BODY_MAP).map(([k, [x, y]]) => `<button type="button" data-part="${k}" aria-pressed="${k === state.part}" title="${PARTS[k][lang]}" aria-label="${PARTS[k][lang]}" style="left:${x / 1.2}%;top:${y / 2.4}%"></button>`).join("")}
@@ -654,6 +669,7 @@ const CamPose = (() => {
       });
       panel.querySelectorAll('[data-focus]').forEach(b => b.setAttribute('aria-pressed', b.dataset.focus === state.cam.focus));
       panel.querySelectorAll("[data-preset]").forEach(b => b.setAttribute("aria-pressed", cur().preset === b.dataset.preset));
+      panel.querySelectorAll("[data-facing]").forEach(b => { const rel = M.wrap360(state.cam.az - cur().yaw), r = +b.dataset.facing; b.setAttribute("aria-pressed", Math.min(Math.abs(rel - r), 360 - Math.abs(rel - r)) < 0.5); });
       panel.querySelectorAll("[data-campreset]").forEach(b => b.setAttribute("aria-pressed", state.camPreset === +b.dataset.campreset));
       panel.querySelectorAll("[data-lightpreset]").forEach(b => b.setAttribute("aria-pressed", lightPresetOn(+b.dataset.lightpreset)));
       panel.querySelectorAll('[data-seated]').forEach(input => { input.checked = cur().seated; });
@@ -737,6 +753,9 @@ const CamPose = (() => {
       } else if (button.dataset.second !== undefined) {
         state.second = button.dataset.second === "1"; state.editing = state.second ? "b" : "a";
         cameraEditorFrame = null; renderPanel(); render(); emit("pose");
+      } else if (button.dataset.facing !== undefined) {
+        // Turn the figure so the camera sees this side (front, right, back, left).
+        cur().yaw = wrap180(state.cam.az - +button.dataset.facing); changed("pose", true); renderPanel();
       } else if (button.dataset.body) {
         cur().body = button.dataset.body; cameraEditorFrame = null; renderPanel(); render(); emit("pose");
       }
@@ -835,6 +854,15 @@ const CamPose = (() => {
           const { side, kind, joint } = dragging.ik, key = side + kind, solved = M.reach(cur(), side, kind, joint, target, { quick: true, iterations: 16 });
           Object.assign(cur()[key], { a: solved[key].a, b: solved[key].b, c: solved[key].c });
           changed("pose");
+        }
+        return;
+      }
+      if (dragging.id === "turn") {
+        // Point the figure toward where the pointer meets the floor (5° steps, or free with Shift).
+        const J = figOf(state.editing).J || M.skeleton(cur()), c = turnCenter(J), hit = rayPoint(p, new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
+        if (hit && Math.hypot(hit[0] - c[0], hit[2] - c[2]) > 0.05) {
+          let yaw = Math.atan2(-(hit[0] - c[0]), hit[2] - c[2]) / D2R; if (!e.shiftKey) yaw = Math.round(yaw / 5) * 5;
+          cur().yaw = wrap180(yaw); changed("pose");
         }
         return;
       }

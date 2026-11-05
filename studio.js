@@ -722,6 +722,8 @@ const CamPose = (() => {
         const opts = document.createElement("div"); opts.className = "cps-opts";
         [...row.childNodes].filter(n => n !== label).forEach(n => opts.append(n)); row.append(opts); row.classList.add("cps-row");
       });
+      // A rebuilt panel has a blank map canvas: paint the figure now instead of waiting for the next frame.
+      if (panel.querySelector('.cps-map canvas')) updateBodyMap();
       output();
     }
     function sync() {

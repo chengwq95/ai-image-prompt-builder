@@ -130,6 +130,11 @@ async function main() {
       // thin. Give arms, hands and fingers back some thickness so they keep a sturdy, drawable volume.
       const bulk = { Upper: 1.1, Fore: 1.14, Thigh: 1, Shin: 1 };
       for (const [role, from, to, length] of [['Upper', a, e, 'upper'], ['Fore', e, w, 'fore'], ['Thigh', hp, k, 'thigh'], ['Shin', k, ankle, 'shin']]) native[s + role] = frame(from, axisFrame(from, to), [globalScale * bulk[role], M.measurements(body)[length] * J.scale / Math.hypot(...M.sub(to, from)), globalScale * bulk[role]]);
+      // The source palm is rolled ~123 degrees relative to the forearm's default
+      // transverse frame. Unwind that difference gradually before retargeting;
+      // otherwise the two weighted surfaces cancel at the wrist, forming a pinch.
+      const wristAcross = M.mv(transposed(native[s + 'Fore'].matrix), handX);
+      native[s + 'Fore'].wristRoll = Math.atan2(wristAcross[2], wristAcross[0]) / M.D2R;
       const width = Math.hypot(...across);
       native[s + 'Hand'] = frame(w, handR, [M.PALM.width * J.handSize / width * HAND_WIDTH, M.PALM.length * J.handSize / Math.hypot(...M.sub(middle, w)), globalScale * HAND_THICKNESS]);
       native[s + 'Foot'] = frame(ankle);
@@ -149,6 +154,20 @@ async function main() {
       for (const [index, weight] of weights[i]) {
         const name = keys[index], from = native[name], to = target[name];
         const local = M.mv(transposed(from.matrix), M.sub(points[id], from.origin)).map((v, axis) => v * from.scale[axis]);
+        if (name === 'lFore' || name === 'rFore') {
+          const t = M.clamp((-local[1] / (M.measurements(body).fore * J.scale) - 0.2) / 0.65, 0, 1);
+          const aligned = M.mv(M.ry(from.wristRoll * t * t * (3 - 2 * t)), local);
+          local[0] = aligned[0]; local[2] = aligned[2];
+        }
+        if (/^(l|r)(Upper|Fore)$/.test(name)) {
+          const length = M.measurements(body)[name.endsWith('Upper') ? 'upper' : 'fore'] * J.scale;
+          const t = M.clamp(-local[1] / length, 0, 1);
+          // Add muscle through the belly, tapering to the original joint dimensions.
+          // Keep the slim build distinct and avoid a swollen wrist or elbow seam.
+          const fullness = { female: 0.12, male: 0.07, slim: 0.025, strong: 0.04, child: 0.05 }[body];
+          const radial = 1 + fullness * Math.sin(Math.PI * t) ** 0.8;
+          local[0] *= radial; local[2] *= radial;
+        }
         const out = M.add(to.position, M.mv(to.matrix, local));
         for (let axis = 0; axis < 3; axis++) sum[axis] += out[axis] * weight;
       }
@@ -208,13 +227,34 @@ async function main() {
     });
     variants[body] = { position: encode(Int16Array.from([...adjusted, ...edgePoints, ...centers].flat(), v => Math.round(v * 10000))) };
   }
+  // Give each forearm vertex two adjacent twist frames. All variants share the
+  // authored topology, so use the bind mesh's normalized distance down the arm.
+  const rawReference = Buffer.from(variants.male.position, 'base64');
+  const bindPositions = new Int16Array(rawReference.buffer, rawReference.byteOffset, rawReference.byteLength / 2);
+  const bindFrames = M.skinFrames(M.bindPose('male'));
+  finalWeights.forEach((w, i) => {
+    for (const side of ['l', 'r']) {
+      const full = keys.indexOf(side + 'Fore'), amount = w.get(full); if (!amount) continue;
+      const frame = bindFrames[side + 'Fore'];
+      const vertex = [0, 1, 2].map(a => bindPositions[i * 3 + a] / 10000);
+      const local = M.mv(transposed(frame.matrix), M.sub(vertex, frame.position));
+      const t = M.clamp(-local[1] / M.measurements('male').fore, 0, 1);
+      const stops = [[0.10, 'ForeBase'], [0.38, 'ForeMid'], [0.68, 'ForeDist'], [0.90, 'Fore']];
+      let segment = 0; while (segment < 2 && t > stops[segment + 1][0]) segment++;
+      const mix = M.clamp((t - stops[segment][0]) / (stops[segment + 1][0] - stops[segment][0]), 0, 1);
+      w.delete(full);
+      for (const [name, factor] of [[stops[segment][1], 1 - mix], [stops[segment + 1][1], mix]]) {
+        if (factor > 0) { const id = keys.indexOf(side + name); w.set(id, (w.get(id) || 0) + amount * factor); }
+      }
+    }
+  });
   const ids = new Uint8Array(finalWeights.length * 4), values = new Uint8Array(ids.length);
   finalWeights.forEach((w, i) => {
     const top = [...w].sort((a, b) => b[1] - a[1]).slice(0, 4), sum = top.reduce((n, x) => n + x[1], 0); let quantized = 0;
     top.forEach(([bone, weight], j) => { ids[i * 4 + j] = bone; values[i * 4 + j] = Math.round(weight / sum * 255); quantized += values[i * 4 + j]; });
     values[i * 4] += 255 - quantized;
   });
-  const data = { version: 2, source: { project: 'MakeHuman', revision, license: 'CC0-1.0' }, vertices: finalWeights.length, bones: keys, variants, skinIndex: encode(ids), skinWeight: encode(values), index: encode(indices) };
+  const data = { version: 3, source: { project: 'MakeHuman', revision, license: 'CC0-1.0' }, vertices: finalWeights.length, bones: keys, variants, skinIndex: encode(ids), skinWeight: encode(values), index: encode(indices) };
   fs.writeFileSync(path.join(root, 'studio-body-data.js'), '// CC0 MakeHuman anatomical mesh and weights; generated by tools/build-body.cjs.\nconst StudioBodyData = ' + JSON.stringify(data) + ';\n');
   const manifest = { revision, files: files.map(file => ({ path: file, sha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(source, path.basename(file)))).digest('hex') })) };
   fs.writeFileSync(path.join(root, 'tools/human-assets-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');

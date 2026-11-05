@@ -11,9 +11,6 @@ const CamPose = (() => {
     lArm: [82, 52], rArm: [38, 52], lElbow: [91, 86], rElbow: [29, 86], lHand: [97, 118], rHand: [23, 118], lFingers: [100, 135], rFingers: [20, 135],
     lLeg: [72, 124], rLeg: [48, 124], lKnee: [73, 170], rKnee: [47, 170], lFoot: [75, 216], rFoot: [45, 216]
   };
-  const BODY_MAP_SVG = `<svg viewBox="0 0 120 240" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M60 41V108M38 52H82M38 52L29 86L23 118M82 52L91 86L97 118M48 124L47 170L45 216M72 124L73 170L75 216M48 124H72"/></g>
-    <circle cx="60" cy="20" r="13" fill="currentColor"/><path d="M60 41V108" stroke="currentColor" stroke-width="26" stroke-linecap="round"/></svg>`;
   const V = p => new THREE.Vector3(...p);
   const identity = [1, 0, 0, 0, 1, 0, 0, 0, 1];
   const copy = x => JSON.parse(JSON.stringify(x));
@@ -63,7 +60,6 @@ const CamPose = (() => {
         </div><div class="cps-render-modes"><button type="button" data-mode="volume" aria-pressed="true"></button><button type="button" data-mode="drawing" aria-pressed="false"></button></div><button type="button" class="cps-download" data-download></button></div>
       <div class="cps-stage">
         <canvas class="cps-main" aria-label="Interactive 3D pose studio"></canvas><canvas class="cps-overlay" aria-hidden="true"></canvas>
-        <div class="cps-inset"><div class="cps-inset-preview"></div><span class="cps-inset-label"></span></div>
         <div class="cps-status" role="status" hidden></div><div class="cps-help"></div>
       </div>
       <div class="cps-out"><b></b><span class="cps-out-text" aria-live="polite"></span></div>
@@ -72,10 +68,12 @@ const CamPose = (() => {
         <div class="cps-top"><div class="cps-tabs" role="tablist" aria-label="3D studio">
         <button type="button" role="tab" data-tab="camera"></button><button type="button" role="tab" data-tab="pose"></button><button type="button" role="tab" data-tab="light"></button>
       </div><button type="button" class="cps-reset" data-reset></button></div>
+      <details class="cps-preview" open><summary><span class="cps-inset-label"></span><span class="cps-preview-chevron" aria-hidden="true">⌄</span></summary><div class="cps-preview-body"><canvas class="cps-inset-preview" aria-label="Actual camera preview"></canvas></div></details>
       <div class="cps-panel" role="tabpanel"></div>
       </div>`;
     const canvas = root.querySelector(".cps-main"), overlay = root.querySelector(".cps-overlay"), panel = root.querySelector(".cps-panel");
-    const inset = root.querySelector(".cps-inset-preview"), ctx = overlay.getContext("2d"), status = root.querySelector(".cps-status");
+    const inset = root.querySelector(".cps-inset-preview"), preview = root.querySelector('.cps-preview'), previewCtx = inset.getContext('2d'), ctx = overlay.getContext("2d"), status = root.querySelector(".cps-status");
+    let previewWidth = 180, previewHeight = 180;
     const value = () => ({ cam: { ...state.cam }, pose: copy(state.pose), pose2: copy(state.pose2), second: state.second, light: { ...state.light } });
     const emit = kind => opts.onChange?.(value(), kind);
     let renderer;
@@ -111,9 +109,9 @@ const CamPose = (() => {
     const helper = new THREE.Group(); scene.add(helper);
     // All figures live in `cast`; `rig` is the main figure (A). A second person (B) is optional.
     const cast = new THREE.Group(); scene.add(cast);
-    const skin = new THREE.MeshStandardMaterial({ color: 0xc6b6a2, roughness: 0.62, metalness: 0.03 });
+    const skin = new THREE.MeshStandardMaterial({ color: 0xc6b6a2, roughness: 0.65, metalness: 0 });
     const selected = new THREE.MeshStandardMaterial({ color: 0xe0b6a1, roughness: 0.6, emissive: 0x572513, emissiveIntensity: 0.15 });
-    const skin2 = new THREE.MeshStandardMaterial({ color: 0xa9b3c2, roughness: 0.62, metalness: 0.03 });
+    const skin2 = new THREE.MeshStandardMaterial({ color: 0xa9b3c2, roughness: 0.65, metalness: 0 });
     const propMat = new THREE.MeshStandardMaterial({ color: 0x596271, metalness: 0.3, roughness: 0.6 });
     const darkMat = new THREE.MeshStandardMaterial({ color: 0x1d2027, roughness: 0.35, metalness: 0.4 });
     const bookMat = new THREE.MeshStandardMaterial({ color: 0x7b3b2a, roughness: 0.7 });
@@ -176,9 +174,9 @@ const CamPose = (() => {
 
     for (const side of ["l", "r"]) group(side + "Hand", side + "Hand");
     const stool = new THREE.Group(); rig.add(stool);
-    const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.055, 40), propMat); seat.position.set(0, SEAT_TOP - 0.0275, -0.04); seat.castShadow = true; stool.add(seat);
-    for (const x of [-0.15, 0.15]) for (const z of [-0.19, 0.11]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.023, SEAT_TOP - 0.05, 12), propMat); leg.position.set(x, (SEAT_TOP - 0.05) / 2, z); leg.castShadow = true; stool.add(leg);
+    const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.205, 0.055, 40), propMat); seat.position.set(0, SEAT_TOP - 0.0275, -0.06); seat.castShadow = true; stool.add(seat);
+    for (const x of [-0.135, 0.135]) for (const z of [-0.19, 0.07]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.023, 1, 12), propMat); leg.position.set(x, (SEAT_TOP - 0.055) / 2, z); leg.scale.y = SEAT_TOP - 0.055; leg.castShadow = true; stool.add(leg);
     }
     const props = makeProps(nodes, rig);
 
@@ -207,16 +205,27 @@ const CamPose = (() => {
       node.quaternion.setFromRotationMatrix(rotation); node.scale.setScalar(scale);
     }
     function poseFigure(fig, p, others = []) {
+      const requested = JSON.stringify(p), othersKey = JSON.stringify(others);
+      if (fig.poseKey === requested && fig.othersKey === othersKey) return fig.J;
+      if (fig.poseKey === requested) { fig.props.update(fig.J, p, others, fig.seatHeight); fig.othersKey = othersKey; return fig.J; }
+      if (p.seated) {
+        const standing = M.skeleton({ ...p, seated: false });
+        if (standing.pelvis[1] / standing.scale > B.seat + 0.12) p.seated = false;
+      }
       // A real arm cannot pass through the body: push it just clear before drawing (updates the pose).
-      M.resolveArms(p);
+      M.resolveArms(p, { previous: fig.safePose });
       const J = M.skeleton(p), h = J.scale;
       place(fig, "pelvis", J.pelvis, J.bodyM, h); place(fig, "torso", J.waist, J.ubM, h * M.measurements(p.body).spine / B.spine); place(fig, "head", J.head, J.headM, J.headSize);
       for (const side of ["l", "r"]) place(fig, side + "Hand", J[side + "Wrist"], J[side + "HandM"], J.handSize);
       const chair = (p.props || []).includes("chair");
       fig.stool.visible = p.seated && !chair;
       fig.stool.position.set(p.x || 0, 0, p.z || 0); fig.stool.scale.setScalar(h);
-      fig.props.update(J, p, others);
+      fig.stool.rotation.y = Math.atan2(J.forward[0], J.forward[2]);
       fig.continuous.update(J, p);
+      const seatHeight = p.seated ? fig.continuous.seatSupport(J, chair) : SEAT_TOP * h;
+      fig.stool.children[0].position.y = seatHeight / h - 0.0275;
+      for (const leg of fig.stool.children.slice(1)) { leg.scale.y = seatHeight / h - 0.055; leg.position.y = leg.scale.y / 2; }
+      fig.props.update(J, p, others, seatHeight);
       if (fig.surfaceOutline.geometry !== fig.continuous.geometry) {
         fig.surfaceOutline.geometry = fig.continuous.geometry;
         fig.surfaceOutline.bind(fig.continuous.skeleton, fig.continuous.body.bindMatrix);
@@ -225,6 +234,10 @@ const CamPose = (() => {
       fig.surfaceOutline.boundingBox = fig.continuous.body.boundingBox.clone().expandByScalar(0.005);
       fig.surfaceOutline.boundingSphere = fig.continuous.body.boundingSphere.clone(); fig.surfaceOutline.boundingSphere.radius += 0.005;
       fig.J = J;
+      fig.poseKey = JSON.stringify(p); fig.othersKey = othersKey;
+      fig.seatHeight = seatHeight;
+      fig.safePose = copy(p);
+      if (fig.poseKey !== requested) { sync(); output(); }
       return J;
     }
     function updateFigure() {
@@ -291,7 +304,7 @@ const CamPose = (() => {
         const top = box(0.95, 0.04, 0.6, woodMat); top.position.y = 0.74; items.table.add(top);
         for (const x of [-0.42, 0.42]) for (const z of [-0.25, 0.25]) { const l = box(0.04, 0.72, 0.04, woodMat); l.position.set(x, 0.36, z); items.table.add(l); }
       } rig.add(items.table);
-      function update(J, p, others = []) {
+      function update(J, p, others = [], seatHeight = SEAT_TOP * J.scale) {
         const on = new Set(p.props || []), yaw = Math.atan2(J.forward[0], J.forward[2]);
         for (const [k, g] of Object.entries(items)) g.visible = on.has(k);
         for (const k of Object.keys(M.PROP_ATTACHMENTS)) {
@@ -324,6 +337,10 @@ const CamPose = (() => {
         };
         const chairAt = p.seated ? local(0, -0.04) : choose([[0.62, -0.05], [-0.62, -0.05], [0.6, -0.55], [-0.6, -0.55], [0, -0.75], [0.85, 0.25], [-0.85, 0.25], [0.95, -0.5], [-0.95, -0.5], [0, -1.1], [1.25, 0], [-1.25, 0]], [0.25, 0.25], 1.0);
         items.chair.position.set(...chairAt); items.chair.rotation.y = yaw; items.chair.scale.setScalar(p.seated ? J.scale : 1);
+        const seatTop = p.seated ? seatHeight / J.scale : SEAT_TOP;
+        items.chair.children[0].position.y = seatTop - 0.0225;
+        items.chair.children[1].position.y = seatTop + 0.23;
+        for (const leg of items.chair.children.slice(2)) { leg.scale.y = (seatTop - 0.045) / (SEAT_TOP - 0.045); leg.position.y = (seatTop - 0.045) / 2; }
         const tableAt = choose([[0, p.seated ? 0.5 : 0.55], [0, 0.75], [0, 0.95], [0.9, 0.5], [-0.9, 0.5], [0, 1.25]], [0.5, 0.32], 0.8, on.has("chair") && !p.seated ? [chairAt] : []);
         items.table.position.set(...tableAt); items.table.rotation.y = yaw;
       }
@@ -331,6 +348,49 @@ const CamPose = (() => {
     }
     const figA = makeFigure("a", skin), rig = figA.rig; cast.add(rig);
     const figB = makeFigure("b", skin2);
+    // The joint picker uses the same anatomical body as the stage, in a fixed front
+    // view. Cache one small image per build so dragging joints needs no extra draw.
+    const bodyMapCache = new Map();
+    let mapRig, mapSurface, mapScene, mapCamera, mapTarget, mapMaterial;
+    function updateBodyMap() {
+      const mapCanvas = panel.querySelector('.cps-map canvas');
+      if (!mapCanvas || !renderer) return;
+      const type = cur().body;
+      if (!bodyMapCache.has(type)) {
+        if (!mapSurface) {
+          mapScene = new THREE.Scene(); mapRig = new THREE.Group(); mapScene.add(mapRig);
+          mapMaterial = new THREE.MeshStandardMaterial({ color: 0xc8c2b8, roughness: 0.7 });
+          mapSurface = StudioSurface.create(M, mapMaterial, mapRig);
+          mapScene.add(new THREE.HemisphereLight(0xf1f2f4, 0x6b6260, 2));
+          const light = new THREE.DirectionalLight(0xffedd7, 3); light.position.set(-2, 4, 4); mapScene.add(light);
+          const fill = new THREE.DirectionalLight(0xc2d7ee, 1); fill.position.set(2, 1, 2); mapScene.add(fill);
+          mapCamera = new THREE.OrthographicCamera(-0.5, 0.5, 1, -1, 0.1, 10);
+          mapTarget = new THREE.WebGLRenderTarget(192, 384);
+          mapTarget.texture.colorSpace = THREE.SRGBColorSpace;
+        }
+        const pose = M.P({ body: type, lArm: { a: 18, c: 6 }, rArm: { a: 18, c: 6 } }), J = M.skeleton(pose);
+        mapSurface.update(J, pose); mapSurface.body.computeBoundingBox();
+        const box = mapSurface.body.boundingBox, size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+        const H = Math.max(size.y * 1.08, size.x * 2.12), W = H / 2;
+        Object.assign(mapCamera, { left: -W / 2, right: W / 2, top: H / 2, bottom: -H / 2 });
+        mapCamera.position.set(center.x, center.y, 3); mapCamera.lookAt(center); mapCamera.updateProjectionMatrix(); mapCamera.updateMatrixWorld();
+        const oldTarget = renderer.getRenderTarget(), oldColor = renderer.getClearColor(new THREE.Color()), oldAlpha = renderer.getClearAlpha();
+        renderer.setRenderTarget(mapTarget); renderer.setScissorTest(false); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(mapScene, mapCamera);
+        const pixels = new Uint8Array(192 * 384 * 4); renderer.readRenderTargetPixels(mapTarget, 0, 0, 192, 384, pixels);
+        renderer.setRenderTarget(oldTarget); renderer.setClearColor(oldColor, oldAlpha);
+        const image = new ImageData(192, 384);
+        for (let y = 0; y < 384; y++) image.data.set(pixels.subarray((383 - y) * 192 * 4, (384 - y) * 192 * 4), y * 192 * 4);
+        const points = Object.fromEntries(Object.entries(PARTS).map(([name, part]) => {
+          const q = V(J[part.joint]).project(mapCamera); return [name, [(q.x + 1) * 50, (1 - q.y) * 50]];
+        }));
+        bodyMapCache.set(type, { image, points });
+      }
+      const { image, points } = bodyMapCache.get(type);
+      mapCanvas.getContext('2d').putImageData(image, 0, 0);
+      panel.querySelectorAll('.cps-map [data-part]').forEach(button => {
+        const [x, y] = points[button.dataset.part]; button.style.left = x + '%'; button.style.top = y + '%';
+      });
+    }
     const figOf = id => (id === "b" ? figB : figA);
 
     function line(points, color, dashed = false) {
@@ -359,8 +419,7 @@ const CamPose = (() => {
     }
     const controlPoint = (id, cam = state.cam) => M.cameraControlPoint(cam, id, controlCenter);
     function insetRect() {
-      const a = canvas.getBoundingClientRect(), b = inset.getBoundingClientRect();
-      return { x: b.left - a.left, y: height - (b.top - a.top) - b.height, width: b.width, height: b.height };
+      return { width: previewWidth, height: previewHeight };
     }
     function fitShot(J, r) {
       state.cam = M.constrainCamera(state.cam, J);
@@ -371,6 +430,7 @@ const CamPose = (() => {
     function renderNow() {
       scheduled = 0;
       if (!renderer || lost || !width || !height) return;
+      updateBodyMap();
       const background = drawing ? 0xebe9e3 : 0x141823;
       scene.background.setHex(background); scene.fog.color.setHex(background);
       grid.material.opacity = drawing ? 0.16 : 0.65;
@@ -417,6 +477,15 @@ const CamPose = (() => {
       editorCamera.aspect = width / height;
       editorCamera.position.copy(look.clone().addScaledVector(V(M.camDir({ az: view.yaw, el: view.pitch })), editorDistance));
       editorCamera.lookAt(look); editorCamera.updateProjectionMatrix(); editorCamera.updateMatrixWorld();
+      // Copy the real camera image to a dock outside the interactive canvas. The
+      // same renderer is reused; no preview can cover a joint or swallow a drag.
+      if (preview.open) {
+        helper.visible = false; grid.visible = false;
+        for (const m of meshes) m.material = m.userData.original;
+        renderer.setScissorTest(false); renderer.setViewport(0, 0, previewWidth, previewHeight); renderer.render(scene, shot);
+        const dpr = renderer.getPixelRatio();
+        previewCtx.drawImage(canvas, 0, (height - previewHeight) * dpr, previewWidth * dpr, previewHeight * dpr, 0, 0, inset.width, inset.height);
+      }
       helper.visible = state.tab === "camera";
       const center = controlCenter;
       if (helper.visible) {
@@ -464,13 +533,8 @@ const CamPose = (() => {
         joints.sort((a, b) => V(b.point).distanceTo(editorCamera.position) - V(a.point).distanceTo(editorCamera.position));
         for (const { part, point } of joints) handle(point, "part:" + part, part.startsWith("l") ? "#8edcce" : "#b4c6ef", part === state.part ? 5.5 : 4);
       }
-      helper.visible = false;
-      grid.visible = false;
+      helper.visible = false; grid.visible = false;
       for (const m of meshes) m.material = m.userData.original;
-      renderer.setScissorTest(true); renderer.setScissor(r.x, r.y, r.width, r.height); renderer.setViewport(r.x, r.y, r.width, r.height);
-      renderer.render(scene, shot); renderer.setScissorTest(false);
-      // Keep editor handles out of the actual camera image.
-      ctx.clearRect(r.x - 7, height - r.y - r.height - 7, r.width + 14, r.height + 40);
     }
     function render() { if (!scheduled) scheduled = requestAnimationFrame(renderNow); }
     /** Renders the actual camera view at full size and returns a PNG data URL. */
@@ -494,8 +558,9 @@ const CamPose = (() => {
       overlay.width = width * dpr; overlay.height = height * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       renderer?.setSize(width, height, false);
       const [rw, rh] = ratio.split(":").map(Number), aspect = rw > 0 && rh > 0 ? rw / rh : 1;
-      const maxW = width < 500 ? 112 : 208, maxH = width < 500 ? 150 : 220;
-      const iw = Math.min(maxW, maxH * aspect); inset.style.width = iw + "px"; inset.style.height = iw / aspect + "px";
+      previewWidth = Math.min(240, 160 * aspect, width); previewHeight = previewWidth / aspect;
+      inset.style.width = previewWidth + 'px'; inset.style.height = previewHeight + 'px';
+      inset.width = Math.round(previewWidth * dpr); inset.height = Math.round(previewHeight * dpr);
       render();
     }
 
@@ -550,7 +615,7 @@ const CamPose = (() => {
         if (page === "presets") body = `<div class="cps-chips">${PRESETS.map(p => `<button type="button" data-preset="${p.id}" aria-pressed="${pose.preset === p.id}">${p[lang]}</button>`).join("")}</div>
           <label class="cps-check"><input type="checkbox" data-seated ${pose.seated ? "checked" : ""}> ${t.seated}</label>${where}`;
         else if (page === "figure") body = `${bodies}${props}${pose.props.some(k => M.PROPS[k].hand) ? `<button type="button" data-regrip>${text.regrip}</button>` : ""}`;
-        else body = `<div class="cps-joints"><div class="cps-map" role="group" aria-label="${text.selected}">${BODY_MAP_SVG}${Object.entries(BODY_MAP).map(([k, [x, y]]) => `<button type="button" data-part="${k}" aria-pressed="${k === state.part}" title="${PARTS[k][lang]}" aria-label="${PARTS[k][lang]}" style="left:${x / 1.2}%;top:${y / 2.4}%"></button>`).join("")}
+        else body = `<div class="cps-joints"><div class="cps-map" role="group" aria-label="${text.selected}"><canvas width="192" height="384" aria-hidden="true"></canvas>${Object.entries(BODY_MAP).map(([k, [x, y]]) => `<button type="button" data-part="${k}" aria-pressed="${k === state.part}" title="${PARTS[k][lang]}" aria-label="${PARTS[k][lang]}" style="left:${x / 1.2}%;top:${y / 2.4}%"></button>`).join("")}
             <span class="cps-map-side" style="left:4%">${text.mapRight}</span><span class="cps-map-side" style="right:4%">${text.mapLeft}</span></div>
           <div class="cps-joint-edit"><div class="cps-joint-heading"><strong>${config[lang]}</strong><button type="button" data-reset-part>${text.resetPart}</button></div>
             <div class="cps-sliders">${config.controls.map(c => slider("pose." + c.path, c[lang], c.min, c.max, M.get(pose, c.path))).join("")}</div>
@@ -568,12 +633,13 @@ const CamPose = (() => {
       });
       panel.querySelectorAll('[data-focus]').forEach(b => b.setAttribute('aria-pressed', b.dataset.focus === state.cam.focus));
       panel.querySelectorAll("[data-preset]").forEach(b => b.setAttribute("aria-pressed", cur().preset === b.dataset.preset));
+      panel.querySelectorAll('[data-seated]').forEach(input => { input.checked = cur().seated; });
     }
     function selectPart(part) { state.part = part; state.poseTab = "joints"; renderPanel(); render(); }
     root.addEventListener("click", e => {
       const button = e.target.closest("button"); if (!button) return;
       if (button.dataset.tab) { state.tab = button.dataset.tab; cameraEditorFrame = null; renderPanel(); render(); }
-      else if (button.dataset.subtab) { state.poseTab = button.dataset.subtab; renderPanel(); }
+      else if (button.dataset.subtab) { state.poseTab = button.dataset.subtab; renderPanel(); render(); }
       else if (button.hasAttribute("data-reset")) {
         if (state.tab === "camera") state.cam = M.normalizeCamera({ az: M.wrap360(state.pose.yaw + 45), el: 10, distance: 2.8, focus: "chest" });
         else if (state.tab === "light") state.light = M.normalizeLight();
@@ -654,7 +720,7 @@ const CamPose = (() => {
         else if (path.startsWith("light.")) state.light[path.slice(6)] = path === "light.az" ? M.wrap360(+e.target.value + state.cam.az) : +e.target.value;
         else M.put(cur(), path.slice(5), +e.target.value);
         changed(path.startsWith("cam.") ? "cam" : path.startsWith("light.") ? "light" : "pose", path === "pose.x" || path === "pose.z");
-      } else if (e.target.hasAttribute("data-seated")) { cur().seated = e.target.checked; changed("pose"); }
+      } else if (e.target.hasAttribute("data-seated")) { Object.assign(cur(), M.setSeated(cur(), e.target.checked)); changed("pose"); }
     });
     root.querySelector(".cps-tabs").addEventListener("keydown", e => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
@@ -764,6 +830,7 @@ const CamPose = (() => {
     canvas.addEventListener("wheel", e => { e.preventDefault(); view.dist = clamp(view.dist * (1 + Math.sign(e.deltaY) * 0.08), 1.7, 9); render(); }, { passive: false });
     canvas.addEventListener("webglcontextlost", e => { e.preventDefault(); lost = true; status.hidden = false; status.textContent = ui[lang].context; });
     canvas.addEventListener("webglcontextrestored", () => { lost = false; status.hidden = true; render(); });
+    preview.addEventListener('toggle', render);
     state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose));
     const ro = new ResizeObserver(size); ro.observe(canvas); size(); renderPanel();
     return {
@@ -774,9 +841,9 @@ const CamPose = (() => {
         state.cam = M.constrainCamera(state.cam, M.skeleton(state.pose)); cameraEditorFrame = null; renderPanel(); render();
       },
       snapshot: exportShot,
-      setLang(l) { lang = l; renderPanel(); }, setRatio(r) { ratio = r; size(); }, refresh() { size(); output(); },
+      setLang(l) { lang = l; renderPanel(); render(); }, setRatio(r) { ratio = r; size(); }, refresh() { size(); output(); },
       describe(l) { return scene3(l); },
-      destroy() { ro.disconnect(); cancelAnimationFrame(scheduled); const geometries = new Set(), materials = new Set(); scene.traverse(o => { if (o.geometry) geometries.add(o.geometry); if (o.material) materials.add(o.material); }); geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); figA.continuous.dispose(); figB.continuous.dispose(); skin.dispose(); skin2.dispose(); selected.dispose(); renderer?.dispose(); root.replaceChildren(); }
+      destroy() { ro.disconnect(); cancelAnimationFrame(scheduled); const geometries = new Set(), materials = new Set(); scene.traverse(o => { if (o.geometry) geometries.add(o.geometry); if (o.material) materials.add(o.material); }); geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); figA.continuous.dispose(); figB.continuous.dispose(); mapSurface?.dispose(); mapTarget?.dispose(); mapMaterial?.dispose(); bodyMapCache.clear(); skin.dispose(); skin2.dispose(); selected.dispose(); renderer?.dispose(); root.replaceChildren(); }
     };
   }
   return { create, describeCamera: M.describeCamera, describePose: M.describePose, describeScene: M.describeScene, PRESETS };

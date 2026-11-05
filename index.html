@@ -427,12 +427,14 @@ body.vf-mini{padding-bottom:84px}
 .cps-view-tools button[aria-pressed="true"]{background:#dae1ed;color:#192333;border-color:#dae1ed}
 .cps[data-render="drawing"] .cps-help{color:#535d69}
 .cps-joint-heading button:disabled{opacity:.4;cursor:default}
-.cps-inset-preview{display:block}
+.cps-inset-preview{display:block;max-width:100%;border-radius:7px}
 .cps-status{position:absolute;left:15px;right:15px;top:100px;padding:14px;background:#202a3bea;color:#e9edf5;border:1px solid #687c97;border-radius:10px;font-size:13px}
-.cps-inset{position:absolute;right:12px;top:12px;padding:6px 6px 4px;border-radius:12px;background:transparent;
-  box-shadow:0 0 0 1px rgba(255,255,255,.18),0 8px 24px rgba(0,0,0,.25);pointer-events:none}
-.cps-inset canvas{display:block;border-radius:7px;box-shadow:0 0 0 1px rgba(255,154,60,.55)}
-.cps-inset-label{display:block;margin-top:4px;font-size:10.5px;letter-spacing:.06em;color:rgba(255,255,255,.8);text-align:center;background:#141823;border-radius:0 0 6px 6px}
+.cps-preview{border:1px solid var(--line);border-radius:12px;background:var(--surface-2);overflow:hidden}
+.cps-preview summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;cursor:pointer;list-style:none;font-size:11px;letter-spacing:.06em;color:var(--muted)}
+.cps-preview summary::-webkit-details-marker{display:none}
+.cps-preview-chevron{font-size:16px;line-height:1;transition:transform .15s}
+.cps-preview:not([open]) .cps-preview-chevron{transform:rotate(-90deg)}
+.cps-preview-body{display:flex;justify-content:center;background:#141823;padding:4px 8px 8px}
 .cps-help{position:absolute;left:12px;bottom:10px;right:12px;font-size:11.5px;line-height:1.45;color:rgba(255,255,255,.55);pointer-events:none}
 .cps-out{display:flex;gap:10px;align-items:baseline;padding:10px 14px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);font-size:13px}
 .cps-out b{flex:none;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
@@ -468,10 +470,11 @@ body.vf-mini{padding-bottom:84px}
 .cps-subtabs button[aria-selected="true"]{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12);font-weight:600}
 .cps-joints{display:grid;grid-template-columns:118px minmax(0,1fr);gap:14px;align-items:start}
 .cps-map{position:relative;width:118px;aspect-ratio:1/2;color:color-mix(in srgb,var(--muted) 35%,transparent)}
-.cps-map svg{position:absolute;inset:0;width:100%;height:100%}
-.cps-map button{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--surface);background:var(--muted);cursor:pointer;padding:0;box-shadow:0 0 0 1px var(--line-strong);transition:transform .15s,background .15s}
-.cps-map button:hover{transform:scale(1.3);background:var(--text)}
-.cps-map button[aria-pressed="true"]{background:#ff9a3c;transform:scale(1.35);box-shadow:0 0 0 3px color-mix(in srgb,#ff9a3c 35%,transparent)}
+.cps-map canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.cps-map button{position:absolute;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;border:0;background:transparent;cursor:pointer;padding:0}
+.cps-map button::after{content:"";position:absolute;inset:7px;border-radius:50%;border:1.5px solid #252b35;background:#c2ccd4;box-shadow:0 0 0 1px #ffffff40;transition:transform .15s,background .15s;pointer-events:none}
+.cps-map button:hover::after{transform:scale(1.25);background:#eef3f7}
+.cps-map button[aria-pressed="true"]::after{background:#ff9a3c;transform:scale(1.35);box-shadow:0 0 0 2px #ff9a3c66}
 .cps-map-side{position:absolute;bottom:0;font-size:10.5px;color:var(--faint)}
 .cps-joint-edit{display:grid;gap:10px;min-width:0}
 .cps-joint-edit .cps-sliders{grid-template-columns:1fr;gap:12px;padding:12px}
@@ -672,10 +675,10 @@ body.vf-mini{padding-bottom:84px}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="vendor/three.min.js"></script>
-<script src="studio-model.js?v=anatomy-9"></script>
-<script src="studio-body-data.js?v=anatomy-9"></script>
-<script src="studio-surface.js?v=anatomy-9"></script>
-<script src="studio.js?v=anatomy-9"></script>
+<script src="studio-model.js?v=anatomy-12"></script>
+<script src="studio-body-data.js?v=anatomy-12"></script>
+<script src="studio-surface.js?v=anatomy-12"></script>
+<script src="studio.js?v=anatomy-12"></script>
 <script>
 /* ================= 数据 ================= */
 const CATS = ["time","subject","scene","style"];

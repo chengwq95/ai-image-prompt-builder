@@ -3,7 +3,8 @@
 const StudioSurface = (() => {
   function create(M, material, rig) {
     const data = StudioBodyData;
-    if (data.version !== 2) throw new Error('The anatomical body data must be rebuilt');
+    if (data.version !== 3) throw new Error('The anatomical body data must be rebuilt');
+    M.setCollisionData(data);
     const decode = (value, Type) => {
       const raw = atob(value), bytes = new Uint8Array(raw.length);
       for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
@@ -45,7 +46,28 @@ const StudioSurface = (() => {
       }
       updateBones(M.skinFrames(pose, J));
     }
-    return { body, skeleton, update, get geometry() { return body.geometry; }, get type() { return activeType; }, vertices: data.vertices,
+    const seatIndices = new Map(), supportPoint = new THREE.Vector3();
+    function seatSupport(J, chair = false) {
+      if (!seatIndices.has(activeType)) {
+        const bind = M.skeleton(bindPose(activeType)), raw = body.geometry.getAttribute('position');
+        const allowed = new Set(data.bones.flatMap((name, i) => /^(pelvis|[lr]Thigh)$/.test(name) ? [i] : [])), selected = [];
+        for (let i = 0; i < raw.count; i++) {
+          let influence = 0; for (let c = 0; c < 4; c++) if (allowed.has(ids[i * 4 + c])) influence += weights[i * 4 + c] / 255;
+          if (influence > 0.7 && raw.getY(i) > bind.pelvis[1] - 0.23 * bind.scale) selected.push(i);
+        }
+        seatIndices.set(activeType, selected);
+      }
+      const inverse = M.ry(-Math.atan2(J.forward[0], J.forward[2]) / M.D2R);
+      let height = Infinity;
+      for (const i of seatIndices.get(activeType)) {
+        body.getVertexPosition(i, supportPoint);
+        const local = M.mul(M.mv(inverse, M.sub(supportPoint.toArray(), J.pelvis)), 1 / J.scale);
+        const supported = chair ? Math.abs(local[0]) < 0.22 && local[2] > -0.25 && local[2] < 0.17 : Math.hypot(local[0], local[2] + 0.06) < 0.205;
+        if (supported) height = Math.min(height, supportPoint.y);
+      }
+      return Number.isFinite(height) ? Math.max(0.2 * J.scale, height - 0.004 * J.scale) : 0.42 * J.scale;
+    }
+    return { body, skeleton, update, seatSupport, get geometry() { return body.geometry; }, get type() { return activeType; }, vertices: data.vertices,
       dispose() { variants.forEach(g => g.dispose()); skeleton.dispose(); } };
   }
   return { create };

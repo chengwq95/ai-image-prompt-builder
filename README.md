@@ -6,6 +6,16 @@ A static, single-page tool for writing AI image prompts by clicking instead of t
 
 Companion tool: [AI Video Prompt Builder](https://ai-video-prompt-builder.pages.dev/) — prompts for every step of a short AI video.
 
+## Preview
+
+**Pose in 3D, watch the prompt update** — load a pose, drag a wrist, switch camera angles:
+
+![Posing the 3D mannequin](docs/pose-demo.gif)
+
+| Keywords + prompt | 3D studio |
+|---|---|
+| ![Main page: keyword cards and the live prompt](docs/main.png) | ![3D camera & pose studio](docs/studio.png) |
+
 ---
 
 ## Formula
@@ -25,14 +35,15 @@ The first three blocks decide **what to draw**; Style decides **how it looks**.
 
 ## Features
 
-- **Beginner-friendly**: a 3-step quick start and a 1-minute **guided tour** that highlights each part of the page (a bottom sheet on phones). Reopen it any time from **Guide** in the top bar.
+- **Beginner-friendly**: a 3-step quick start and a 1-minute **guided tour** that highlights each part of the page (a bottom sheet on phones). Reopen it any time from **Guide** in the top bar. The 3D studio has its own short tour under **? How to use**.
 - **Nine templates**, each with a note on what it teaches: rainy-night detective, snow-mountain hunter, vintage object, Tang dynasty lady, bamboo-forest samurai, napping Shiba, Eastern myth, future city, retro teen.
-- **Clickable keywords** in four tabs — click to add, click again to remove — plus your own custom keywords.
+- **Clickable keyword cards** in four tabs, each group with its own icon — click to add (the card turns the block's colour and shows a ✓), click again to remove — plus your own custom keywords.
 - **True 3D camera & pose**: anatomical artist's mannequins based on the locally bundled CC0 MakeHuman mesh, with continuous body/hand topology, authored joint weights, real perspective, depth and shadows. Switch between **3D form** and **Study lines**. Use 13 poses or edit **18 parts / 54 angle controls**: pelvis, spine, neck, head, shoulders, elbows, forearms, wrists, individual finger curls, hips, knees, ankles and toes. Select a joint or body surface to drag it, or use the sliders and arrow keys for precise angles. Reset a single joint, mirror it, or swap both sides.
 - **Drag to reach**: drag a wrist, hand or ankle and the whole arm or leg bends to follow (inverse kinematics), or fine-tune any joint with sliders.
-- **Contact-aware posing**: arm and hand surface samples are skinned from the actual mesh and checked against body/head profiles and held-object bounds. Small joint edits stop at the last clear angle; the phone preset places the handset beside the ear. Selecting **Sitting** also applies sitting leg angles, uses actual sole geometry to keep feet above the floor, and fits the seat below the body.
+- **Contact-aware posing**: arm and hand surface samples are skinned from the actual mesh and checked against body/head profiles. Small joint edits stop at the last clear angle. Selecting **Sitting** also applies sitting leg angles, uses actual sole geometry to keep feet above the floor, and fits the seat below the body.
 - **Camera preview dock**: the actual camera view sits beside the controls on wide screens and below the stage on narrow screens. Collapse or reopen it using its header; it never overlays the interactive canvas or hides a joint. Camera-view PNG export remains available when the dock is closed.
-- **Body types and props**: adult man, adult woman, slim, muscular or child, each with a cached anatomical mesh variant. Shoulder/hip widths and limb lengths follow the chosen build; the child uses a larger relative head and shorter limbs. The adult female chest is part of the continuous surface. A phone, cup, umbrella or book in the right hand (the arm lifts to hold it), plus a chair and a table. Held props share the hand's position and orientation, with editable finger grips and a **Reset grip** action. Props and build are described in the prompt.
+- **Body types and finish**: adult man, adult woman, slim, muscular or child, each with a cached anatomical mesh variant. Shoulder/hip widths and limb lengths follow the chosen build; the child uses a larger relative head and shorter limbs. The adult female chest is part of the continuous surface. Show the figure as **clay**, **wood** or **skin**. The build is described in the prompt.
+- **Gaze and lens**: point the head and eyes at the camera, left, right, up or down, and pick a lens (Auto, 24–135 mm) that changes both the preview perspective and the prompt.
 - **Two models**: use **+ Model** to add **B**, then switch between **A / B** (matching the labels above each figure). Both models have position controls; **Distance between models** moves them equally, from 0.20–4.00 m, while preserving their poses for two-shots and over-the-shoulder shots; the prompt names who is on the left and right of the frame.
 - **Lighting**: a Light tab with a draggable sun, front / Rembrandt / side / back / top presets and soft or hard shadows. The words describe the light as the camera sees it, and replace the Light keywords when turned on.
 - **Download the camera view**: save the actual camera view as a PNG to upload as a pose and composition reference.
@@ -44,6 +55,8 @@ The first three blocks decide **what to draw**; Style decides **how it looks**.
 - **Troubleshooting checklist**: too flat / random-looking person / looks like a phone snapshot, and which block to add.
 - **EN / 中文** interface switch (English by default) and **Morning / Night** themes (follows your system until you choose). Language and theme are shared with the AI Video Prompt Builder.
 - Your keywords and settings are saved in your browser (`localStorage`), so a refresh doesn't lose your work.
+- **Project file**: **Project → Export** saves everything (keywords, 3D scene, language, theme) as a JSON file; **Import** restores it on another browser or computer.
+- **Phone-friendly 3D**: a rotate-to-landscape hint with a full-screen button, larger touch handles, two-finger pinch zoom, and a **Simple** mode that keeps just poses, camera angles and the preview.
 
 ## Output
 

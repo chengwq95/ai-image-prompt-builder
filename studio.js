@@ -17,7 +17,7 @@ const CamPose = (() => {
   const ui = {
     en: {
       editor: "Studio view · drag background to orbit", actual: "CAMERA VIEW", front: "Front", side: "Right", back: "Back", frame: "Fit scene",
-      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror joint", flip: "Swap sides", joints: "18 parts · 54 angle controls", pagePoses: "Poses", stool: "On a stool", gaze: "Gaze", gazeCamera: "Camera", gazeOther: "Other", gazePick: "Pointer", gazePicking: "Drag in 3D…", gazeAhead: "Ahead", lens: "Lens (mm)", lensAuto: "Auto", facing: "Facing", faceFront: "Front", faceRight: "Right side", faceBack: "Back", faceLeft: "Left side", turnLabel: "Turn the figure", turnHint: "Or drag the dot on the orange ring at the feet; drag the ring itself to move the figure", pageFigure: "Body type", pageJoints: "Joints", mapLeft: "L", mapRight: "R",
+      selected: "Selected joint", resetPart: "Reset joint", mirror: "Mirror joint", flip: "Swap sides", joints: "18 parts · 54 angle controls", pagePoses: "Poses", stool: "On a stool", posesLabel: "Pose", railPrev: "Previous options", railNext: "More options", gaze: "Gaze", gazeCamera: "Camera", gazeOther: "Other", gazePick: "Pointer", gazePicking: "Drag in 3D…", gazeAhead: "Ahead", lens: "Lens (mm)", lensAuto: "Auto", facing: "Facing", faceFront: "Front", faceRight: "Right side", faceBack: "Back", faceLeft: "Left side", turnLabel: "Turn the figure", turnHint: "Or drag the dot on the orange ring at the feet; drag the ring itself to move the figure", pageFigure: "Body type", pageJoints: "Joints", mapLeft: "L", mapRight: "R",
       fine: "Select a joint or body surface. Drag to pose; use sliders or arrow keys for precise angles.",
       cameraHelp: "Yellow is the actual camera: drag it closer, through the pink reference arc. Green: orbit · pink: elevation. The target marker shows where the camera aims.",
       unsupported: "This browser could not start 3D. Enable WebGL or try another browser. Angle controls and prompt output still work.",
@@ -28,7 +28,7 @@ const CamPose = (() => {
     },
     zh: {
       editor: "工作视图 · 拖动空白处旋转", actual: "实际镜头画面", front: "正面", side: "右侧", back: "背面", frame: "查看整个场景",
-      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制", pagePoses: "姿势", stool: "坐凳子", gaze: "视线", gazeCamera: "看镜头", gazeOther: "看对方", gazePick: "跟着鼠标", gazePicking: "在画面上拖动…", gazeAhead: "正前方", lens: "镜头 (mm)", lensAuto: "自动", facing: "人物朝向", faceFront: "正面", faceRight: "右侧", faceBack: "背面", faceLeft: "左侧", turnLabel: "旋转人物", turnHint: "也可以拖动脚下橙色圆圈上的圆点；拖动圆圈本身可以移动人物", pageFigure: "体型", pageJoints: "关节", mapLeft: "左", mapRight: "右",
+      selected: "当前关节", resetPart: "重置此部位", mirror: "镜像此部位", flip: "左右互换", joints: "18 个部位 · 54 项角度控制", pagePoses: "姿势", stool: "坐凳子", posesLabel: "姿势", railPrev: "上一组选项", railNext: "更多选项", gaze: "视线", gazeCamera: "看镜头", gazeOther: "看对方", gazePick: "跟着鼠标", gazePicking: "在画面上拖动…", gazeAhead: "正前方", lens: "镜头 (mm)", lensAuto: "自动", facing: "人物朝向", faceFront: "正面", faceRight: "右侧", faceBack: "背面", faceLeft: "左侧", turnLabel: "旋转人物", turnHint: "也可以拖动脚下橙色圆圈上的圆点；拖动圆圈本身可以移动人物", pageFigure: "体型", pageJoints: "关节", mapLeft: "左", mapRight: "右",
       fine: "点选关节点或人物表面，拖动调整姿势；滑块和方向键可精确调角度。",
       cameraHelp: "黄色就是真实相机，可穿过粉色参考弧继续靠近。绿色调方位，粉色调仰俯；瞄准点标出实际朝向。",
       unsupported: "浏览器无法启动 3D，请启用 WebGL 或换一个浏览器。角度控制和提示词仍可使用。",
@@ -722,9 +722,45 @@ const CamPose = (() => {
         const opts = document.createElement("div"); opts.className = "cps-opts";
         [...row.childNodes].filter(n => n !== label).forEach(n => opts.append(n)); row.append(opts); row.classList.add("cps-row");
       });
+      makeRails();
       // A rebuilt panel has a blank map canvas: paint the figure now instead of waiting for the next frame.
       if (panel.querySelector('.cps-map canvas')) updateBodyMap();
       output();
+    }
+    // Every choice row is one segmented rail (like the lens row). If it does not fit, ‹ › arrows
+    // and soft edges appear and the row slides sideways; the selected option is kept in view.
+    function makeRails() {
+      const rows = [...panel.querySelectorAll(".cps-row > .cps-opts")];
+      for (const holder of rows) {
+        // Model actions stay as buttons; angles, light presets and poses stay as grids (all visible at once).
+        if (holder.querySelector("[data-second], [data-edit], [data-campreset], [data-lightpreset], [data-preset]")) continue;
+        let track = holder.querySelector(":scope > .cps-seg");
+        const buttons = track ? null : [...holder.children].filter(n => n.tagName === "BUTTON");
+        if (!track) { if (!buttons.length) continue; track = document.createElement("div"); track.className = "cps-seg"; buttons.forEach(b => track.append(b)); }
+        const rail = document.createElement("div"); rail.className = "cps-rail";
+        const prev = document.createElement("button"), next = document.createElement("button");
+        prev.type = next.type = "button"; prev.className = "cps-rail-btn"; next.className = "cps-rail-btn";
+        prev.textContent = "‹"; next.textContent = "›"; prev.tabIndex = next.tabIndex = -1;
+        prev.setAttribute("aria-label", ui[lang].railPrev); next.setAttribute("aria-label", ui[lang].railNext);
+        track.classList.add("cps-rail-track");
+        const extra = [...holder.childNodes];                                          // e.g. the stool checkbox
+        holder.replaceChildren(rail); rail.append(prev, track, next); extra.forEach(n => { if (n !== track) holder.append(n); });
+        holder.classList.add("cps-rail-holder");
+        const update = () => {
+          const over = track.scrollWidth - track.clientWidth > 2, start = track.scrollLeft > 2, end = track.scrollLeft < track.scrollWidth - track.clientWidth - 2;
+          rail.classList.toggle("over", over); prev.disabled = !start; next.disabled = !end;
+          rail.classList.toggle("fade-start", over && start); rail.classList.toggle("fade-end", over && end);
+        };
+        const step = dir => track.scrollBy({ left: dir * Math.max(80, track.clientWidth * 0.7), behavior: "smooth" });
+        prev.addEventListener("click", e => { e.stopPropagation(); step(-1); });
+        next.addEventListener("click", e => { e.stopPropagation(); step(1); });
+        track.addEventListener("scroll", update, { passive: true });
+        requestAnimationFrame(() => {
+          const on = track.querySelector('[aria-pressed="true"]');
+          if (on) track.scrollLeft = Math.max(0, on.offsetLeft - (track.clientWidth - on.offsetWidth) / 2);
+          update();
+        });
+      }
     }
     function sync() {
       panel.querySelectorAll("[data-angle]").forEach(input => {

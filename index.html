@@ -609,6 +609,22 @@ body.vf-mini{padding-bottom:84px}
 .cps .cps-opts:has(> [data-lightpreset]){display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .cps .cps-opts:has(> [data-campreset])>button,.cps .cps-opts:has(> [data-lightpreset])>button{padding:0 8px;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:640px){.studio-card{padding:14px 14px 16px}.cps{--label:64px}}
+
+/* ---- Rails: one segmented row per choice, sliding sideways with ‹ › when it does not fit ---- */
+.cps .cps-rail-holder{display:grid;gap:8px;min-width:0}
+.cps .cps-rail{position:relative;display:flex;align-items:center;min-width:0}
+.cps .cps-rail-track{flex:0 1 auto;width:max-content;min-width:0;max-width:100%;overflow-x:auto;scrollbar-width:none;scroll-behavior:smooth;justify-content:flex-start}
+.cps .cps-rail-track::-webkit-scrollbar{display:none}
+.cps .cps-rail-track>button{flex:0 0 auto}
+.cps .cps-rail.over .cps-rail-track{mask-image:linear-gradient(90deg,#000,#000);-webkit-mask-image:linear-gradient(90deg,#000,#000)}
+.cps .cps-rail.fade-end .cps-rail-track{mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+.cps .cps-rail.fade-start .cps-rail-track{mask-image:linear-gradient(90deg,transparent,#000 28px);-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px)}
+.cps .cps-rail.fade-start.fade-end .cps-rail-track{mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent)}
+.cps .cps-rail-btn{display:none;flex:0 0 auto;width:24px;height:24px;margin:0 2px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--text);font-size:15px;line-height:1;cursor:pointer;align-items:center;justify-content:center}
+.cps .cps-rail.over .cps-rail-btn{display:inline-flex}
+.cps .cps-rail-btn:disabled{opacity:.3;cursor:default}
+.cps .cps-rail-btn:not(:disabled):hover{border-color:var(--line-strong)}
+.cps .cps-rail-holder .cps-stool{justify-self:start}
 </style>
 </head>
 <body>
@@ -782,10 +798,10 @@ body.vf-mini{padding-bottom:84px}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="vendor/three.min.js"></script>
-<script src="studio-model.js?v=design-3"></script>
-<script src="studio-body-data.js?v=design-3"></script>
-<script src="studio-surface.js?v=design-3"></script>
-<script src="studio.js?v=design-3"></script>
+<script src="studio-model.js?v=mix-1"></script>
+<script src="studio-body-data.js?v=mix-1"></script>
+<script src="studio-surface.js?v=mix-1"></script>
+<script src="studio.js?v=mix-1"></script>
 <script>
 /* ================= 数据 ================= */
 const CATS = ["time","subject","scene","style"];
